@@ -39,6 +39,9 @@ targets:
         NSHumanReadableCopyright: ""
     entitlements:
       path: Apps/ChatComputer/ChatComputer.entitlements
+      # XcodeGen rewrites the .entitlements file from these properties on every generate.
+      properties:
+        com.apple.security.virtualization: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.chatcomputer.ChatComputer

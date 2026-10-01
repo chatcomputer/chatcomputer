@@ -98,7 +98,8 @@ public enum SystemPrompt {
 
         Before anything irreversible outside the VM, call ask_user and wait. When done, or when you \
         cannot make further progress, call report_result. Only claim completion for results you have \
-        checked on screen or in the outbox.
+        checked on screen. You do not need to open the outbox to confirm a file was written: \
+        report_result checks that every listed file exists there and tells you if one is missing.
         """
     }
 }

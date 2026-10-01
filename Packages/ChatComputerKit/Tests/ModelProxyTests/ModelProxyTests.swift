@@ -78,3 +78,39 @@ import BridgeProtocol
         #expect(response.inputTokens == 10)
     }
 }
+
+@Suite struct CompatibleDialectTests {
+    let client = AnthropicClient(configuration: .init(model: "deepseek-chat", dialect: .compatible(displayWidth: 1280, displayHeight: 800))) { "sk-test" }
+
+    @Test func replacesToolsetAndDropsClaudeOnlyFields() throws {
+        let request = try client.makeRequest(system: "sys", tools: [ComputerToolset.definition] + HostTools.definitions, messages: [["role": "user", "content": "hi"]])
+        let body = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!)
+        let tools = body["tools"]?.arrayValue ?? []
+        #expect(tools.first?["name"] == "computer")
+        #expect(tools.first?["type"] == nil)
+        #expect(tools.count == 1 + HostTools.definitions.count)
+        #expect(body["thinking"] == nil)
+        #expect(body["fallbacks"] == nil)
+        #expect(request.value(forHTTPHeaderField: "anthropic-beta") == nil)
+    }
+
+    @Test func historyAndResponsesRoundTripThroughToolsetShape() throws {
+        // Response: the custom tool comes back as a toolset member.
+        let wire: [JSONValue] = [["type": "tool_use", "id": "t1", "name": "computer", "input": ["action": "left_click", "coordinate": [10, 20]]]]
+        let local = CompatibleDialect.responseContent(wire)
+        #expect(local[0]["name"] == "left_click")
+        #expect(local[0]["toolset_name"] == "computer")
+        #expect(local[0]["input"] == ["coordinate": [10, 20]])
+        // History: the same block goes back out in wire shape, and results lose toolset_name.
+        let history: [JSONValue] = [
+            ["role": "assistant", "content": .array(local)],
+            ["role": "user", "content": [ComputerToolset.textResult(toolUseID: "t1", "OK")]],
+        ]
+        let outgoing = CompatibleDialect.requestMessages(history)
+        #expect(outgoing[0]["content"]?.arrayValue?[0] == wire[0])
+        #expect(outgoing[1]["content"]?.arrayValue?[0]["toolset_name"] == nil)
+        // Host tools pass through untouched.
+        let report: JSONValue = ["type": "tool_use", "id": "t2", "name": "report_result", "input": [:]]
+        #expect(CompatibleDialect.responseContent([report]) == [report])
+    }
+}

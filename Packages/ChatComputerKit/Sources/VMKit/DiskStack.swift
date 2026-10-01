@@ -62,7 +62,9 @@ public struct DiskStack: Sendable {
         spec.overlayCount = next
     }
 
-    /// Drops every overlay above `keeping`; with 1 this returns to the freshly onboarded state.
+    /// Drops every overlay above `keeping` and adds a fresh writable one. After freezing, overlay 1 is the
+    /// writable layer on the golden base, so `keeping: 0` returns to the freshly onboarded state;
+    /// `keeping: n` returns to checkpoint n.
     public func discardOverlays(spec: inout VMSpec, keeping: Int) throws {
         guard spec.overlayCount > keeping else { return }
         for index in (keeping + 1)...spec.overlayCount {

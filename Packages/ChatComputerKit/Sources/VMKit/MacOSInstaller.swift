@@ -22,13 +22,18 @@ public final class MacOSInstaller {
     }
 
     /// Runs the whole install. Resumable at the step level: a downloaded IPSW is reused.
-    public func install(spec: VMSpec, onProgress: @escaping @MainActor (Progress) -> Void) async throws -> VMSpec {
+    /// `restoreImage` is a local IPSW to use instead of downloading (the catalog can be unavailable).
+    public func install(spec: VMSpec, restoreImage: URL? = nil, onProgress: @escaping @MainActor (Progress) -> Void) async throws -> VMSpec {
         var spec = spec
         onProgress(.checkingHost)
         try checkHost(spec: spec)
         try bundle.create()
 
         let ipswURL = bundle.url.appendingPathComponent("RestoreImage.ipsw")
+        if !FileManager.default.fileExists(atPath: ipswURL.path), let restoreImage {
+            // Hard link when on the same volume: restore images are ~25 GB.
+            do { try FileManager.default.linkItem(at: restoreImage, to: ipswURL) } catch { try FileManager.default.copyItem(at: restoreImage, to: ipswURL) }
+        }
         if !FileManager.default.fileExists(atPath: ipswURL.path) {
             let latest = try await Self.latestSupportedImage()
             try await download(latest.url, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
@@ -91,15 +96,17 @@ public final class MacOSInstaller {
     }
 
     private static func latestSupportedImage() async throws -> VZMacOSRestoreImage {
-        try await withCheckedThrowingContinuation { continuation in
-            VZMacOSRestoreImage.fetchLatestSupported { continuation.resume(with: $0) }
+        // Observed on macOS 27.0 (26A428): the catalog fails with VZErrorDomain 10001 "Installation service
+        // returned an unexpected error" while the IPSW itself downloads fine from updates.cdn-apple.com.
+        do {
+            return try await VZMacOSRestoreImage.latestSupported
+        } catch {
+            throw VMError.restoreImageCatalogUnavailable(error.localizedDescription)
         }
     }
 
     private static func loadImage(at url: URL) async throws -> VZMacOSRestoreImage {
-        try await withCheckedThrowingContinuation { continuation in
-            VZMacOSRestoreImage.load(from: url) { continuation.resume(with: $0) }
-        }
+        try await VZMacOSRestoreImage.image(from: url)
     }
 
     private func download(_ remote: URL, to local: URL, onProgress: @escaping @MainActor (Double) -> Void) async throws {
