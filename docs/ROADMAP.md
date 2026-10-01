@@ -9,7 +9,7 @@
 | 方案 v0.1 中的问题 | macOS 27 下的解法 |
 | --- | --- |
 | 第 3 节第 4 步「建立 guest 用户与桌面」需要人工点完设置助理，或靠 Lume 的 VNC 脚本模拟点击 | `VZMacGuestProvisioningOptions` 在首次启动时直接创建账户、开启自动登录（以及可选的 SSH） |
-| 第 5 节「Lume 与直接使用 VZ 的选择」 | 直接集成 VZ，不引入 Lume。Lume 的主要价值是自动化安装与镜像管理，这些现在都有一方 API 覆盖；嵌入显示和生命周期所有权的风险也随之消失 |
+| 第 5 节「Lume 与直接使用 VZ 的选择」 | 在 App 进程内直接调用 VZ，不引入 Lume。Lume 本身也是 VZ 的封装，区别在于 VM 由 Lume 的 CLI/后台进程持有、画面走 VNC，而 `VZVirtualMachineView` 只能显示同进程内的 `VZVirtualMachine`。Lume 额外提供的无人值守安装与镜像管理，现在都有一方 API 覆盖，因此没必要再为了它接受跨进程显示 |
 | 第 8 节「备份点」需要自己复制整块磁盘 | DiskImageKit 的分层镜像（基础层 + ASIF overlay）提供写时复制快照 |
 | 第 7 节网络「NAT 不是完整隔离」 | vmnet 自定义网络（`VZVmnetNetworkDeviceAttachment`，macOS 26 起）可以控制 DHCP、子网和 VM 间通信 |
 | 第 7 节主客通信「先用 SSH stdio」 | 改用 virtio-vsock（`VZVirtioSocketDevice`）：不走网络、天然绑定到这一台 VM，不需要口令和 host key |
