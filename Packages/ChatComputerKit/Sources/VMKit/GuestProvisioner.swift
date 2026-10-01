@@ -33,16 +33,19 @@ public struct GuestProvisioner: Sendable {
     /// Copies the agent and its pairing file into the bootstrap share and installs them over SSH.
     ///
     /// `agentApp` is the signed ChatComputerAgent.app embedded in the host app's resources.
-    public func installAgent(spec: VMSpec, agentApp: URL) async throws {
+    /// `subnet` is the VM network's current subnet; stale leases from earlier boots lie outside it.
+    public func installAgent(spec: VMSpec, agentApp: URL, subnet: IPv4Subnet?) async throws {
         let password = try secrets.read(SecretAccount.guestPassword(vmID: spec.id))
         guard let password else { throw VMError.bootstrapFailed("guest password missing from Keychain") }
 
         let pairingToken = Self.randomSecret()
-        try secrets.write(pairingToken, for: SecretAccount.pairingToken(vmID: spec.id))
         try stageBootstrapFiles(spec: spec, agentApp: agentApp, pairingToken: pairingToken)
 
-        let address = try await guestAddress(macAddress: spec.macAddress)
+        let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet)
         try await runSSH(user: spec.guestUsername, host: address, password: password, script: Self.bootstrapScript)
+        // Stored only once the guest has it: a failed attempt must not orphan the agent an earlier
+        // attempt installed (it would be rejected forever, and SSH is already off by then).
+        try secrets.write(pairingToken, for: SecretAccount.pairingToken(vmID: spec.id))
 
         // The bootstrap share holds the pairing token; clear it once the agent has copied it.
         try? FileManager.default.removeItem(at: bundle.bootstrapDirectory.appendingPathComponent("pairing.json"))
@@ -71,8 +74,7 @@ public struct GuestProvisioner: Sendable {
     }
 
     /// Runs in the guest as the provisioned user. The last step switches SSH off again.
-    /// TODO(P1): confirm the automount is visible to the SSH session and that the sudo step works
-    /// without Full Disk Access on macOS 27; otherwise move it to a first-run step in the agent.
+    /// Verified on macOS 27.0.1: the virtio-fs automount is visible to the SSH session.
     static let bootstrapScript = #"""
         set -euo pipefail
         SRC="/Volumes/My Shared Files/bootstrap"
@@ -82,29 +84,62 @@ public struct GuestProvisioner: Sendable {
         ditto "$SRC/ChatComputerAgent.app" "$HOME/Applications/ChatComputerAgent.app"
         install -m 600 "$SRC/pairing.json" "$SUPPORT/pairing.json"
         cp "$SRC/app.chatcomputer.agent.plist" "$HOME/Library/LaunchAgents/"
-        launchctl bootout "gui/$(id -u)/app.chatcomputer.agent" 2>/dev/null || true
-        launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.chatcomputer.agent.plist"
+        # An SSH session is not in the Aqua session, so only root may bootstrap into gui/<uid>
+        # (as the user it fails with 125 "Domain does not support specified action", macOS 27).
+        printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl bootout "gui/$(id -u)/app.chatcomputer.agent" 2>/dev/null || true
+        printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.chatcomputer.agent.plist"
         # Detached and delayed so this SSH session exits cleanly before sshd goes away.
         nohup bash -c 'sleep 3; printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" systemsetup -f -setremotelogin off' >/dev/null 2>&1 &
         """#
 
-    /// Finds the guest's DHCP lease by MAC address (vmnet shared mode serves leases through bootpd).
-    /// TODO(P5): replace with a vmnet API if the custom network exposes leases directly.
-    private func guestAddress(macAddress: String) async throws -> String {
-        let normalized = macAddress.lowercased().split(separator: ":").map { String(Int($0, radix: 16) ?? 0, radix: 16) }.joined(separator: ":")
-        for _ in 0..<60 {
-            if let leases = try? String(contentsOfFile: "/var/db/dhcpd_leases", encoding: .utf8) {
-                var ip: String?
-                for line in leases.split(separator: "\n").map({ $0.trimmingCharacters(in: .whitespaces) }) {
-                    if line.hasPrefix("ip_address=") { ip = String(line.dropFirst("ip_address=".count)) }
-                    if line.hasPrefix("hw_address=1,"), line.dropFirst("hw_address=1,".count) == normalized, let ip {
-                        return ip
-                    }
-                }
+    /// Finds the guest's DHCP lease by MAC address (vmnet shared mode serves leases through bootpd)
+    /// and waits until its SSH port answers. Leases outlive boots, so an address can be known
+    /// long before the guest is up; it is re-read on every attempt in case it changes.
+    private func guestAddress(macAddress: String, subnet: IPv4Subnet?) async throws -> String {
+        for _ in 0..<90 {
+            if let leases = try? String(contentsOfFile: "/var/db/dhcpd_leases", encoding: .utf8),
+               let ip = Self.leaseAddress(in: leases, macAddress: macAddress, subnet: subnet),
+               await Self.portIsOpen(host: ip, port: 22) {
+                return ip
             }
             try await Task.sleep(for: .seconds(2))
         }
         throw VMError.guestAddressUnknown
+    }
+
+    private static func portIsOpen(host: String, port: Int) async -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
+        process.arguments = ["-z", "-G", "2", host, "\(port)"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        let exited = AsyncStream<Void> { continuation in
+            process.terminationHandler = { _ in continuation.finish() }
+        }
+        guard (try? process.run()) != nil else { return false }
+        for await _ in exited {}
+        return process.terminationStatus == 0
+    }
+
+    /// The lease file keeps entries from earlier boots, possibly on other subnets, so only leases
+    /// inside the current subnet count, and the one expiring last wins. bootpd writes MAC octets
+    /// without leading zeros.
+    static func leaseAddress(in leases: String, macAddress: String, subnet: IPv4Subnet?) -> String? {
+        let normalized = macAddress.lowercased().split(separator: ":").map { String(Int($0, radix: 16) ?? 0, radix: 16) }.joined(separator: ":")
+        var best: (ip: String, expiry: UInt64)?
+        for entry in leases.components(separatedBy: "}") {
+            var fields: [String: String] = [:]
+            for line in entry.split(separator: "\n") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard let equals = trimmed.firstIndex(of: "=") else { continue }
+                fields[String(trimmed[..<equals])] = String(trimmed[trimmed.index(after: equals)...])
+            }
+            guard fields["hw_address"] == "1,\(normalized)", let ip = fields["ip_address"] else { continue }
+            if let subnet, !subnet.contains(ip) { continue }
+            let expiry = fields["lease"].flatMap { UInt64($0.replacingOccurrences(of: "0x", with: ""), radix: 16) } ?? 0
+            if best == nil || expiry > best!.expiry { best = (ip, expiry) }
+        }
+        return best?.ip
     }
 
     /// SSH with a pinned per-VM known_hosts, password via SSH_ASKPASS, and no agent/port forwarding.

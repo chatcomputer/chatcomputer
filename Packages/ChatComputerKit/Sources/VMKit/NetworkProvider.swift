@@ -13,6 +13,17 @@ public final class NetworkProvider: @unchecked Sendable {
 
     public init() {}
 
+    /// IPv4 subnet of the network, once created. Each network instance can get a different
+    /// subnet (observed: 192.168.64.0/24 on one boot, 192.168.66.0/24 on the next).
+    public var ipv4Subnet: IPv4Subnet? {
+        guard let network else { return nil }
+        var address = in_addr()
+        var mask = in_addr()
+        vmnet_network_get_ipv4_subnet(network, &address, &mask)
+        guard address.s_addr != 0 else { return nil }
+        return IPv4Subnet(address: UInt32(bigEndian: address.s_addr), mask: UInt32(bigEndian: mask.s_addr))
+    }
+
     public func makeDevice(macAddress: String) throws -> VZVirtioNetworkDeviceConfiguration {
         let device = VZVirtioNetworkDeviceConfiguration()
         device.macAddress = VZMACAddress(string: macAddress) ?? .randomLocallyAdministered()
@@ -35,6 +46,35 @@ public final class NetworkProvider: @unchecked Sendable {
         }
         network = created
         return VZVmnetNetworkDeviceAttachment(network: created)
+    }
+}
+
+/// Host-order IPv4 subnet.
+public struct IPv4Subnet: Sendable, Equatable {
+    public var address: UInt32
+    public var mask: UInt32
+
+    public init(address: UInt32, mask: UInt32) {
+        self.address = address
+        self.mask = mask
+    }
+
+    public init?(_ cidr: String) {
+        let parts = cidr.split(separator: "/")
+        guard parts.count == 2, let bits = UInt32(parts[1]), bits <= 32, let address = Self.parse(String(parts[0])) else { return nil }
+        self.mask = bits == 0 ? 0 : ~UInt32(0) << (32 - bits)
+        self.address = address & mask
+    }
+
+    public func contains(_ ip: String) -> Bool {
+        guard let value = Self.parse(ip) else { return false }
+        return value & mask == address & mask
+    }
+
+    static func parse(_ ip: String) -> UInt32? {
+        let octets = ip.split(separator: ".").compactMap { UInt8($0) }
+        guard octets.count == 4 else { return nil }
+        return octets.reduce(0) { $0 << 8 | UInt32($1) }
     }
 }
 #endif

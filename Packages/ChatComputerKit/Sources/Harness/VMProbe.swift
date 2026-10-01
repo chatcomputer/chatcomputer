@@ -16,6 +16,7 @@ import VMKit
 ///         --bridge                                vsock handshake, health and latency (P3)
 ///         --screenshot                            one screenshot through the agent (P6)
 ///         --window                                show the VM screen in a window (for manual steps)
+///         --console DIR                           operate the guest from the host until `done` (see GuestConsole)
 ///         --wait-ready                            poll health until Accessibility + Screen Recording are granted
 ///         --hold SECONDS                          keep running before shutdown (default 0)
 ///         --suspend                               save state instead of shutting down; next `up` restores
@@ -59,6 +60,7 @@ enum VMProbe {
         var suspend = false
         var window = false
         var waitReady = false
+        var console: URL?
 
         init(_ arguments: [String]) {
             var iterator = arguments.makeIterator()
@@ -71,6 +73,7 @@ enum VMProbe {
                 case "--hold": hold = iterator.next().flatMap(Double.init) ?? 0
                 case "--suspend": suspend = true
                 case "--window": window = true
+                case "--console": console = iterator.next().map { URL(fileURLWithPath: $0) }; window = true
                 case "--wait-ready": waitReady = true; bridge = true
                 default: print("ignoring unknown option \(argument)")
                 }
@@ -116,7 +119,7 @@ enum VMProbe {
 
         var bridge: BridgeServer?
         if options.bridge, let token = try secrets.read(SecretAccount.pairingToken(vmID: spec.id)) {
-            bridge = BridgeServer(vmID: spec.id, pairingToken: token)
+            bridge = BridgeServer(vmID: spec.id, pairingToken: token, log: { message in Task { @MainActor in log("bridge: \(message)") } })
         }
         controller.onSocketDeviceReady = { device in bridge?.attach(to: device) }
 
@@ -128,24 +131,34 @@ enum VMProbe {
         guard controller.state == .running else { throw ProbeError("start failed: \(controller.state)") }
         log("\(restoring ? "restored" : "started") in \(elapsed(since: bootStarted))")
         if options.provision { try controller.updateSpec { $0.stage = .provisioned } }
-        if options.window, let machine = controller.virtualMachine { showWindow(machine, spec: spec) }
+        var console: GuestConsole?
+        if options.window, let machine = controller.virtualMachine {
+            let (view, window) = showWindow(machine, spec: spec)
+            if let directory = options.console {
+                console = GuestConsole(view: view, window: window, directory: directory)
+                console?.guestSize = CGSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2)
+            }
+        }
 
         if let agent = options.agent {
             log("waiting for guest network and SSH…")
             let sshStarted = Date()
-            try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: controller.spec, agentApp: agent)
+            try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: controller.spec, agentApp: agent, subnet: controller.network.ipv4Subnet)
+            log("guest subnet: \(controller.network.ipv4Subnet.map { String(format: "%08x/%08x", $0.address, $0.mask) } ?? "unknown")")
             log("agent installed over SSH in \(elapsed(since: sshStarted)) (\(elapsed(since: bootStarted)) since boot)")
             try controller.updateSpec { $0.stage = .agentInstalled }
             if bridge == nil, options.bridge, let token = try secrets.read(SecretAccount.pairingToken(vmID: spec.id)) {
-                let server = BridgeServer(vmID: spec.id, pairingToken: token)
+                let server = BridgeServer(vmID: spec.id, pairingToken: token, log: { message in Task { @MainActor in log("bridge: \(message)") } })
                 bridge = server
                 if let device = controller.virtualMachine?.socketDevices.first as? VZVirtioSocketDevice { server.attach(to: device) }
             }
         }
 
+        if !options.bridge { try await console?.serve() }
         if options.bridge {
             guard let bridge else { throw ProbeError("no pairing token yet; run with --agent first") }
             try await probeBridge(bridge, vmID: spec.id, bootStarted: bootStarted)
+            try await console?.serve()
             if options.waitReady { try await waitUntilReady(bridge, vmID: spec.id) }
             if options.screenshot { try await probeScreenshot(bridge, vmID: spec.id) }
         }
@@ -160,7 +173,7 @@ enum VMProbe {
             try await controller.suspend()
             log("suspended in \(elapsed(since: saveStarted)); state file \(diskUsage(bundle.savedStateURL))")
         } else {
-            try await shutdown(controller)
+            try await shutdown(controller, console: console, bridge: bridge)
         }
     }
 
@@ -236,14 +249,18 @@ enum VMProbe {
 
     static var window: NSWindow?
 
-    static func showWindow(_ machine: VZVirtualMachine, spec: VMSpec) {
+    @discardableResult
+    static func showWindow(_ machine: VZVirtualMachine, spec: VMSpec) -> (VZVirtualMachineView, NSWindow) {
         let view = VZVirtualMachineView()
         view.virtualMachine = machine
         view.capturesSystemKeys = true
         view.automaticallyReconfiguresDisplay = false
         let size = NSSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2)
-        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .resizable, .miniaturizable],
+        // A non-activating panel can become key (so the view receives keys) without the app
+        // being frontmost; a background app cannot activate itself on macOS 14+.
+        let window = KeyPanel(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .resizable, .nonactivatingPanel],
                               backing: .buffered, defer: false)
+        window.becomesKeyOnlyIfNeeded = false
         window.title = "cc-harness — \(spec.name)"
         window.contentView = view
         window.contentAspectRatio = size
@@ -252,11 +269,31 @@ enum VMProbe {
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate()
         self.window = window
+        return (view, window)
     }
 
-    static func shutdown(_ controller: VirtualMachineController) async throws {
+    static func shutdown(_ controller: VirtualMachineController, console: GuestConsole? = nil, bridge: BridgeServer? = nil) async throws {
+        if let bridge, await bridge.isConnected {
+            let started = Date()
+            log("shutting down via the guest agent…")
+            do {
+                try await controller.shutDown(viaGuest: {
+                    _ = try await bridge.send(envelope(controller.spec.id, .shutdown))
+                }, timeout: .seconds(120))
+                log("stopped cleanly in \(elapsed(since: started))")
+                return
+            } catch {
+                log("agent shutdown failed: \(error)")
+            }
+        }
         log("requesting guest shutdown…")
         try? controller.requestShutdown()
+        if let console {
+            try await Task.sleep(for: .seconds(5))
+            log("after stop request: \(try await console.screenshot())")
+            // requestStop() only opens the guest's "Shut down now?" dialog; Return confirms it.
+            _ = try await console.execute("key return")
+        }
         let deadline = Date().addingTimeInterval(90)
         while controller.state != .stopped, Date() < deadline {
             try await Task.sleep(for: .seconds(1))
@@ -375,5 +412,12 @@ final class FileSecretStore: SecretStore, @unchecked Sendable {
             try save(values)
         }
     }
+}
+#endif
+
+#if os(macOS)
+final class KeyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 }
 #endif

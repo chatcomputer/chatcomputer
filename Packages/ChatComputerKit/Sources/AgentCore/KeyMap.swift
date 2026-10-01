@@ -5,8 +5,8 @@ import CoreGraphics
 
 /// Parses xdotool-style key names ("Return", "cmd+shift+s", "super+Tab") into macOS key codes.
 /// Letters and digits use ANSI positions; typed text goes through Unicode injection instead.
-enum KeyMap {
-    static func parse(_ combo: String) throws -> (CGKeyCode, CGEventFlags) {
+public enum KeyMap {
+    public static func parse(_ combo: String) throws -> (CGKeyCode, CGEventFlags) {
         let parts = combo.split(separator: "+").map { String($0).trimmingCharacters(in: .whitespaces) }
         guard let keyName = parts.last, !keyName.isEmpty else {
             throw BridgeError(.invalidCommand, "Empty key combination.")
@@ -18,7 +18,7 @@ enum KeyMap {
         return (code, flags)
     }
 
-    static func flags(_ modifiers: [String]) throws -> CGEventFlags {
+    public static func flags(_ modifiers: [String]) throws -> CGEventFlags {
         var flags: CGEventFlags = []
         for modifier in modifiers {
             switch modifier.lowercased() {
@@ -33,7 +33,7 @@ enum KeyMap {
         return flags
     }
 
-    static func code(for name: String) -> CGKeyCode? {
+    public static func code(for name: String) -> CGKeyCode? {
         if let named = named[name.lowercased()] { return CGKeyCode(named) }
         if name.count == 1, let code = characters[name.lowercased()] { return CGKeyCode(code) }
         return nil

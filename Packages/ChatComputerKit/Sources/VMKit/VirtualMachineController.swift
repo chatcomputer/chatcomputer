@@ -25,7 +25,7 @@ public final class VirtualMachineController: NSObject {
     /// Called with the vsock device once the VM starts, so the bridge can listen on it.
     public var onSocketDeviceReady: ((VZVirtioSocketDevice) -> Void)?
 
-    private let network = NetworkProvider()
+    public let network = NetworkProvider()
 
     public init(bundle: VMBundle) throws {
         self.bundle = bundle
@@ -82,9 +82,32 @@ public final class VirtualMachineController: NSObject {
     }
 
     /// Asks the guest to shut down cleanly.
+    ///
+    /// Note: in a macOS guest this only opens the "Shut down now?" dialog, which never
+    /// completes by itself. Prefer `shutDown(viaGuest:timeout:)`.
     public func requestShutdown() throws {
         guard let machine = virtualMachine else { throw VMError.notRunning }
         try machine.requestStop()
+    }
+
+    /// Shuts the guest down cleanly and waits for it to stop.
+    ///
+    /// `viaGuest` asks the guest agent to shut down from inside (see `GuestCommand.shutdown`);
+    /// without an agent, the VM stop request is used and someone must confirm the guest's dialog.
+    /// Throws if the guest is still running after `timeout`; it is never forced off here,
+    /// because callers such as freezing the golden image need a clean disk.
+    public func shutDown(viaGuest: (() async throws -> Void)?, timeout: Duration = .seconds(150)) async throws {
+        guard virtualMachine != nil, state == .running else { return }
+        if let viaGuest {
+            do { try await viaGuest() } catch { try requestShutdown() }
+        } else {
+            try requestShutdown()
+        }
+        let deadline = ContinuousClock.now + timeout
+        while state != .stopped {
+            guard ContinuousClock.now < deadline else { throw VMError.shutdownTimedOut }
+            try await Task.sleep(for: .milliseconds(500))
+        }
     }
 
     public func forceStop() async throws {

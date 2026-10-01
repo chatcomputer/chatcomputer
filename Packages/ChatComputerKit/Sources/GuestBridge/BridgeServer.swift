@@ -12,9 +12,10 @@ public final class BridgeServer: NSObject, GuestChannel, VZVirtioSocketListenerD
     private let listener = VZVirtioSocketListener()
     private let session: BridgeSession
 
-    public init(vmID: UUID, pairingToken: String) {
+    /// `log` receives connection lifecycle events (connect, handshake result, disconnect) for diagnostics.
+    public init(vmID: UUID, pairingToken: String, log: (@Sendable (String) -> Void)? = nil) {
         self.vmID = vmID
-        self.session = BridgeSession(vmID: vmID, pairingToken: pairingToken)
+        self.session = BridgeSession(vmID: vmID, pairingToken: pairingToken, log: log)
         super.init()
         listener.delegate = self
     }
@@ -55,15 +56,19 @@ actor BridgeSession {
     /// Distinguishes the current connection from a replaced one whose reader is still draining.
     private var generation = 0
 
-    init(vmID: UUID, pairingToken: String) {
+    private let log: (@Sendable (String) -> Void)?
+
+    init(vmID: UUID, pairingToken: String, log: (@Sendable (String) -> Void)?) {
         self.vmID = vmID
         self.pairingToken = pairingToken
+        self.log = log
     }
 
     func adopt(_ newConnection: VZVirtioSocketConnection) {
+        log?("guest connected\(connection == nil ? "" : " (replacing previous connection)")")
         // A reconnect replaces the old session; anything in flight is now uncertain.
         failAll(BridgeError(.driverFailure, "Guest agent reconnected; earlier commands may or may not have run."))
-        connection?.close()
+        closeConnection()
         connection = newConnection
         generation += 1
         let current = generation
@@ -73,14 +78,18 @@ actor BridgeSession {
         let handle = FileHandle(fileDescriptor: newConnection.fileDescriptor, closeOnDealloc: false)
         self.handle = handle
         let chunks = AsyncStream<Data> { continuation in
+            // POSIX read returns what is available and reports a closed descriptor as -1;
+            // `availableData` would raise an Objective-C exception and take the process down,
+            // and `read(upToCount:)` blocks until the count is reached.
             handle.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
+                var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+                let count = Darwin.read(handle.fileDescriptor, &buffer, buffer.count)
+                guard count > 0 else {
                     handle.readabilityHandler = nil
                     continuation.finish()
-                } else {
-                    continuation.yield(data)
+                    return
                 }
+                continuation.yield(Data(buffer[..<count]))
             }
         }
         Task { [weak self] in
@@ -125,7 +134,8 @@ actor BridgeSession {
             }
         } catch {
             // Malformed or oversized frame: drop the connection rather than guess.
-            connection?.close()
+            log?("dropping connection: \(error)")
+            closeConnection()
         }
     }
 
@@ -137,7 +147,18 @@ actor BridgeSession {
                                   reason: accepted ? nil : "Unknown VM, wrong pairing token, or protocol \(hello.protocolVersion).")
         try? handle?.write(contentsOf: FrameEncoder().encode(HostMessage.welcome(welcome)))
         isPaired = accepted
-        if !accepted { connection?.close() }
+        log?(accepted ? "handshake accepted (agent \(hello.agentVersion), \(hello.osVersion))"
+                      : "handshake rejected: protocol \(hello.protocolVersion), vm \(hello.vmID?.uuidString ?? "nil"), token \(hello.pairingToken == pairingToken ? "ok" : "mismatch")")
+        if !accepted { closeConnection() }
+    }
+
+    /// Detaches the reader before closing, so it never touches a closed descriptor.
+    private func closeConnection() {
+        handle?.readabilityHandler = nil
+        handle = nil
+        connection?.close()
+        connection = nil
+        isPaired = false
     }
 
     private func expire(_ id: UUID) {
@@ -146,6 +167,7 @@ actor BridgeSession {
 
     private func disconnected(generation: Int) {
         guard generation == self.generation else { return }
+        log?("guest disconnected")
         isPaired = false
         failAll(BridgeError(.desktopUnavailable, "Guest agent disconnected."))
     }

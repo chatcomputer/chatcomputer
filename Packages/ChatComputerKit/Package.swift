@@ -42,7 +42,7 @@ let package = Package(
         // Developer harness: live model loop against a simulated desktop, and VM probes (macOS only).
         .executableTarget(
             name: "cc-harness",
-            dependencies: ["BridgeProtocol", "ChatCore", "ModelProxy", "Orchestrator", "VMKit", "GuestBridge"],
+            dependencies: ["BridgeProtocol", "ChatCore", "ModelProxy", "Orchestrator", "VMKit", "GuestBridge", "AgentCore"],
             path: "Sources/Harness"),
 
         .testTarget(name: "BridgeProtocolTests", dependencies: ["BridgeProtocol"]),
@@ -50,5 +50,6 @@ let package = Package(
         .testTarget(name: "ModelProxyTests", dependencies: ["ModelProxy"]),
         .testTarget(name: "OrchestratorTests", dependencies: ["Orchestrator"]),
         .testTarget(name: "AgentCoreTests", dependencies: ["AgentCore"]),
+        .testTarget(name: "VMKitTests", dependencies: ["VMKit"]),
     ]
 )
