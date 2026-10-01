@@ -39,9 +39,16 @@ let package = Package(
         // Guest, macOS only: vsock client and desktop drivers.
         .target(name: "AgentCore", dependencies: ["BridgeProtocol"]),
 
+        // Developer harness: live model loop against a simulated desktop, and VM probes (macOS only).
+        .executableTarget(
+            name: "cc-harness",
+            dependencies: ["BridgeProtocol", "ChatCore", "ModelProxy", "Orchestrator", "VMKit", "GuestBridge"],
+            path: "Sources/Harness"),
+
         .testTarget(name: "BridgeProtocolTests", dependencies: ["BridgeProtocol"]),
         .testTarget(name: "ChatCoreTests", dependencies: ["ChatCore"]),
         .testTarget(name: "ModelProxyTests", dependencies: ["ModelProxy"]),
         .testTarget(name: "OrchestratorTests", dependencies: ["Orchestrator"]),
+        .testTarget(name: "AgentCoreTests", dependencies: ["AgentCore"]),
     ]
 )

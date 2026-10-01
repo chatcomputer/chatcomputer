@@ -8,21 +8,31 @@ import FoundationNetworking
 /// Requests go out from the host only; the key never enters the guest (proposal §03).
 public struct AnthropicClient: ModelClient {
     public struct Configuration: Sendable {
+        public enum Dialect: Sendable, Equatable {
+            /// Claude Messages API with the server-side computer toolset.
+            case claude
+            /// Anthropic-compatible endpoint without the toolset (see `CompatibleDialect`); development only.
+            case compatible(displayWidth: Int, displayHeight: Int)
+        }
+
         public var model: String
         public var effort: String
         public var maxTokens: Int
         public var endpoint: URL
+        public var dialect: Dialect
 
         public init(
             model: String = "claude-opus-5-5",
             effort: String = "medium",
             maxTokens: Int = 16_000,
-            endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!
+            endpoint: URL = URL(string: "https://api.anthropic.com/v1/messages")!,
+            dialect: Dialect = .claude
         ) {
             self.model = model
             self.effort = effort
             self.maxTokens = maxTokens
             self.endpoint = endpoint
+            self.dialect = dialect
         }
     }
 
@@ -44,6 +54,17 @@ public struct AnthropicClient: ModelClient {
     public func makeRequest(system: String, tools: [JSONValue], messages: [JSONValue]) throws -> URLRequest {
         guard let key = try apiKey(), !key.isEmpty else { throw ModelError.missingAPIKey }
 
+        if case .compatible(let width, let height) = configuration.dialect {
+            let body: JSONValue = [
+                "model": .string(configuration.model),
+                "max_tokens": .number(Double(configuration.maxTokens)),
+                "system": .string(system),
+                "tools": .array(CompatibleDialect.requestTools(tools, displayWidth: width, displayHeight: height)),
+                "messages": .array(CompatibleDialect.requestMessages(messages)),
+            ]
+            return try request(body: body, key: key, betas: [])
+        }
+
         let body: JSONValue = [
             "model": .string(configuration.model),
             "max_tokens": .number(Double(configuration.maxTokens)),
@@ -57,12 +78,16 @@ public struct AnthropicClient: ModelClient {
             "fallbacks": "default",
         ]
 
+        return try request(body: body, key: key, betas: Self.betaHeaders)
+    }
+
+    private func request(body: JSONValue, key: String, betas: [String]) throws -> URLRequest {
         var request = URLRequest(url: configuration.endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 600
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.setValue(Self.betaHeaders.joined(separator: ","), forHTTPHeaderField: "anthropic-beta")
+        if !betas.isEmpty { request.setValue(betas.joined(separator: ","), forHTTPHeaderField: "anthropic-beta") }
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.httpBody = try StableJSON.encoder.encode(body)
         return request
@@ -78,7 +103,11 @@ public struct AnthropicClient: ModelClient {
             throw ModelError.network(error.localizedDescription)
         }
         guard let http = response as? HTTPURLResponse else { throw ModelError.malformedResponse }
-        return try Self.parse(status: http.statusCode, retryAfter: http.value(forHTTPHeaderField: "retry-after"), body: data)
+        var parsed = try Self.parse(status: http.statusCode, retryAfter: http.value(forHTTPHeaderField: "retry-after"), body: data)
+        if case .compatible = configuration.dialect {
+            parsed.content = CompatibleDialect.responseContent(parsed.content)
+        }
+        return parsed
     }
 
     static func parse(status: Int, retryAfter: String?, body: Data) throws -> ModelResponse {

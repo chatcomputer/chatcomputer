@@ -1,0 +1,379 @@
+#if os(macOS)
+import BridgeProtocol
+import ChatCore
+import AppKit
+import Foundation
+import GuestBridge
+import Virtualization
+import VMKit
+
+/// Technical probes from ROADMAP §4 (P1, P3, P5, P6) run headless against a dedicated bundle.
+///
+///     cc-harness vm install                       P1a: IPSW → installed disk
+///     cc-harness vm up [options]                  boot and run checks, then stop or suspend
+///         --provision                             first boot with VZMacGuestProvisioningOptions (P1b)
+///         --agent PATH                            install ChatComputerAgent.app over SSH (P1c)
+///         --bridge                                vsock handshake, health and latency (P3)
+///         --screenshot                            one screenshot through the agent (P6)
+///         --window                                show the VM screen in a window (for manual steps)
+///         --wait-ready                            poll health until Accessibility + Screen Recording are granted
+///         --hold SECONDS                          keep running before shutdown (default 0)
+///         --suspend                               save state instead of shutting down; next `up` restores
+///     cc-harness vm status                        bundle stage and files
+///
+/// The bundle lives at $CC_VM_BUNDLE or ~/Library/Application Support/ChatComputer/Harness.vm.
+/// Secrets go to a 0600 file in the bundle, not the Keychain: ad-hoc rebuilds would otherwise
+/// trigger Keychain access prompts on every run.
+@MainActor
+enum VMProbe {
+    static var bundle: VMBundle {
+        let path = ProcessInfo.processInfo.environment["CC_VM_BUNDLE"]
+        return VMBundle(url: path.map { URL(fileURLWithPath: $0) } ?? VMBundle.defaultLocation
+            .deletingLastPathComponent().appendingPathComponent("Harness.vm", isDirectory: true))
+    }
+
+    static func run(arguments: [String]) async -> Int32 {
+        do {
+            switch arguments.first {
+            case "install": try await install()
+            case "up": try await up(Options(Array(arguments.dropFirst())))
+            case "status": try status()
+            case "selftest": try selftest()
+            default:
+                print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | status")
+                return 2
+            }
+            return 0
+        } catch {
+            log("FAILED: \(error)")
+            return 1
+        }
+    }
+
+    struct Options {
+        var provision = false
+        var agent: URL?
+        var bridge = false
+        var screenshot = false
+        var hold: Double = 0
+        var suspend = false
+        var window = false
+        var waitReady = false
+
+        init(_ arguments: [String]) {
+            var iterator = arguments.makeIterator()
+            while let argument = iterator.next() {
+                switch argument {
+                case "--provision": provision = true
+                case "--agent": agent = iterator.next().map { URL(fileURLWithPath: $0) }
+                case "--bridge": bridge = true
+                case "--screenshot": screenshot = true; bridge = true
+                case "--hold": hold = iterator.next().flatMap(Double.init) ?? 0
+                case "--suspend": suspend = true
+                case "--window": window = true
+                case "--wait-ready": waitReady = true; bridge = true
+                default: print("ignoring unknown option \(argument)")
+                }
+            }
+        }
+    }
+
+    // MARK: P1a install
+
+    static func install() async throws {
+        let bundle = self.bundle
+        try bundle.create()
+        // Reuse an IPSW downloaded for the app's own bundle, or $CC_IPSW.
+        let shared = ProcessInfo.processInfo.environment["CC_IPSW"].map { URL(fileURLWithPath: $0) }
+            ?? VMBundle.defaultLocation.appendingPathComponent("RestoreImage.ipsw")
+        let restoreImage = FileManager.default.fileExists(atPath: shared.path) ? shared : nil
+        let spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
+        let started = Date()
+        var lastReported = -1
+        let installed = try await MacOSInstaller(bundle: bundle).install(spec: spec, restoreImage: restoreImage) { progress in
+            switch progress {
+            case .installing(let fraction):
+                let percent = Int(fraction * 100)
+                if percent / 5 != lastReported / 5 { lastReported = percent; log("installing \(percent)%") }
+            case .downloading(let fraction):
+                let percent = Int(fraction * 100)
+                if percent / 5 != lastReported / 5 { lastReported = percent; log("downloading \(percent)%") }
+            default:
+                log("\(progress)")
+            }
+        }
+        log("installed \(installed.restoreImageBuild ?? "?") in \(elapsed(since: started)); disk: \(diskUsage(bundle.baseDiskURL))")
+    }
+
+    // MARK: Boot and checks
+
+    static func up(_ options: Options) async throws {
+        let bundle = self.bundle
+        let secrets = FileSecretStore(url: bundle.url.appendingPathComponent("harness-secrets.json"))
+        let controller = try VirtualMachineController(bundle: bundle)
+        let spec = controller.spec
+        log("spec: stage=\(spec.stage.rawValue) cpu=\(spec.cpuCount) mem=\(spec.memoryBytes >> 30)GB display=\(spec.displayWidth)x\(spec.displayHeight) overlays=\(spec.overlayCount)")
+
+        var bridge: BridgeServer?
+        if options.bridge, let token = try secrets.read(SecretAccount.pairingToken(vmID: spec.id)) {
+            bridge = BridgeServer(vmID: spec.id, pairingToken: token)
+        }
+        controller.onSocketDeviceReady = { device in bridge?.attach(to: device) }
+
+        let provisioning = options.provision
+            ? try GuestProvisioner(bundle: bundle, secrets: secrets).firstBootOptions(spec: spec) : nil
+        let restoring = !options.provision && FileManager.default.fileExists(atPath: bundle.savedStateURL.path)
+        let bootStarted = Date()
+        await controller.start(provisioning: provisioning)
+        guard controller.state == .running else { throw ProbeError("start failed: \(controller.state)") }
+        log("\(restoring ? "restored" : "started") in \(elapsed(since: bootStarted))")
+        if options.provision { try controller.updateSpec { $0.stage = .provisioned } }
+        if options.window, let machine = controller.virtualMachine { showWindow(machine, spec: spec) }
+
+        if let agent = options.agent {
+            log("waiting for guest network and SSH…")
+            let sshStarted = Date()
+            try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: controller.spec, agentApp: agent)
+            log("agent installed over SSH in \(elapsed(since: sshStarted)) (\(elapsed(since: bootStarted)) since boot)")
+            try controller.updateSpec { $0.stage = .agentInstalled }
+            if bridge == nil, options.bridge, let token = try secrets.read(SecretAccount.pairingToken(vmID: spec.id)) {
+                let server = BridgeServer(vmID: spec.id, pairingToken: token)
+                bridge = server
+                if let device = controller.virtualMachine?.socketDevices.first as? VZVirtioSocketDevice { server.attach(to: device) }
+            }
+        }
+
+        if options.bridge {
+            guard let bridge else { throw ProbeError("no pairing token yet; run with --agent first") }
+            try await probeBridge(bridge, vmID: spec.id, bootStarted: bootStarted)
+            if options.waitReady { try await waitUntilReady(bridge, vmID: spec.id) }
+            if options.screenshot { try await probeScreenshot(bridge, vmID: spec.id) }
+        }
+
+        if options.hold > 0 {
+            log("holding for \(Int(options.hold))s")
+            try await Task.sleep(for: .seconds(options.hold))
+        }
+
+        if options.suspend {
+            let saveStarted = Date()
+            try await controller.suspend()
+            log("suspended in \(elapsed(since: saveStarted)); state file \(diskUsage(bundle.savedStateURL))")
+        } else {
+            try await shutdown(controller)
+        }
+    }
+
+    /// P3: pairing, health, round-trip latency, and the guest-side lease check.
+    static func probeBridge(_ bridge: BridgeServer, vmID: UUID, bootStarted: Date) async throws {
+        log("waiting for the guest agent to connect over vsock…")
+        let deadline = Date().addingTimeInterval(300)
+        while await !bridge.isConnected {
+            guard Date() < deadline else { throw ProbeError("agent did not connect within 300s") }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        log("agent paired \(elapsed(since: bootStarted)) after boot")
+
+        func envelope(_ command: GuestCommand) -> CommandEnvelope { VMProbe.envelope(vmID, command) }
+
+        let health = try await bridge.send(envelope(.health))
+        log("health: \(health)")
+        let capabilities = try await bridge.send(envelope(.capabilities))
+        log("capabilities: \(capabilities)")
+
+        var samples: [Double] = []
+        for _ in 0..<50 {
+            let start = ContinuousClock.now
+            _ = try await bridge.send(envelope(.health))
+            let duration = ContinuousClock.now - start
+            samples.append(Double(duration.components.attoseconds) / 1e15 + Double(duration.components.seconds) * 1000)
+        }
+        samples.sort()
+        log(String(format: "health round trip over vsock: p50 %.2f ms, p95 %.2f ms, max %.2f ms",
+                   samples[samples.count / 2], samples[samples.count * 95 / 100], samples.last ?? 0))
+
+        // Input without the lease must be refused by the guest itself.
+        let refused = try await bridge.send(envelope(.perform(.mouseMove(to: ScreenPoint(x: 10, y: 10)))))
+        log("input without lease: \(refused)")
+    }
+
+    static func envelope(_ vmID: UUID, _ command: GuestCommand, lease: UUID? = nil) -> CommandEnvelope {
+        CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: lease, observationVersion: nil,
+                        deadline: Date().addingTimeInterval(30), command: command)
+    }
+
+    /// Onboarding step 6: the user allows ChatComputerAgent in the guest's Privacy & Security settings.
+    static func waitUntilReady(_ bridge: BridgeServer, vmID: UUID) async throws {
+        var announced = false
+        while true {
+            guard case .health(let report) = try await bridge.send(envelope(vmID, .health)) else { throw ProbeError("no health report") }
+            if report.isDesktopReady {
+                log("desktop ready: \(report)")
+                return
+            }
+            if !announced {
+                log("waiting for permissions in the guest: accessibility=\(report.accessibilityGranted) screenRecording=\(report.screenRecordingGranted) aqua=\(report.hasAquaSession) locked=\(report.screenLocked) shares=\(report.sharedFoldersMounted)")
+                announced = true
+            }
+            try await Task.sleep(for: .seconds(2))
+        }
+    }
+
+    /// P6 (capture only): one full screenshot and one zoom through the native driver.
+    static func probeScreenshot(_ bridge: BridgeServer, vmID: UUID) async throws {
+        for (name, region) in [("full", nil), ("zoom", ScreenRect(x0: 0, y0: 0, x1: 320, y1: 200))] as [(String, ScreenRect?)] {
+            let started = ContinuousClock.now
+            let result = try await bridge.send(envelope(vmID, .screenshot(region: region)))
+            guard case .screenshot(let shot) = result else {
+                log("screenshot \(name): \(result)")
+                continue
+            }
+            let file = bundle.url.appendingPathComponent("probe-\(name).png")
+            try shot.imageData.write(to: file)
+            log("screenshot \(name) \(shot.width)x\(shot.height) \(shot.imageData.count / 1024) KB in \(ContinuousClock.now - started) → \(file.path)")
+        }
+    }
+
+    static var window: NSWindow?
+
+    static func showWindow(_ machine: VZVirtualMachine, spec: VMSpec) {
+        let view = VZVirtualMachineView()
+        view.virtualMachine = machine
+        view.capturesSystemKeys = true
+        view.automaticallyReconfiguresDisplay = false
+        let size = NSSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2)
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .resizable, .miniaturizable],
+                              backing: .buffered, defer: false)
+        window.title = "cc-harness — \(spec.name)"
+        window.contentView = view
+        window.contentAspectRatio = size
+        window.center()
+        NSApplication.shared.setActivationPolicy(.regular)
+        window.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate()
+        self.window = window
+    }
+
+    static func shutdown(_ controller: VirtualMachineController) async throws {
+        log("requesting guest shutdown…")
+        try? controller.requestShutdown()
+        let deadline = Date().addingTimeInterval(90)
+        while controller.state != .stopped, Date() < deadline {
+            try await Task.sleep(for: .seconds(1))
+        }
+        if controller.state != .stopped {
+            log("guest did not stop in 90s, forcing")
+            try await controller.forceStop()
+        }
+        log("stopped")
+    }
+
+    static func status() throws {
+        let bundle = self.bundle
+        print("bundle: \(bundle.url.path)")
+        if let spec = try? bundle.loadSpec() {
+            print("stage: \(spec.stage.rawValue), build: \(spec.restoreImageBuild ?? "-"), mac: \(spec.macAddress), overlays: \(spec.overlayCount)")
+        } else {
+            print("no spec yet")
+        }
+        for url in [bundle.baseDiskURL, bundle.savedStateURL, bundle.url.appendingPathComponent("RestoreImage.ipsw")] {
+            print("\(url.lastPathComponent): \(diskUsage(url))")
+        }
+    }
+
+    // MARK: Host-only checks (no guest needed)
+
+    /// P4 and P5 at the API level: build an ASIF base + overlay stack and a vmnet attachment.
+    static func selftest() throws {
+        let scratch = VMBundle(url: FileManager.default.temporaryDirectory.appendingPathComponent("cc-selftest-\(UUID().uuidString).vm"))
+        try scratch.create()
+        defer { try? FileManager.default.removeItem(at: scratch.url) }
+        var spec = VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
+        spec.diskBytes = 4 << 30
+        let disks = DiskStack(bundle: scratch)
+
+        var started = Date()
+        try disks.createBlankBase(bytes: spec.diskBytes)
+        log("P4 blank ASIF base: \(elapsed(since: started)), \(diskUsage(scratch.baseDiskURL))")
+        _ = try disks.makeAttachment(spec: spec)
+        log("P4 attachment without overlays: ok")
+
+        started = Date()
+        try disks.pushOverlay(spec: &spec)
+        log("P4 pushOverlay → overlay-1: \(elapsed(since: started)), exists: \(FileManager.default.fileExists(atPath: scratch.overlayURL(1).path)), \(diskUsage(scratch.overlayURL(1)))")
+        _ = try disks.makeAttachment(spec: spec)
+        log("P4 attachment base+overlay-1: ok")
+        try disks.pushOverlay(spec: &spec)
+        _ = try disks.makeAttachment(spec: spec)
+        log("P4 attachment base+2 overlays: ok")
+        try disks.discardOverlays(spec: &spec, keeping: 0)
+        _ = try disks.makeAttachment(spec: spec)
+        log("P4 reset (keeping: 0) → overlayCount \(spec.overlayCount), overlay-2 gone: \(!FileManager.default.fileExists(atPath: scratch.overlayURL(2).path))")
+
+        started = Date()
+        let device = try NetworkProvider().makeDevice(macAddress: spec.macAddress)
+        log("P5 vmnet shared-mode device: \(type(of: device.attachment!)) in \(elapsed(since: started))")
+    }
+
+    // MARK: Helpers
+
+    static let clockStart = Date()
+
+    static func log(_ message: String) {
+        print(String(format: "[%7.1fs] ", Date().timeIntervalSince(clockStart)) + message)
+        fflush(stdout)
+    }
+
+    static func elapsed(since date: Date) -> String {
+        String(format: "%.1fs", Date().timeIntervalSince(date))
+    }
+
+    /// Allocated (not logical) size, since ASIF disks and save files are sparse.
+    static func diskUsage(_ url: URL) -> String {
+        guard let values = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey, .fileSizeKey]) else { return "missing" }
+        let allocated = Double(values.totalFileAllocatedSize ?? 0) / 1e9
+        let logical = Double(values.fileSize ?? 0) / 1e9
+        return String(format: "%.1f GB allocated / %.1f GB logical", allocated, logical)
+    }
+}
+
+struct ProbeError: Error, CustomStringConvertible {
+    let description: String
+    init(_ description: String) { self.description = description }
+}
+
+/// Plain-file secret store for the harness only (0600, inside the VM bundle).
+final class FileSecretStore: SecretStore, @unchecked Sendable {
+    private let url: URL
+    private let lock = NSLock()
+
+    init(url: URL) { self.url = url }
+
+    private func load() -> [String: String] {
+        (try? JSONDecoder().decode([String: String].self, from: Data(contentsOf: url))) ?? [:]
+    }
+
+    private func save(_ values: [String: String]) throws {
+        try JSONEncoder().encode(values).write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
+    func read(_ account: String) throws -> String? { lock.withLock { load()[account] } }
+
+    func write(_ value: String, for account: String) throws {
+        try lock.withLock {
+            var values = load()
+            values[account] = value
+            try save(values)
+        }
+    }
+
+    func delete(_ account: String) throws {
+        try lock.withLock {
+            var values = load()
+            values[account] = nil
+            try save(values)
+        }
+    }
+}
+#endif

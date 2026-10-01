@@ -6,24 +6,28 @@
 
 ## 0. 环境准备
 
-- [ ] Apple Silicon Mac，升级到 macOS 27，安装 Xcode 27
-- [ ] `brew install xcodegen`
+- [x] Apple Silicon Mac，升级到 macOS 27，安装 Xcode 27
+- [x] `brew install xcodegen`
 - [ ] 在 `project.yml` 里填 `DEVELOPMENT_TEAM`（签名要固定：guest 里的辅助功能、屏幕录制授权绑定签名身份）
-- [ ] `xcodegen generate && open ChatComputer.xcodeproj`
-- [ ] `cd Packages/ChatComputerKit && swift test`：确认 25 个测试在 macOS 上同样通过（目前只在 Linux 上跑过）
+- [x] `xcodegen generate && open ChatComputer.xcodeproj`
+- [x] `cd Packages/ChatComputerKit && swift test`：确认 25 个测试在 macOS 上同样通过（目前只在 Linux 上跑过）
 
 ## 1. 首次编译（修编译错误）
 
 以下模块和 App 写好后从未编译过，预计要改的地方：
 
-- [ ] **VMKit / DiskStack.swift**：DiskImageKit 的 API 照 WWDC26 第 224 场写。`DiskImage(opening:)`、`.open(url:mode:)`、`.appending(_:)`、`.asifLayer(url:type:)` 都要对照 SDK 头文件；`type: .overlay` 是推测的
-- [ ] **VMKit / NetworkProvider.swift**：`vmnet_network_configuration_create`、`vmnet_network_create`、`VZVmnetNetworkDeviceAttachment(network:)` 在 Swift 里的实际签名，`vmnet_return_t` 的成员名
-- [ ] **VMKit / VirtualMachineController.swift**：`VZMacGuestProvisioningOptions`、`VZMacOSVirtualMachineStartOptions.setGuestProvisioning(_:)`，以及 `start(options:)`、`saveMachineStateTo`、`restoreMachineStateFrom` 的 async 版本名称
-- [ ] **VMKit / MacOSInstaller.swift**：`VZMacOSRestoreImage.fetchLatestSupported` / `load(from:)` 的回调类型；`URLSessionDownloadDelegate` 在 Swift 6 下的 `Sendable` 要求
-- [ ] **GuestBridge / BridgeServer.swift**：`VZVirtioSocketListenerDelegate` 回调的隔离性（是否要求 `@MainActor`）；`nonisolated(unsafe)` 的写法
-- [ ] **AgentCore / AgentService.swift**：手写的 `AF_VSOCK = 40`、`VMADDR_CID_HOST = 2`、`sockaddr_vm` 布局（12 字节）要对照 `/usr/include/sys/vsock.h` 核实
-- [ ] **AgentCore / NativeDriver.swift**：`SCShareableContent`、`SCScreenshotManager.captureImage` 的 async 签名；`CGEvent` 构造器的可选返回值
-- [ ] **Apps**：Swift 6 严格并发下 `@Observable` + `@MainActor` 的闭包捕获；`MainView` 里 `ToolbarItemGroup` 中的 `switch`
+- [x] **VMKit / DiskStack.swift**：DiskImageKit 的 API 照 WWDC26 第 224 场写。`DiskImage(opening:)`、`.open(url:mode:)`、`.appending(_:)`、`.asifLayer(url:type:)` 都要对照 SDK 头文件；`type: .overlay` 是推测的
+- [x] **VMKit / NetworkProvider.swift**：`vmnet_network_configuration_create`、`vmnet_network_create`、`VZVmnetNetworkDeviceAttachment(network:)` 在 Swift 里的实际签名，`vmnet_return_t` 的成员名
+- [x] **VMKit / VirtualMachineController.swift**：`VZMacGuestProvisioningOptions`、`VZMacOSVirtualMachineStartOptions.setGuestProvisioning(_:)`，以及 `start(options:)`、`saveMachineStateTo`、`restoreMachineStateFrom` 的 async 版本名称
+- [x] **VMKit / MacOSInstaller.swift**：`VZMacOSRestoreImage.fetchLatestSupported` / `load(from:)` 的回调类型；`URLSessionDownloadDelegate` 在 Swift 6 下的 `Sendable` 要求
+- [x] **GuestBridge / BridgeServer.swift**：`VZVirtioSocketListenerDelegate` 回调的隔离性（是否要求 `@MainActor`）；`nonisolated(unsafe)` 的写法
+- [x] **AgentCore / AgentService.swift**：手写的 `AF_VSOCK = 40`、`VMADDR_CID_HOST = 2`、`sockaddr_vm` 布局（12 字节）要对照 `/usr/include/sys/vsock.h` 核实
+- [x] **AgentCore / NativeDriver.swift**：`SCShareableContent`、`SCScreenshotManager.captureImage` 的 async 签名；`CGEvent` 构造器的可选返回值
+- [x] **Apps**：Swift 6 严格并发下 `@Observable` + `@MainActor` 的闭包捕获；`MainView` 里 `ToolbarItemGroup` 中的 `switch`
+
+> 首次 Mac 会话结论：除 `MacOSInstaller` 一处 Swift 6 并发错误外全部一次编译通过；vsock 常量与 SDK 头文件一致。宿主 App 原先缺 `com.apple.security.virtualization`（XcodeGen 会按 `project.yml` 重写 .entitlements，已在那里声明）。`VZMacOSRestoreImage.fetchLatestSupported` 在 macOS 27.0 (26A428) 上报 VZErrorDomain 10001，安装器已支持指定本地 IPSW。
+>
+> 自动化：`scripts/test-mac.sh`（单元测试 + Xcode 构建 + DiskImageKit/vmnet 自检 + 设置 `CC_API_KEY` 时跑真实模型闭环）；VM 探针用 `scripts/harness.sh vm …`。
 
 ## 2. 技术验证（ROADMAP §4 · M0）
 
