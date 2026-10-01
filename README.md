@@ -2,7 +2,7 @@
 
 A native macOS app: a macOS virtual machine on the left, a chat with an agent on the right. The agent
 operates the VM to finish tasks and hands back verified files. See [docs/ROADMAP.md](docs/ROADMAP.md)
-for the plan and [docs/proposal-v0.1.md](docs/proposal-v0.1.md) for the product proposal.
+for the plan, [docs/proposal-v0.1.md](docs/proposal-v0.1.md) for the product proposal, and [TODO.md](TODO.md) for what to do next on a Mac.
 
 Host and guest are both **macOS 27 on Apple silicon only**, so the app can use the WWDC26
 Virtualization features directly: guest provisioning, DiskImageKit layered disks and vmnet networks.
