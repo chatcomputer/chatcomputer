@@ -194,6 +194,24 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 4. **网络隔离**：P5 若证明 vmnet 无法阻止访问宿主服务，需要在隐私说明中披露，并把过滤列入 M3。
 5. **模型选择**：建议首发锁定一个支持视觉 + computer use 工具的模型（例如 Anthropic Claude），用户自带 Key；其他供应商在 M3 之后以 `ModelProvider` 适配器扩展。
 
+### 5.1 探针结果（2026-09-30，宿主 macOS 27.0 / Xcode 27，guest macOS 27.0.1 26A434，M 系列 32 GB）
+
+| 探针 | 结果 | 数据与发现 |
+|---|---|---|
+| P1 安装 | ✅ | IPSW → 已安装 **173 秒**，磁盘占用 28.6 GB。`VZMacOSRestoreImage.fetchLatestSupported` 在宿主 27.0 上报 VZErrorDomain 10001，安装器已支持传入本地 IPSW |
+| P1 自动初始化 | ✅ | `VZMacGuestProvisioningOptions` 首次启动直接进入已登录桌面，无设置助理。SSH 会话能看到 `/Volumes/My Shared Files`；在 SSH 里用 sudo 关闭 Remote Login 成功（GUI 终端不行，要求完全磁盘访问权限）。`launchctl bootstrap gui/<uid>` 在 SSH 里必须用 root（否则报错 125） |
+| P1 装 agent | ✅ | 冷启动后约 **14 秒**装好。**注意**：SSH 关闭后无法再通过 SSH 更新 agent，需要 agent 自更新通道（M2） |
+| P2 显示 | ✅（部分） | `VZVirtualMachineView` 正常显示，鼠标坐标准确；中文输入法未测 |
+| P3 vsock | ✅ | 冷启动后 **13.8 秒**完成配对；health 往返 p50 **1.6 ms**（预热后 0.27 ms），p95 5.5 ms；无租约输入被 guest 拒绝；挂起 **3.0 秒**（状态文件 2.7 GB），恢复 **2.8 秒**后 agent **1.1 秒**内重连 |
+| P4 DiskImageKit | ✅（API 层） | ASIF base + overlay 叠加、重置均正常（`vm selftest`）；带 overlay 启动和 IO 性能未测 |
+| P5 vmnet | ✅ | shared 模式不需要 root；guest 能上网；宿主能访问 guest:22。**每个 network 实例的子网可能不同**（先后观察到 192.168.64/24 和 192.168.66/24），租约文件里会留旧条目，已改为按当前子网（`vmnet_network_get_ipv4_subnet`）取最新租约。guest 访问宿主服务尚未测 |
+| P6 驱动 | ⏳ | 授权需要在 guest 里输入账户密码（macOS 27 叫 Device Control and Data Access），按设计由人完成。未授权时截图和输入都返回 `permissionDenied`，行为正确 |
+| P7 virtio-fs | ✅（部分） | 自动挂载在 `/Volumes/My Shared Files`，guest 从 bootstrap 共享读文件正常；只读与符号链接逃逸未在 guest 侧测 |
+| 关机 | ✅（修复后） | `VZVirtualMachine.requestStop()` 在 macOS guest 里只弹出"确定要关机吗"对话框，**永远不会自己完成**，会让"冻结金镜像"一步卡死。已改为 agent 发送 loginwindow 的 `aevtrsdn` 事件（无需授权，对话框 60 秒后自动关机；有辅助功能权限时立即确认），实测 66 秒干净关机 |
+| 公证 | ✅ | Developer ID + hardened runtime + 时间戳，公证 Accepted，已装订，Gatekeeper：`Notarized Developer ID`（`scripts/release.sh`） |
+
+测试中发现并已修复的产品 bug：宿主读 vsock 时 `availableData` 碰到已关闭的描述符会抛 ObjC 异常、导致整个 App 崩溃；配对令牌在安装成功前就写入，失败重试后已装好的 agent 会被永久拒绝；宿主 App 缺少 virtualization entitlement。
+
 ## 6. 下一步
 
 1. ~~建立 Xcode 工程与第 2.1 节的 package 骨架~~：已完成，见仓库根目录 `README.md`。平台无关模块已在 Linux 上编译并通过测试；macOS 专用模块与两个 App 需在 macOS 27 + Xcode 27 上首次编译。

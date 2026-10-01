@@ -8,7 +8,7 @@
 
 - [x] Apple Silicon Mac，升级到 macOS 27，安装 Xcode 27
 - [x] `brew install xcodegen`
-- [ ] 在 `project.yml` 里填 `DEVELOPMENT_TEAM`（签名要固定：guest 里的辅助功能、屏幕录制授权绑定签名身份）
+- [x] 在 `project.yml` 里填 `DEVELOPMENT_TEAM`（签名要固定：guest 里的辅助功能、屏幕录制授权绑定签名身份）
 - [x] `xcodegen generate && open ChatComputer.xcodeproj`
 - [x] `cd Packages/ChatComputerKit && swift test`：确认 25 个测试在 macOS 上同样通过（目前只在 Linux 上跑过）
 
@@ -33,19 +33,21 @@
 
 按 P1 → P2 → P3 → P6 的顺序（这四项串起来就是 M1 的主干），P4 / P5 / P7 可以并行。
 
-- [ ] **P1 安装 + 自动初始化**：从 IPSW 到自动登录桌面，全程无人工点击，记录耗时
-  - [ ] 确认 `enablesRemoteLogin = true` 后能用 SSH 连上
-  - [ ] `GuestProvisioner.bootstrapScript`：在 SSH 会话里能否看到 `/Volumes/My Shared Files`？`sudo systemsetup -setremotelogin off` 是否需要完全磁盘访问权限？不行就把"关闭 SSH"挪到代理首次运行时做
+- [x] **P1 安装 + 自动初始化**：从 IPSW 到自动登录桌面，全程无人工点击，记录耗时
+  - [x] 确认 `enablesRemoteLogin = true` 后能用 SSH 连上
+  - [x] `GuestProvisioner.bootstrapScript`：在 SSH 会话里能否看到 `/Volumes/My Shared Files`？`sudo systemsetup -setremotelogin off` 是否需要完全磁盘访问权限？不行就把"关闭 SSH"挪到代理首次运行时做
 - [ ] **P2 嵌入显示**：`VZVirtualMachineView` 能显示、缩放、手动键鼠操作
   - [ ] 中文输入法、系统快捷键（`capturesSystemKeys`）
   - [ ] 输入遮罩：代理执行时点击画面 → 转入接管状态；⌘. 能不能被虚拟机画面吞掉
-- [ ] **P3 vsock 通道**：代理连上宿主、握手通过（`pairingToken` 校验），测延迟；虚拟机挂起恢复、宿主 App 重启后能否重连
+- [x] **P3 vsock 通道**：代理连上宿主、握手通过（`pairingToken` 校验），测延迟；虚拟机挂起恢复、宿主 App 重启后能否重连
 - [ ] **P4 DiskImageKit**：base + overlay 能启动；丢弃 overlay 后回到干净状态；测启动与磁盘 IO 性能
 - [ ] **P5 vmnet**：固定子网和 DHCP 范围（`NetworkProvider` 里的 TODO）；测试 guest 能否访问宿主 localhost 服务和局域网，把结论写进隐私说明；确认 `/var/db/dhcpd_leases` 查 IP 的方式在 vmnet 自定义网络下是否仍然有效
 - [ ] **P6 驱动**：
   - [ ] `NativeDriver` 跑通截图、点击、输入、滚动、拖拽，确认坐标空间正确（默认显示 2560×1600 @2×，截图为 1280×800 点）
   - [ ] 试 Cua Driver 的 embedded 模式：只给 ChatComputerAgent 授权就够用吗？行的话锁定一个版本，写 `CuaDriverAdapter`（实现 `DriverAdapter` 协议）；不行就继续用原生驱动
 - [ ] **P7 virtio-fs**：inbox 只读、outbox 可写；宿主 `ExportValidator` 能拦住 guest 里构造的符号链接
+
+> 探针结果见 `docs/ROADMAP.md` §5.1。剩余：P6 需要人在 guest 里授权后跑 `scripts/harness.sh vm up --bridge --wait-ready --screenshot`；P2 的中文输入法和系统快捷键；P4 带 overlay 启动与 IO 性能；P5 guest 访问宿主服务；P7 只读与符号链接在 guest 侧验证。
 
 ## 3. 跑通 M1 闭环
 
@@ -54,6 +56,9 @@
 - [ ] 核对发给 API 的请求：`computer_toolset_20260801`、每个 `tool_result` 都带 `toolset_name`、截图尺寸在限制内
 
 ## 4. M1 之后（M2）
+
+- [ ] agent 自更新：首次安装后 SSH 已关闭，新版本 agent 通过 bootstrap 共享目录分发，由 agent 自己校验签名后替换并重启（注意先删除再复制，原地覆盖会被代码签名机制杀掉，`OS_REASON_CODESIGNING`）
+- [ ] 架构边界测试（参考 shk 的 ArchitectureTests）：Orchestrator / ModelProxy 不得 import VMKit、Virtualization
 
 - [ ] 任务存储换成 SQLite（`AppModel.store` 目前是 `InMemoryTaskStore`，退出即丢）
 - [ ] 宿主 App 重启后恢复任务：读取事件日志，进入"待检查"状态，重新截图后再继续

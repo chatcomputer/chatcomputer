@@ -13,7 +13,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     # Set your team here or in Xcode. A stable Developer ID signature matters for the guest
     # agent: TCC grants in the guest are bound to it.
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: YPV49M8592
 packages:
   ChatComputerKit:
     path: Packages/ChatComputerKit

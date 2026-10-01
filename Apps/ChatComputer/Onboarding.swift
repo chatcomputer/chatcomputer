@@ -14,7 +14,7 @@ struct OnboardingState {
             case .installMacOS: "Download and install macOS"
             case .firstBoot: "Set up the guest account"
             case .installAgent: "Install the Chat Computer agent"
-            case .grantPermissions: "Allow Accessibility and Screen Recording"
+            case .grantPermissions: "Allow device control and screen recording"
             case .freezeImage: "Save a clean starting point"
             case .apiKey: "Connect a model"
             }
@@ -78,7 +78,11 @@ extension AppModel {
                 let health = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                          deadline: Date().addingTimeInterval(10), command: .health))
                 guard case .health(let report) = health, report.isDesktopReady else {
-                    onboarding.detail = "Not granted yet. In the virtual Mac, allow ChatComputerAgent under Privacy & Security."
+                    onboarding.detail = """
+                        Not granted yet. In the virtual Mac, click the Chat Computer Agent icon in the menu bar, \
+                        then turn on ChatComputerAgent under Privacy & Security › Device Control and Data Access \
+                        and under screen recording.
+                        """
                     return
                 }
                 onboarding.step = .freezeImage

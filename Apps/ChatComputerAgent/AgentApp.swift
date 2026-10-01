@@ -13,7 +13,8 @@ struct AgentApp: App {
         MenuBarExtra("Chat Computer Agent", systemImage: state.symbol) {
             Text(state.statusText)
             Divider()
-            Button(state.accessibility ? "Accessibility: allowed" : "Allow Accessibility…") {
+            // macOS 27 lists this under Privacy & Security › "Device Control and Data Access".
+            Button(state.accessibility ? "Device control: allowed" : "Allow Device Control…") {
                 let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
                 _ = AXIsProcessTrustedWithOptions(options)
             }
