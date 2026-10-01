@@ -1,0 +1,71 @@
+# Generate ChatComputer.xcodeproj with XcodeGen:  brew install xcodegen && xcodegen generate
+name: ChatComputer
+options:
+  bundleIdPrefix: app.chatcomputer
+  deploymentTarget:
+    macOS: "27.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "27.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+    # Set your team here or in Xcode. A stable Developer ID signature matters for the guest
+    # agent: TCC grants in the guest are bound to it.
+    DEVELOPMENT_TEAM: ""
+packages:
+  ChatComputerKit:
+    path: Packages/ChatComputerKit
+targets:
+  ChatComputer:
+    type: application
+    platform: macOS
+    sources: [Apps/ChatComputer]
+    dependencies:
+      - package: ChatComputerKit
+        products: [BridgeProtocol, ChatCore, ModelProxy, Orchestrator, VMKit, GuestBridge]
+      # The guest agent ships inside the host app and is copied into the VM during onboarding.
+      - target: ChatComputerAgent
+        embed: true
+        copy:
+          destination: resources
+          subpath: GuestAgent
+    info:
+      path: Apps/ChatComputer/Info.plist
+      properties:
+        CFBundleDisplayName: Chat Computer
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: ""
+    entitlements:
+      path: Apps/ChatComputer/ChatComputer.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.chatcomputer.ChatComputer
+  ChatComputerAgent:
+    type: application
+    platform: macOS
+    sources: [Apps/ChatComputerAgent]
+    dependencies:
+      - package: ChatComputerKit
+        products: [AgentCore, BridgeProtocol]
+    info:
+      path: Apps/ChatComputerAgent/Info.plist
+      properties:
+        CFBundleDisplayName: Chat Computer Agent
+        LSUIElement: true
+    entitlements:
+      path: Apps/ChatComputerAgent/ChatComputerAgent.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.chatcomputer.agent
+schemes:
+  ChatComputer:
+    build:
+      targets:
+        ChatComputer: all
+        ChatComputerAgent: all
+    run:
+      config: Debug
+    test:
+      config: Debug
