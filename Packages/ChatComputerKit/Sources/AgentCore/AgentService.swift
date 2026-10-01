@@ -1,7 +1,9 @@
 #if os(macOS)
+import ApplicationServices
+import BridgeProtocol
+import Carbon.HIToolbox
 import Darwin
 import Foundation
-import BridgeProtocol
 
 /// Guest end of the control channel. Runs inside ChatComputerAgent.app (a LaunchAgent in the
 /// auto-logged-in Aqua session), connects to the host over vsock and executes commands with a driver.
@@ -59,13 +61,18 @@ public actor AgentService {
             } catch {
                 currentLease = nil
             }
+            // A rejection will not fix itself by retrying quickly (wrong token or VM); wait longer.
+            if case .rejected = status { delay = .seconds(30) }
             try? await Task.sleep(for: delay)
             delay = min(delay * 2, .seconds(30))
         }
     }
 
     private func serve(handle: FileHandle, pairing: Pairing) async throws {
-        defer { try? handle.close() }
+        defer {
+            handle.readabilityHandler = nil
+            try? handle.close()
+        }
         let hello = GuestHello(agentVersion: agentVersion, vmID: pairing.vmID, pairingToken: pairing.pairingToken,
                                osVersion: ProcessInfo.processInfo.operatingSystemVersionString)
         try handle.write(contentsOf: FrameEncoder().encode(GuestMessage.hello(hello)))
@@ -117,6 +124,9 @@ public actor AgentService {
             case .cancel:
                 // TODO(M2): cancel long-running waits/holds; commands are short and sequential for now.
                 return .ok
+            case .shutdown:
+                try await GuestShutdown.begin()
+                return .ok
             }
         } catch let error as BridgeError {
             return .failure(error)
@@ -132,15 +142,41 @@ public actor AgentService {
 
     private static func chunks(from handle: FileHandle) -> AsyncStream<Data> {
         AsyncStream { continuation in
+            // POSIX read returns what is available and reports a closed descriptor as -1;
+            // `availableData` would raise an Objective-C exception and take the process down,
+            // and `read(upToCount:)` blocks until the count is reached.
             handle.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
+                var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+                let count = Darwin.read(handle.fileDescriptor, &buffer, buffer.count)
+                guard count > 0 else {
                     handle.readabilityHandler = nil
                     continuation.finish()
-                } else {
-                    continuation.yield(data)
+                    return
                 }
+                continuation.yield(Data(buffer[..<count]))
             }
+        }
+    }
+}
+
+/// Shuts the guest down via loginwindow's "really shut down" Apple event (`aevtrsdn`).
+/// Verified on macOS 27.0.1: no Automation consent is needed, and the confirmation it shows
+/// shuts down by itself after 60 seconds. With Accessibility granted, Return confirms it at once.
+enum GuestShutdown {
+    static func begin() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", "tell application \"loginwindow\" to \u{00AB}event aevtrsdn\u{00BB}"]
+        try process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else {
+            throw BridgeError(.driverFailure, "loginwindow refused the shutdown request (osascript exit \(process.terminationStatus)).")
+        }
+        guard AXIsProcessTrusted() else { return }
+        try await Task.sleep(for: .seconds(2))
+        let source = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Return), keyDown: down)?.post(tap: .cghidEventTap)
         }
     }
 }

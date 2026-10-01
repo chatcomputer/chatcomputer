@@ -82,6 +82,9 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// Announces the current agent lease (or `nil` when the user holds input).
     case setLease(UUID?)
     case cancel(commandID: UUID)
+    /// Clean guest shutdown. The VM's own stop request only opens a "Shut down?" dialog in a
+    /// macOS guest and never completes on its own, so the agent shuts down from inside.
+    case shutdown
 
     /// Whether the command synthesizes input in the guest and so needs the agent lease.
     public var requiresLease: Bool {

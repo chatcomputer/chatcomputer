@@ -11,6 +11,7 @@ public enum VMError: Error, Equatable, LocalizedError {
     case guestAddressUnknown
     case bootstrapFailed(String)
     case restoreImageCatalogUnavailable(String)
+    case shutdownTimedOut
 
     public var errorDescription: String? {
         switch self {
@@ -22,6 +23,7 @@ public enum VMError: Error, Equatable, LocalizedError {
         case .notRunning: "The virtual machine is not running."
         case .guestAddressUnknown: "The virtual machine has no network address yet."
         case .bootstrapFailed(let detail): "Installing the guest agent failed: \(detail)"
+        case .shutdownTimedOut: "The virtual Mac did not shut down in time."
         case .restoreImageCatalogUnavailable(let detail):
             "Apple's restore image catalog could not be loaded (\(detail)). Choose a downloaded macOS restore image (.ipsw) instead."
         }

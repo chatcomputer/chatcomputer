@@ -67,7 +67,7 @@ extension AppModel {
                 }
                 if vm.state != .running { await vm.start() }
                 onboarding.detail = "Waiting for the guest desktop, then installing…"
-                try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: vm.spec, agentApp: agentApp)
+                try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
                 try connectBridgeIfPaired()
                 try vm.updateSpec { $0.stage = .agentInstalled }
                 onboarding.step = .grantPermissions
@@ -86,8 +86,11 @@ extension AppModel {
             case .freezeImage:
                 guard let vm else { return }
                 onboarding.detail = "Shutting down the virtual Mac…"
-                try vm.requestShutdown()
-                while vm.state != .stopped { try await Task.sleep(for: .seconds(1)) }
+                let bridge = self.bridge
+                try await vm.shutDown(viaGuest: bridge.map { bridge in
+                    { _ = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                      deadline: Date().addingTimeInterval(15), command: .shutdown)) }
+                })
                 try vm.updateSpec { spec in
                     try DiskStack(bundle: bundle).pushOverlay(spec: &spec)
                     spec.stage = .ready
