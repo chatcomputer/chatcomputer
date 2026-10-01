@@ -138,7 +138,8 @@ nic.attachment = VZVmnetNetworkDeviceAttachment(network: network)
 - Entitlement：`com.apple.security.virtualization`；USB 直通暂不做，不申请 Claim USB Accessory。
 - vmnet 自定义网络是否需要额外 entitlement、是否兼容 App Sandbox：G1 首周验证。
 - Guest agent 需要稳定签名（Developer ID），否则每次升级 TCC 授权失效。
-- Agent 若以子进程方式调用 Cua Driver，TCC 授权落在哪个进程（responsible process）必须实测；这是选择 `CuaDriverAdapter` 还是 `NativeDriverAdapter` 的关键依据。
+- 驱动选型：首选 Cua Driver 的 **embedded 模式**（宿主 App 拉起私有 driver daemon，继承宿主 App 的 TCC 授权）。这样 guest 里只有一个授权身份「Chat Computer Agent」，用户只需授权一次。该模式是否如文档所述可用，由 P6 实测确认。
+- 不引入 `cua-perception` 扩展（AGPL-3.0）。Peekaboo 不作为首版依赖：它以自身菜单栏 App 持有 TCC、自带模型 agent 层，未提供可嵌入的库或授权委托，只作为 AX 目标定位（元素 ID / 快照）的设计参考。
 
 ## 3. 首次引导流程（对应方案第 3 节，已按 macOS 27 简化）
 
@@ -166,7 +167,7 @@ nic.attachment = VZVmnetNetworkDeviceAttachment(network: network)
 | P3 | vsock 通道 | guest 内一个命令行程序与宿主双向收发 JSON，测延迟与断线重连 |
 | P4 | DiskImageKit | base + overlay 启动；丢弃 overlay 后回到干净状态；测启动与 IO 性能 |
 | P5 | vmnet | 自定义子网可上网；测试 guest 能否访问宿主 localhost 服务与局域网 |
-| P6 | Guest 驱动 | Cua Driver 与原生 AX/ScreenCaptureKit 各跑通「截图 + 点击 + 输入」，确认 TCC 授权落点 |
+| P6 | Guest 驱动 | Cua Driver embedded 模式跑通「截图 + 点击 + 输入 + 浏览器语义快照」，确认 TCC 只授权给 Chat Computer Agent 即可；同时用原生 AX/ScreenCaptureKit/CGEvent 写最小对照实现作为退路 |
 | P7 | virtio-fs | inbox 只读、outbox 可写，宿主侧路径校验 |
 
 ### M1 技术闭环（= G1）
@@ -189,7 +190,7 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 
 1. **许可**：macOS 27 SLA 对虚拟实例的用途限制仍须法务确认，方案第 10 节的结论不变：确认前只面向个人非商业与开发测试。
 2. **API 细节**：本文的 macOS 27 API 名称来自 WWDC26 session，需要以 Xcode 27 正式版 SDK 为准；P1/P4 探针会顺带核对。
-3. **TCC 与驱动身份**：P6 的结论决定是否依赖 Cua Driver，还是自己写原生驱动（AX + ScreenCaptureKit + CGEvent 并不复杂，且只需维护一个签名身份）。
+3. **TCC 与驱动身份**：默认选 Cua Driver（embedded 模式）。若 P6 证明 embedded 模式在 macOS 27 guest 中不能让授权落在我们的 Agent 上，改用自写原生驱动（AX + ScreenCaptureKit + CGEvent），而不是换 Peekaboo。
 4. **网络隔离**：P5 若证明 vmnet 无法阻止访问宿主服务，需要在隐私说明中披露，并把过滤列入 M3。
 5. **模型选择**：建议首发锁定一个支持视觉 + computer use 工具的模型（例如 Anthropic Claude），用户自带 Key；其他供应商在 M3 之后以 `ModelProvider` 适配器扩展。
 
