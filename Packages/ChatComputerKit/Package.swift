@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "VMKit", targets: ["VMKit"]),
         .library(name: "GuestBridge", targets: ["GuestBridge"]),
         .library(name: "AgentCore", targets: ["AgentCore"]),
+        .library(name: "HostControl", targets: ["HostControl"]),
     ],
     targets: [
         // Shared by host and guest: wire format between the app and the guest agent.
@@ -39,10 +40,14 @@ let package = Package(
         // Guest, macOS only: vsock client and desktop drivers.
         .target(name: "AgentCore", dependencies: ["BridgeProtocol"]),
 
+        // Host, macOS only: operates the guest through the VM view (framebuffer, keyboard, mouse)
+        // for steps that happen before the guest agent can act, such as granting its permissions.
+        .target(name: "HostControl", dependencies: ["BridgeProtocol", "AgentCore"]),
+
         // Developer harness: live model loop against a simulated desktop, and VM probes (macOS only).
         .executableTarget(
             name: "cc-harness",
-            dependencies: ["BridgeProtocol", "ChatCore", "ModelProxy", "Orchestrator", "VMKit", "GuestBridge", "AgentCore"],
+            dependencies: ["BridgeProtocol", "ChatCore", "ModelProxy", "Orchestrator", "VMKit", "GuestBridge", "AgentCore", "HostControl"],
             path: "Sources/Harness"),
 
         .testTarget(name: "BridgeProtocolTests", dependencies: ["BridgeProtocol"]),

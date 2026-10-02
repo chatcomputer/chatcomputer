@@ -1,5 +1,7 @@
 import AppKit
+import BridgeProtocol
 import ChatCore
+import HostControl
 import GuestBridge
 import ModelProxy
 import Observation
@@ -25,6 +27,8 @@ final class AppModel {
     let store = InMemoryTaskStore()   // TODO(M2): SQLite-backed store
 
     private(set) var vm: VirtualMachineController?
+    /// The on-screen VM view; host-level control (`HostDisplay`) reads and drives the guest through it.
+    weak var guestView: VZVirtualMachineView?
     private(set) var bridge: BridgeServer?
     private(set) var runner: AgentRunner?
 
@@ -35,11 +39,44 @@ final class AppModel {
 
     var onboarding = OnboardingState()
 
-    var isReady: Bool { (try? bundle.loadSpec().stage) == .ready }
+    /// Whether onboarding has finished. Decided once at launch and set by the last onboarding step,
+    /// never re-read from disk while the app runs (the VM's stage turns `.ready` one step earlier,
+    /// before the model is connected).
+    private(set) var isReady = false
+
+    /// The guest display's shape; the left pane always shows it at this ratio.
+    var guestAspectRatio: CGFloat {
+        guard let spec = vm?.spec, spec.displayHeight > 0 else { return WorkspaceMetrics.guestAspect }
+        return CGFloat(spec.displayWidth) / CGFloat(spec.displayHeight)
+    }
     var agentHoldsInput: Bool { phase == .running }
 
     init() {
+        importHarnessSecrets()
+        isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
+    }
+
+    func finishOnboarding() {
+        isReady = true
+    }
+
+    /// A VM set up with the developer harness (`cc-harness vm …`) keeps its guest password and pairing
+    /// token in `harness-secrets.json`. When such a bundle is moved to the app's location, take the
+    /// secrets into this app's Keychain so onboarding can continue where the harness stopped.
+    private func importHarnessSecrets() {
+        let file = bundle.url.appendingPathComponent("harness-secrets.json")
+        guard let data = try? Data(contentsOf: file),
+              let values = try? JSONDecoder().decode([String: String].self, from: data) else { return }
+        do {
+            for (account, value) in values where account.hasPrefix("vm.") {
+                try secrets.write(value, for: account)
+                guard try secrets.read(account) == value else { throw CocoaError(.coderValueNotFound) }
+            }
+            try FileManager.default.removeItem(at: file)
+        } catch {
+            errorMessage = "Could not move the harness VM's secrets into the Keychain: \(error)"
+        }
     }
 
     // MARK: VM
@@ -155,5 +192,47 @@ final class AppModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    // MARK: Host-level control
+
+    /// Grants the guest agent its permissions by operating the guest from the host (onboarding step 4).
+    /// The guest password goes from the Keychain straight into the guest; it is never shown or logged.
+    func grantPermissionsAutomatically() async throws {
+        guard let vm, let bridge, let view = guestView else { throw HostControlError.noWindow }
+        let vmID = vm.spec.id
+        let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+        func send(_ command: GuestCommand) async throws -> CommandResult {
+            try await bridge.send(.init(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                        deadline: Date().addingTimeInterval(15), command: command))
+        }
+        let secrets = self.secrets
+        let grant = PermissionGrant(
+            display: display,
+            prepare: { kind in _ = try await send(.preparePermission(kind)) },
+            isGranted: { kind in
+                // The agent relaunches after the screen recording grant; until it reconnects, "not yet".
+                guard await bridge.isConnected, case .health(let report)? = try? await send(.health) else { return false }
+                return kind == .accessibility ? report.accessibilityGranted : report.screenRecordingGranted
+            },
+            restartAgent: {
+                _ = try? await send(.restartAgent)
+                // Wait for the old connection to drop and the new agent to pair.
+                try await Task.sleep(for: .seconds(2))
+                var waited = 0
+                while !(await bridge.isConnected), waited < 30 {
+                    try await Task.sleep(for: .seconds(1))
+                    waited += 1
+                }
+                try await Task.sleep(for: .seconds(1))
+            },
+            password: {
+                guard let password = try secrets.read(SecretAccount.guestPassword(vmID: vmID)) else {
+                    throw HostControlError.gaveUp("The guest password is missing from the Keychain.")
+                }
+                return password
+            },
+            log: { [weak self] message in self?.onboarding.detail = message.prefix(1).uppercased() + message.dropFirst() })
+        try await grant.run()
     }
 }

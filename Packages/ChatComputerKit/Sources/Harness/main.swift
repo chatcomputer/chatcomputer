@@ -19,6 +19,8 @@ Task { @MainActor in
         code = await LiveLoop.run(arguments: Array(arguments.dropFirst()))
     case "vm":
         code = await VMProbe.run(arguments: Array(arguments.dropFirst()))
+    case "find-switch":
+        code = SwitchProbe.run(arguments: Array(arguments.dropFirst()))
     default:
         print("usage: cc-harness live-loop [--scenario notes|approval|injection] | vm <command>")
         code = 2

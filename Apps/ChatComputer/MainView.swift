@@ -22,22 +22,24 @@ struct RootView: View {
     }
 }
 
-/// Two panes: guest desktop on the left (~2/3), host chat on the right.
+/// Guest desktop on the left at its own aspect ratio, host chat on the right (same geometry as onboarding).
 struct MainView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HSplitView {
-            VMDisplayView(virtualMachine: model.vm?.virtualMachine, agentHoldsInput: model.agentHoldsInput,
-                          onUserIntervention: { model.takeOver() })
-                .frame(minWidth: 640, idealWidth: 960)
-            ChatPanel()
-                .frame(minWidth: 320, idealWidth: 420)
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Label(statusText, systemImage: "desktopcomputer").labelStyle(.titleAndIcon)
+        Workspace {
+            GuestStage(virtualMachine: model.vm?.virtualMachine, aspectRatio: model.guestAspectRatio,
+                       agentHoldsInput: model.agentHoldsInput, onUserIntervention: { model.takeOver() },
+                       onViewReady: { model.guestView = $0 }) {
+                GuestPlaceholder(title: model.vm?.state == .starting ? "Starting your virtual Mac…" : "Your virtual Mac is off")
             }
+        } panel: {
+            ChatPanel()
+        }
+        // Status is plain text in the window subtitle; a toolbar item would render as a clickable-looking capsule.
+        .navigationTitle("Chat Computer")
+        .navigationSubtitle(statusText)
+        .toolbar {
             ToolbarItemGroup {
                 switch model.phase {
                 case .running:
@@ -69,6 +71,6 @@ struct MainView: View {
         case .stopped, nil: "Stopped"
         }
         let holder = model.agentHoldsInput ? "Agent has control" : "You have control"
-        return "\(model.vm?.spec.name ?? "Chat Computer") · \(vmState) · \(holder)"
+        return "\(vmState) · \(holder)"
     }
 }

@@ -9,8 +9,10 @@ struct ChatComputerApp: App {
         WindowGroup("Chat Computer") {
             RootView()
                 .environment(model)
-                .frame(minWidth: 1000, minHeight: 640)
         }
+        // Sized for a landscape guest screen plus the side panel; onboarding and the main view share it.
+        .defaultSize(WorkspaceMetrics.defaultContentSize)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandMenu("Agent") {
                 // Emergency stop is handled by the host, independent of guest or model (proposal §04).

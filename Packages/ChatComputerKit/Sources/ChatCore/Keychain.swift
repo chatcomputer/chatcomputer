@@ -50,7 +50,6 @@ public struct KeychainStore: SecretStore {
         if status == errSecItemNotFound {
             var add = baseQuery(account)
             add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             status = SecItemAdd(add as CFDictionary, nil)
         }
         guard status == errSecSuccess else { throw SecretStoreError(status: status) }
@@ -61,12 +60,15 @@ public struct KeychainStore: SecretStore {
         guard status == errSecSuccess || status == errSecItemNotFound else { throw SecretStoreError(status: status) }
     }
 
+    /// The login (file-based) keychain. The data-protection keychain needs a keychain-access-groups
+    /// entitlement backed by a provisioning profile; a Developer ID app without one gets
+    /// errSecMissingEntitlement (-34018) on every call (observed on macOS 27). Login-keychain items
+    /// are bound to the app's code signature, which stays stable across Developer ID releases.
     private func baseQuery(_ account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecUseDataProtectionKeychain as String: true,
         ]
     }
 }
