@@ -85,11 +85,38 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// Clean guest shutdown. The VM's own stop request only opens a "Shut down?" dialog in a
     /// macOS guest and never completes on its own, so the agent shuts down from inside.
     case shutdown
+    /// Registers the agent for a privacy permission and opens that settings pane in the guest.
+    /// Needs no permission itself; the host then flips the switch (see `HostControl.PermissionGrant`).
+    case preparePermission(PermissionKind)
+    /// The agent answers, then exits; its LaunchAgent (KeepAlive) starts it again and it reconnects.
+    /// Used when a permission was granted but the running process does not see it yet.
+    case restartAgent
 
     /// Whether the command synthesizes input in the guest and so needs the agent lease.
     public var requiresLease: Bool {
         if case .perform = self { return true }
         return false
+    }
+}
+
+/// The two guest privacy permissions the agent needs.
+public enum PermissionKind: String, Codable, Sendable, CaseIterable, CustomStringConvertible {
+    case accessibility      // "Device Control and Data Access" on macOS 27: input
+    case screenRecording    // capture
+
+    /// The TCC service name, as `tccutil` spells it.
+    public var tccService: String {
+        switch self {
+        case .accessibility: "Accessibility"
+        case .screenRecording: "ScreenCapture"
+        }
+    }
+
+    public var description: String {
+        switch self {
+        case .accessibility: "device control"
+        case .screenRecording: "screen recording"
+        }
     }
 }
 

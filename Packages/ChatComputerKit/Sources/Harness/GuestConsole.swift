@@ -2,7 +2,10 @@
 import AgentCore
 import AppKit
 import Carbon.HIToolbox
+import CoreImage
 import Foundation
+import IOSurface
+import QuartzCore
 import Virtualization
 
 /// Operates the guest from the host, without the guest agent: synthetic NSEvents go straight to the
@@ -79,6 +82,8 @@ final class GuestConsole {
         switch verb {
         case "shot":
             return try await screenshot()
+        case "vshot":
+            return inProcessCaptureReport()
         case "keymode":
             keyMode = rest
             return "keyMode=\(keyMode)"
@@ -125,6 +130,74 @@ final class GuestConsole {
         while process.isRunning { try await Task.sleep(for: .milliseconds(50)) }
         guard process.terminationStatus == 0 else { throw ProbeError("screencapture exit \(process.terminationStatus)") }
         return file.lastPathComponent
+    }
+
+    // MARK: In-process capture experiments (no Screen Recording permission)
+
+    /// Tries to read the guest framebuffer from the view itself, so the host app can see the guest
+    /// without Screen Recording permission on the host. Writes one PNG per method and reports
+    /// whether it contains anything but black.
+    func inProcessCaptureReport() -> String {
+        var report: [String] = []
+        func save(_ image: CGImage?, _ name: String) {
+            guard let image else { report.append("\(name): nil"); return }
+            let rep = NSBitmapImageRep(cgImage: image)
+            try? rep.representation(using: .png, properties: [:])?.write(to: directory.appendingPathComponent("vshot-\(name).png"))
+            report.append("\(name): \(image.width)x\(image.height) nonblack=\(Self.nonBlackFraction(image))")
+        }
+
+        // 1. AppKit view cache.
+        if let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: rep)
+            save(rep.cgImage, "cacheDisplay")
+        }
+
+        // 2. Render the layer tree.
+        if let layer = view.layer {
+            let scale = window.backingScaleFactor
+            let size = CGSize(width: view.bounds.width * scale, height: view.bounds.height * scale)
+            if let ctx = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+                                   space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) {
+                ctx.scaleBy(x: scale, y: scale)
+                layer.render(in: ctx)
+                save(ctx.makeImage(), "layerRender")
+            }
+        }
+
+        // 3. IOSurface contents anywhere in the layer tree.
+        var surfaces: [(String, IOSurface)] = []
+        func walk(_ layer: CALayer, _ path: String) {
+            if let contents = layer.contents, CFGetTypeID(contents as CFTypeRef) == IOSurfaceGetTypeID() {
+                surfaces.append((path + ":" + String(describing: Swift.type(of: layer)), unsafeBitCast(contents as AnyObject, to: IOSurface.self)))
+            }
+            for (index, sub) in (layer.sublayers ?? []).enumerated() { walk(sub, path + "/\(index)") }
+        }
+        if let layer = view.layer { walk(layer, "") }
+        func describe(_ layer: CALayer, _ depth: Int) -> [String] {
+            var lines = [String(repeating: "  ", count: depth) + "\(Swift.type(of: layer)) contents=\(layer.contents.map { String(describing: Swift.type(of: $0)) } ?? "nil") \(Int(layer.bounds.width))x\(Int(layer.bounds.height))"]
+            for sub in layer.sublayers ?? [] { lines += describe(sub, depth + 1) }
+            return lines
+        }
+        if let layer = view.layer { report.append("layers:\n" + describe(layer, 1).joined(separator: "\n")) }
+        for (index, (path, surface)) in surfaces.enumerated() {
+            let ci = CIImage(ioSurface: surface)
+            save(CIContext().createCGImage(ci, from: ci.extent), "iosurface\(index)")
+            report.append("  surface \(index) at \(path) \(IOSurfaceGetWidth(surface))x\(IOSurfaceGetHeight(surface))")
+        }
+        if surfaces.isEmpty { report.append("iosurface: none found") }
+        return report.joined(separator: "\n")
+    }
+
+    static func nonBlackFraction(_ image: CGImage) -> String {
+        let width = 64, height = 40
+        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return "?" }
+        ctx.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        guard let data = ctx.data else { return "?" }
+        let pixels = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        var lit = 0
+        for i in 0..<(width * height) where Int(pixels[i * 4]) + Int(pixels[i * 4 + 1]) + Int(pixels[i * 4 + 2]) > 60 { lit += 1 }
+        return String(format: "%.2f", Double(lit) / Double(width * height))
     }
 
     // MARK: Mouse

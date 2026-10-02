@@ -11,9 +11,13 @@ struct VMDisplayView: NSViewRepresentable {
     let virtualMachine: VZVirtualMachine?
     let agentHoldsInput: Bool
     let onUserIntervention: () -> Void
+    /// Hands the underlying view to the model for host-level control (`HostControl.HostDisplay`).
+    var onViewReady: (VZVirtualMachineView) -> Void = { _ in }
 
     func makeNSView(context: Context) -> VMContainerView {
-        VMContainerView()
+        let view = VMContainerView()
+        onViewReady(view.machineView)
+        return view
     }
 
     func updateNSView(_ view: VMContainerView, context: Context) {
@@ -33,7 +37,9 @@ final class VMContainerView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
         machineView.capturesSystemKeys = true
-        machineView.automaticallyReconfiguresDisplay = true
+        // Keep the guest at its configured resolution and scale it to fit. Following the pane's size would
+        // change the guest resolution on every window resize, and with it the agent's screenshot coordinates.
+        machineView.automaticallyReconfiguresDisplay = false
         for view in [machineView, shield] as [NSView] {
             view.translatesAutoresizingMaskIntoConstraints = false
             addSubview(view)

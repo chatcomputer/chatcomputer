@@ -37,7 +37,47 @@ extension AppModel {
         case .agentInstalled: .grantPermissions
         case .ready: .apiKey
         }
+        // These steps happen in (or with) the running guest, so bring it up when setup resumes there.
+        if onboarding.step == .grantPermissions {
+            onboarding.detail = "Chat Computer can turn these on for you: it clicks in the virtual Mac and types the "
+                + "guest password from your Keychain. You can watch it happen on the left."
+            if vm?.state == .stopped { Task { await bootVM() } }
+            // Development: run the automatic grant right away (CC_AUTOGRANT=1).
+            if ProcessInfo.processInfo.environment["CC_AUTOGRANT"] == "1" {
+                Task {
+                    while !(await bridge?.isConnected ?? false) { try? await Task.sleep(for: .seconds(1)) }
+                    try? await Task.sleep(for: .seconds(3))
+                    await grantPermissionsStep()
+                }
+            }
+        }
     }
+
+    /// Step 4 done by host-level control, then the usual check through the agent.
+    func grantPermissionsStep() async {
+        onboarding.isWorking = true
+        do {
+            if vm?.state != .running { await bootVM() }
+            var waited = 0
+            while !(await bridge?.isConnected ?? false), waited < 60 {
+                onboarding.detail = "Waiting for the agent in the virtual Mac to connect…"
+                try await Task.sleep(for: .seconds(1))
+                waited += 1
+            }
+            try await grantPermissionsAutomatically()
+            onboarding.isWorking = false
+            await runOnboardingStep()
+        } catch {
+            onboarding.isWorking = false
+            onboarding.detail = "Automatic setup stopped: \(error)\n\n" + Self.permissionInstructions
+        }
+    }
+
+    static let permissionInstructions = """
+        In the virtual Mac on the left, click the Chat Computer Agent icon in the menu bar, \
+        choose Allow Device Control, and turn on ChatComputerAgent under Privacy & Security › \
+        Device Control and Data Access. Do the same for screen recording, then click Continue.
+        """
 
     func runOnboardingStep() async {
         onboarding.isWorking = true
@@ -75,14 +115,17 @@ extension AppModel {
             case .grantPermissions:
                 // The user grants these inside the guest (left pane); we only observe the result.
                 guard let bridge, let vm else { return }
+                if vm.state != .running { await vm.start() }
+                // The agent may be restarting to pick up a new permission; give it time to reconnect.
+                for _ in 0..<30 where !(await bridge.isConnected) { try await Task.sleep(for: .seconds(1)) }
+                guard await bridge.isConnected else {
+                    onboarding.detail = "Waiting for the agent in the virtual Mac to connect. Try again in a few seconds."
+                    return
+                }
                 let health = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                          deadline: Date().addingTimeInterval(10), command: .health))
                 guard case .health(let report) = health, report.isDesktopReady else {
-                    onboarding.detail = """
-                        Not granted yet. In the virtual Mac, click the Chat Computer Agent icon in the menu bar, \
-                        then turn on ChatComputerAgent under Privacy & Security › Device Control and Data Access \
-                        and under screen recording.
-                        """
+                    onboarding.detail = "Not granted yet. " + Self.permissionInstructions
                     return
                 }
                 onboarding.step = .freezeImage
@@ -128,11 +171,15 @@ struct OnboardingView: View {
     @State private var apiKey = ""
 
     var body: some View {
-        HStack(spacing: 0) {
+        Workspace {
             // The guest screen is visible from first boot on, so the permission step happens in place.
-            VMDisplayView(virtualMachine: model.vm?.virtualMachine, agentHoldsInput: false, onUserIntervention: {})
-                .frame(minWidth: 640)
-            Divider()
+            GuestStage(virtualMachine: model.vm?.virtualMachine, aspectRatio: model.guestAspectRatio,
+                       onViewReady: { model.guestView = $0 }) {
+                GuestPlaceholder(title: "Your virtual Mac will appear here",
+                                 detail: model.onboarding.isWorking ? model.onboarding.detail : "",
+                                 progress: model.onboarding.isWorking ? model.onboarding.progress : nil)
+            }
+        } panel: {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Set up your Chat Computer").font(.title2.bold())
                 ForEach(OnboardingState.Step.allCases, id: \.self) { step in
@@ -143,7 +190,12 @@ struct OnboardingView: View {
                 if model.onboarding.step == .apiKey {
                     SecureField("Anthropic API key", text: $apiKey)
                     Button("Save key") {
-                        do { try model.secrets.write(apiKey, for: SecretAccount.anthropicAPIKey) } catch { model.errorMessage = error.localizedDescription }
+                        do {
+                            try model.secrets.write(apiKey, for: SecretAccount.anthropicAPIKey)
+                            model.finishOnboarding()
+                        } catch {
+                            model.errorMessage = error.localizedDescription
+                        }
                     }
                     .disabled(apiKey.isEmpty)
                     Text("The key stays in this Mac's Keychain. Screenshots and text from the virtual Mac are sent to Anthropic while a task runs.")
@@ -151,17 +203,32 @@ struct OnboardingView: View {
                 } else {
                     if let progress = model.onboarding.progress { ProgressView(value: progress) }
                     Text(model.onboarding.detail).font(.callout).foregroundStyle(.secondary)
-                    Button(model.onboarding.isWorking ? "Working…" : "Continue") {
-                        Task { await model.runOnboardingStep() }
+                    if model.onboarding.step == .grantPermissions {
+                        // Host-level control does the clicks; the user watches it happen on the left.
+                        Button(model.onboarding.isWorking ? "Working…" : "Grant automatically") {
+                            Task { await model.grantPermissionsStep() }
+                        }
+                        .disabled(model.onboarding.isWorking)
+                        .keyboardShortcut(.defaultAction)
+                        Button("I granted them myself") {
+                            Task { await model.runOnboardingStep() }
+                        }
+                        .buttonStyle(.link)
+                        .disabled(model.onboarding.isWorking)
+                    } else {
+                        Button(model.onboarding.isWorking ? "Working…" : "Continue") {
+                            Task { await model.runOnboardingStep() }
+                        }
+                        .disabled(model.onboarding.isWorking)
+                        .keyboardShortcut(.defaultAction)
                     }
-                    .disabled(model.onboarding.isWorking)
-                    .keyboardShortcut(.defaultAction)
                 }
                 Spacer()
             }
             .padding(24)
-            .frame(width: 360)
         }
+        .navigationTitle("Chat Computer")
+        .navigationSubtitle("Setting up · step \(model.onboarding.step.rawValue + 1) of \(OnboardingState.Step.allCases.count)")
         .onAppear { model.resumeOnboarding() }
     }
 
