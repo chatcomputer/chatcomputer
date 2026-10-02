@@ -1,5 +1,7 @@
 # TODO
 
+> 当前现状与规划的汇总见 [docs/STATUS.md](docs/STATUS.md)。
+
 接下来在 Mac 上要做的事，按顺序排。完成一项就勾掉；技术验证（探针）的结论写回 `docs/ROADMAP.md` 第 5 节。
 
 代码里还有 `TODO(P#)` / `TODO(M#)` 注释，对应下面的条目：`grep -rn "TODO(" --include=*.swift .`
@@ -51,13 +53,13 @@
 
 ## 3. 跑通 M1 闭环
 
-- [ ] 完整走一遍首次引导（`Onboarding.swift` 的 6 步），修卡住的地方
-- [ ] 配好 API Key，跑"打开 TextEdit，写一段话并保存到 outbox"，在宿主上导出文件
-- [ ] 核对发给 API 的请求：`computer_toolset_20260801`、每个 `tool_result` 都带 `toolset_name`、截图尺寸在限制内
+- [x] 完整走一遍首次引导（`Onboarding.swift` 的 6 步），修卡住的地方
+- [x] 配好 API Key，跑"打开 TextEdit，写一段话并保存到 outbox"，在宿主上导出文件（DeepSeek 3/3）
+- [ ] 核对发给 API 的请求：`computer_toolset_20260801`、每个 `tool_result` 都带 `toolset_name`、截图尺寸在限制内（需要 Claude 的 Key）
 
 ## 4. M1 之后（M2）
 
-- [ ] agent 自更新：首次安装后 SSH 已关闭，新版本 agent 通过 bootstrap 共享目录分发，由 agent 自己校验签名后替换并重启（注意先删除再复制，原地覆盖会被代码签名机制杀掉，`OS_REASON_CODESIGNING`）
+- [x] agent 自更新（`GuestCommand.updateAgent`，校验同团队签名）：首次安装后 SSH 已关闭，新版本 agent 通过 bootstrap 共享目录分发，由 agent 自己校验签名后替换并重启（注意先删除再复制，原地覆盖会被代码签名机制杀掉，`OS_REASON_CODESIGNING`）
 - [ ] 架构边界测试（参考 shk 的 ArchitectureTests）：Orchestrator / ModelProxy 不得 import VMKit、Virtualization
 
 - [ ] 任务存储换成 SQLite（`AppModel.store` 目前是 `InMemoryTaskStore`，退出即丢）
