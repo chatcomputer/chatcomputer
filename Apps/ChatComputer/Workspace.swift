@@ -55,7 +55,7 @@ struct GuestStage<Placeholder: View>: View {
     let virtualMachine: VZVirtualMachine?
     var aspectRatio: CGFloat = WorkspaceMetrics.guestAspect
     var agentHoldsInput = false
-    var onUserIntervention: () -> Void = {}
+    var onUserIntervention: (String) -> Void = { _ in }
     var onViewReady: (VZVirtualMachineView) -> Void = { _ in }
     @ViewBuilder var placeholder: Placeholder
 

@@ -10,7 +10,7 @@ import Virtualization
 struct VMDisplayView: NSViewRepresentable {
     let virtualMachine: VZVirtualMachine?
     let agentHoldsInput: Bool
-    let onUserIntervention: () -> Void
+    let onUserIntervention: (String) -> Void
     /// Hands the underlying view to the model for host-level control (`HostControl.HostDisplay`).
     var onViewReady: (VZVirtualMachineView) -> Void = { _ in }
 
@@ -57,7 +57,7 @@ final class VMContainerView: NSView {
 }
 
 final class InputShieldView: NSView {
-    var onIntervention: (() -> Void)?
+    var onIntervention: ((String) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -68,13 +68,14 @@ final class InputShieldView: NSView {
         border.stroke()
     }
 
-    override func mouseDown(with event: NSEvent) { intervene() }
-    override func rightMouseDown(with event: NSEvent) { intervene() }
-    override func keyDown(with event: NSEvent) { intervene() }
-    override func scrollWheel(with event: NSEvent) { intervene() }
+    // Deliberate input only. Scrolling is ignored: trackpad momentum or a scroll aimed at the chat
+    // panel can drift over the guest screen without the user meaning to take over.
+    override func mouseDown(with event: NSEvent) { intervene("you clicked the virtual Mac") }
+    override func rightMouseDown(with event: NSEvent) { intervene("you right-clicked the virtual Mac") }
+    override func keyDown(with event: NSEvent) { intervene("you pressed a key while the virtual Mac had focus") }
 
-    private func intervene() {
+    private func intervene(_ reason: String) {
         isHidden = true
-        onIntervention?()
+        onIntervention?(reason)
     }
 }

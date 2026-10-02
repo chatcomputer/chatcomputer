@@ -156,18 +156,8 @@ public final class HostDisplay {
         try await Task.sleep(for: .milliseconds(25))
     }
 
-    /// US ANSI layout: key code and whether Shift is needed.
     static func keystroke(for character: Character) -> (CGKeyCode, Bool)? {
-        let shifted: [Character: Character] = [
-            "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8", "(": "9", ")": "0",
-            "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";", "\"": "'", "<": ",", ">": ".", "?": "/", "~": "`",
-        ]
-        if character == " " { return (CGKeyCode(kVK_Space), false) }
-        if character == "\n" { return (CGKeyCode(kVK_Return), false) }
-        if let base = shifted[character], let code = KeyMap.code(for: String(base)) { return (code, true) }
-        if character.isUppercase, let code = KeyMap.code(for: character.lowercased()) { return (code, true) }
-        if let code = KeyMap.code(for: String(character)) { return (code, false) }
-        return nil
+        KeyMap.keystroke(for: character)
     }
 }
 

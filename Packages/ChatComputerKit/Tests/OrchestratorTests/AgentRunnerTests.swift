@@ -77,12 +77,15 @@ func makeRunner(model: ScriptedModel, guest: FakeGuest) -> (AgentRunner, SharedF
         try await runner.start()
 
         #expect(await runner.task.phase == .completed)
-        #expect(await guest.performed.count == 2)
-        // Second request carries both computer results, each echoing toolset_name.
+        // screenshot, type, then the automatic screenshot after the input action.
+        #expect(await guest.performed.count == 3)
+        // Second request carries both computer results, each echoing toolset_name, then the fresh screen.
         let secondRequest = await model.requests[1]
-        let results = secondRequest.last?["content"]?.arrayValue ?? []
-        #expect(results.count == 2)
-        #expect(results.allSatisfy { $0["toolset_name"] == "computer" })
+        let blocks = secondRequest.last?["content"]?.arrayValue ?? []
+        let toolResults = blocks.filter { $0["type"] == "tool_result" }
+        #expect(toolResults.count == 2)
+        #expect(toolResults.allSatisfy { $0["toolset_name"] == "computer" })
+        #expect(blocks.last?["type"] == "image")
     }
 
     @Test func claimedOutputThatDoesNotExistIsRejected() async throws {
@@ -148,5 +151,25 @@ func makeRunner(model: ScriptedModel, guest: FakeGuest) -> (AgentRunner, SharedF
         #expect(reminders.first?.offset == 2)   // third request: 2 turns used, 10 left
         // Later requests keep it in history (append-only) but do not add another.
         #expect(requests.last?.last?["content"]?.arrayValue?.contains { $0["text"]?.stringValue?.hasPrefix("Host notice") == true } == false)
+    }
+
+    @Test func noAutomaticScreenshotWhenTheTurnEndedWithOne() async throws {
+        let model = ScriptedModel(turns: [
+            [toolUse("t1", "left_click", ["coordinate": [5, 5]]), toolUse("t2", "screenshot")],
+            [.object(["type": "text", "text": "Done looking."])],
+        ])
+        let guest = FakeGuest()
+        let (runner, _) = makeRunner(model: model, guest: guest)
+
+        try await runner.start()
+
+        #expect(await guest.performed.count == 2)
+        #expect(await model.requests[1].last?["content"]?.arrayValue?.contains { $0["type"] == "image" } == false)
+    }
+
+    @Test func stepDescriptionsShowWhatTheActionDid() {
+        #expect(AgentRunner.describe(name: "left_click", input: ["coordinate": [512, 300]]) == "left_click [512, 300]")
+        #expect(AgentRunner.describe(name: "type", input: ["text": "Hello"]) == "type \"Hello\"")
+        #expect(AgentRunner.describe(name: "key", input: ["text": "cmd+s"]) == "key cmd+s")
     }
 }

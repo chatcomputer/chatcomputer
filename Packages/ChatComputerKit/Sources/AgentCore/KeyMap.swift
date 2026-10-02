@@ -39,6 +39,26 @@ public enum KeyMap {
         return nil
     }
 
+    /// Key code and whether Shift is needed to type `character` on a US layout, or nil when the
+    /// layout has no key for it (then it is typed as a Unicode event instead).
+    public static func keystroke(for character: Character) -> (CGKeyCode, Bool)? {
+        let shifted: [Character: Character] = [
+            "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8", "(": "9", ")": "0",
+            "_": "-", "+": "=", "{": "[", "}": "]", "|": "\\", ":": ";", "\"": "'", "<": ",", ">": ".", "?": "/", "~": "`",
+        ]
+        switch character {
+        case " ": return (CGKeyCode(kVK_Space), false)
+        case "\n", "\r": return (CGKeyCode(kVK_Return), false)
+        case "\t": return (CGKeyCode(kVK_Tab), false)
+        default: break
+        }
+        if let base = shifted[character], let code = code(for: String(base)) { return (code, true) }
+        guard character.isASCII else { return nil }
+        if character.isUppercase, let code = code(for: character.lowercased()) { return (code, true) }
+        if let code = code(for: String(character)) { return (code, false) }
+        return nil
+    }
+
     private static let named: [String: Int] = [
         "return": kVK_Return, "enter": kVK_Return, "kp_enter": kVK_ANSI_KeypadEnter,
         "tab": kVK_Tab, "space": kVK_Space, "escape": kVK_Escape, "esc": kVK_Escape,

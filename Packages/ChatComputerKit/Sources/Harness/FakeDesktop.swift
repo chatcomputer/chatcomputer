@@ -32,7 +32,7 @@ actor FakeDesktop: GuestChannel {
 
     func send(_ envelope: CommandEnvelope) async throws -> CommandResult {
         switch envelope.command {
-        case .setLease, .cancel, .shutdown, .preparePermission, .restartAgent:
+        case .setLease, .cancel, .shutdown, .preparePermission, .restartAgent, .updateAgent:
             return .ok
         case .health, .capabilities:
             return .ok

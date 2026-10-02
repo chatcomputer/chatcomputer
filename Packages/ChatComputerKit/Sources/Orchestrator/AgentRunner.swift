@@ -27,8 +27,12 @@ public actor AgentRunner {
         public var folders: SharedFolders
         public var budget: TaskBudget
         public var exportValidator: ExportValidator
+        /// After a turn of input actions, attach a fresh screenshot so the model sees the result without
+        /// spending a turn on asking for one.
+        public var screenshotAfterActions: Bool
 
-        public init(model: any ModelClient, guest: any GuestChannel, store: any TaskStore, lease: ControlLease, folders: SharedFolders, budget: TaskBudget = .init(), exportValidator: ExportValidator = .init()) {
+        public init(model: any ModelClient, guest: any GuestChannel, store: any TaskStore, lease: ControlLease, folders: SharedFolders, budget: TaskBudget = .init(), exportValidator: ExportValidator = .init(), screenshotAfterActions: Bool = true) {
+            self.screenshotAfterActions = screenshotAfterActions
             self.model = model
             self.guest = guest
             self.store = store
@@ -201,6 +205,8 @@ public actor AgentRunner {
         var batchFailed = false
         var sawToolUse = false
         var lastText = ""
+        var changedScreen = false
+        var lastWasScreenshot = false
 
         for block in response.blocks {
             switch block {
@@ -220,6 +226,8 @@ public actor AgentRunner {
                     let result = await perform(toolUseID: id, name: name, input: input)
                     results.append(result.json)
                     batchFailed = !result.succeeded
+                    lastWasScreenshot = name == "screenshot" || name == "zoom"
+                    if !lastWasScreenshot, !Self.passiveActions.contains(name) { changedScreen = true }
                 } else if name == HostTools.askUser, let ask = HostTools.parseAskUser(input) {
                     pendingQuestionID = id
                     continuation.yield(.needsUser(ask))
@@ -235,12 +243,33 @@ public actor AgentRunner {
             }
         }
 
+        if deps.screenshotAfterActions, changedScreen, !lastWasScreenshot, !batchFailed,
+           generation == turnGeneration, task.phase == .running,
+           let image = await screenshotBlock() {
+            results.append(["type": "text", "text": "Screen after your actions:"])
+            results.append(image)
+        }
         pendingResults.append(contentsOf: results)
 
         // A turn that ends without tools is the model talking to the user; wait for a reply.
         if !sawToolUse, task.phase == .running {
             try? await transition(.needUser(lastText.isEmpty ? "The agent is waiting for your reply." : lastText))
         }
+    }
+
+    /// Actions that never change what is on screen.
+    static let passiveActions: Set<String> = ["cursor_position", "wait"]
+
+    /// A screenshot as a plain image block, for the automatic after-actions view.
+    private func screenshotBlock() async -> JSONValue? {
+        // Give animations and window changes a moment to settle.
+        try? await Task.sleep(for: .milliseconds(600))
+        guard case .screenshot(let shot)? = try? await deps.guest.send(envelope(.screenshot(region: nil))) else { return nil }
+        observationVersion = shot.observationVersion
+        return [
+            "type": "image",
+            "source": ["type": "base64", "media_type": .string(shot.mediaType), "data": .string(shot.imageData.base64EncodedString())],
+        ]
     }
 
     private func perform(toolUseID: String, name: String, input: JSONValue) async -> (json: JSONValue, succeeded: Bool) {
@@ -261,7 +290,7 @@ public actor AgentRunner {
 
         let stepID = UUID()
         try? await deps.store.append(TaskEvent(taskID: task.id, kind: .step(stepID: stepID, status: .dispatched, summary: name)))
-        continuation.yield(.action(name))
+        continuation.yield(.action(Self.describe(name: name, input: input)))
 
         do {
             let result = try await deps.guest.send(envelope(command))
@@ -322,6 +351,18 @@ public actor AgentRunner {
     }
 
     // MARK: - Helpers
+
+    /// "left_click [512, 300]", "type \"Hello\"", "key cmd+s": what the step list in the chat shows.
+    static func describe(name: String, input: JSONValue) -> String {
+        var parts = [name]
+        if let point = input["coordinate"]?.arrayValue?.compactMap(\.intValue), point.count == 2 { parts.append("[\(point[0]), \(point[1])]") }
+        if let text = input["text"]?.stringValue {
+            let short = text.count > 40 ? String(text.prefix(40)) + "…" : text
+            parts.append(name == "type" ? "\"\(short)\"" : short)
+        }
+        if let direction = input["scroll_direction"]?.stringValue { parts.append(direction) }
+        return parts.joined(separator: " ")
+    }
 
     private func envelope(_ command: GuestCommand) -> CommandEnvelope {
         var timeout: TimeInterval = 30

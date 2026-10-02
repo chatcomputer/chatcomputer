@@ -132,6 +132,13 @@ public actor AgentService {
             case .preparePermission(let kind):
                 await PermissionSetup.prepare(kind)
                 return .ok
+            case .updateAgent:
+                try AgentUpdate.install()
+                Task.detached {
+                    try? await Task.sleep(for: .milliseconds(300))
+                    exit(0)
+                }
+                return .ok
             case .restartAgent:
                 // Exit after the reply has gone out; launchd restarts the agent (KeepAlive).
                 Task.detached {
@@ -224,6 +231,61 @@ enum PermissionSetup {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
             NSWorkspace.shared.open(url)
         }
+    }
+}
+
+/// Self-update from the bootstrap share. The new copy must pass `codesign --verify --strict` against a
+/// requirement naming this bundle ID and this agent's own team, so the share cannot slip in other code.
+enum AgentUpdate {
+    static let source = URL(fileURLWithPath: "/Volumes/My Shared Files/bootstrap/ChatComputerAgent.app")
+
+    static func install() throws {
+        let current = Bundle.main.bundleURL
+        guard FileManager.default.fileExists(atPath: source.path) else {
+            throw BridgeError(.invalidCommand, "No agent in the bootstrap share.")
+        }
+        guard let team = try teamIdentifier(of: current) else {
+            throw BridgeError(.driverFailure, "This agent is not signed with a Developer ID; refusing to self-update.")
+        }
+        let identifier = Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"
+        let requirement = "=identifier \"\(identifier)\" and anchor apple generic and certificate leaf[subject.OU] = \"\(team)\""
+        guard try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", "-R", requirement, source.path]) == 0 else {
+            throw BridgeError(.driverFailure, "The new agent's signature does not match this agent's team; not installed.")
+        }
+        let staged = current.deletingLastPathComponent().appendingPathComponent(".ChatComputerAgent-update.app")
+        try? FileManager.default.removeItem(at: staged)
+        guard try run("/usr/bin/ditto", [source.path, staged.path]) == 0 else {
+            throw BridgeError(.driverFailure, "Copying the new agent failed.")
+        }
+        // Replace rather than overwrite in place: a running binary rewritten in place is killed by
+        // code signing (OS_REASON_CODESIGNING).
+        _ = try FileManager.default.replaceItemAt(current, withItemAt: staged)
+    }
+
+    private static func teamIdentifier(of bundle: URL) throws -> String? {
+        let pipe = Pipe()
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        process.arguments = ["-dv", bundle.path]
+        process.standardError = pipe
+        process.standardOutput = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        guard let line = output.split(separator: "\n").first(where: { $0.hasPrefix("TeamIdentifier=") }) else { return nil }
+        let team = String(line.dropFirst("TeamIdentifier=".count))
+        return team == "not set" ? nil : team
+    }
+
+    private static func run(_ tool: String, _ arguments: [String]) throws -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: tool)
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
     }
 }
 

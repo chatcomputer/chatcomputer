@@ -91,6 +91,9 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// The agent answers, then exits; its LaunchAgent (KeepAlive) starts it again and it reconnects.
     /// Used when a permission was granted but the running process does not see it yet.
     case restartAgent
+    /// Replace the agent with the copy in the bootstrap share, if it carries a valid signature from the
+    /// same team, then restart. SSH is off after setup, so this is how a newer agent gets in.
+    case updateAgent
 
     /// Whether the command synthesizes input in the guest and so needs the agent lease.
     public var requiresLease: Bool {

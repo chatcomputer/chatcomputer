@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import Carbon.HIToolbox
 import ApplicationServices
 import BridgeProtocol
 import CoreGraphics
@@ -107,15 +108,20 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
             let location = at.map(toDisplay) ?? currentLocation()
             let flags = try KeyMap.flags(modifiers)
             post(mouse(source, .mouseMoved, at: location, button: .left))
+            // Apps track hover before clicks; a click that lands in the same instant as the move can be missed.
+            try await Task.sleep(for: .milliseconds(40))
+            let held = try await pressModifiers(flags, source: source)
             let (down, up, cgButton) = Self.events(for: button)
             for click in 1...max(count, 1) {
                 for type in [down, up] {
                     let event = mouse(source, type, at: location, button: cgButton)
                     event?.setIntegerValueField(.mouseEventClickState, value: Int64(click))
-                    event?.flags = flags
+                    event?.flags = held
                     post(event)
+                    try await Task.sleep(for: .milliseconds(type == down ? 30 : 15))
                 }
             }
+            try await releaseModifiers(flags, source: source)
         case .drag(let from, let to, let modifiers):
             let flags = try KeyMap.flags(modifiers)
             let start = toDisplay(from), end = toDisplay(to)
@@ -147,32 +153,91 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
             event?.flags = try KeyMap.flags(modifiers)
             post(event)
         case .type(let text):
-            // Unicode injection works regardless of the guest keyboard layout or active input method.
-            let units = Array(text.utf16)
-            for start in stride(from: 0, to: units.count, by: 16) {
-                var chunk = Array(units[start..<min(start + 16, units.count)])
-                for keyDown in [true, false] {
-                    let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: keyDown)
-                    event?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
-                    post(event)
-                }
-                try await Task.sleep(for: .milliseconds(8))
-            }
+            try await type(text, source: source)
         case .key(let combo, let repeatCount):
             let (key, flags) = try KeyMap.parse(combo)
             for _ in 0..<repeatCount {
-                post(keyboard(source, key, down: true, flags: flags))
-                post(keyboard(source, key, down: false, flags: flags))
+                try await press(key, flags: flags, source: source)
             }
         case .holdKey(let combo, let seconds):
             let (key, flags) = try KeyMap.parse(combo)
-            post(keyboard(source, key, down: true, flags: flags))
+            let held = try await pressModifiers(flags, source: source)
+            post(keyboard(source, key, down: true, flags: held))
             try await Task.sleep(for: .seconds(seconds))
-            post(keyboard(source, key, down: false, flags: flags))
+            post(keyboard(source, key, down: false, flags: held))
+            try await releaseModifiers(flags, source: source)
         case .wait, .cursorPosition:
             break
         }
         return .ok
+    }
+
+    // MARK: Keyboard
+
+    /// Modifier keys in press order, with the device-dependent flag bits real keyboards set
+    /// (IOLLEvent.h NX_DEVICEL*KEYMASK). Some apps, including out-of-process panels such as the
+    /// save dialog, read modifier state from these key events rather than from a flag on the key.
+    private static let modifierKeys: [(flag: CGEventFlags, keyCode: CGKeyCode, device: UInt64)] = [
+        (.maskControl, CGKeyCode(kVK_Control), 0x01),
+        (.maskAlternate, CGKeyCode(kVK_Option), 0x20),
+        (.maskShift, CGKeyCode(kVK_Shift), 0x02),
+        (.maskCommand, CGKeyCode(kVK_Command), 0x08),
+    ]
+
+    /// Presses the modifiers in `flags` one by one and returns the flags to put on the main key.
+    private func pressModifiers(_ flags: CGEventFlags, source: CGEventSource?) async throws -> CGEventFlags {
+        var held = CGEventFlags(rawValue: 0)
+        for key in Self.modifierKeys where flags.contains(key.flag) {
+            held.insert(key.flag)
+            held.insert(CGEventFlags(rawValue: key.device))
+            post(keyboard(source, key.keyCode, down: true, flags: held))
+            try await Task.sleep(for: .milliseconds(12))
+        }
+        return held
+    }
+
+    private func releaseModifiers(_ flags: CGEventFlags, source: CGEventSource?) async throws {
+        var held = CGEventFlags(rawValue: 0)
+        for key in Self.modifierKeys where flags.contains(key.flag) {
+            held.insert(key.flag)
+            held.insert(CGEventFlags(rawValue: key.device))
+        }
+        for key in Self.modifierKeys.reversed() where flags.contains(key.flag) {
+            held.remove(key.flag)
+            held.remove(CGEventFlags(rawValue: key.device))
+            post(keyboard(source, key.keyCode, down: false, flags: held))
+            try await Task.sleep(for: .milliseconds(12))
+        }
+    }
+
+    /// A full key press: modifiers down, key down and up, modifiers up.
+    private func press(_ key: CGKeyCode, flags: CGEventFlags, source: CGEventSource?) async throws {
+        let held = try await pressModifiers(flags, source: source)
+        post(keyboard(source, key, down: true, flags: held))
+        try await Task.sleep(for: .milliseconds(10))
+        post(keyboard(source, key, down: false, flags: held))
+        try await releaseModifiers(flags, source: source)
+        try await Task.sleep(for: .milliseconds(12))
+    }
+
+    /// Types text one character at a time: real key presses where the US layout has the character
+    /// (these reach every app, including secure fields and out-of-process panels), Unicode events
+    /// for the rest (other scripts, emoji). The pause between characters lets the target keep up.
+    private func type(_ text: String, source: CGEventSource?) async throws {
+        for character in text {
+            if let (code, shift) = KeyMap.keystroke(for: character) {
+                try await press(code, flags: shift ? .maskShift : [], source: source)
+            } else {
+                var units = Array(String(character).utf16)
+                for down in [true, false] {
+                    let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: down)
+                    event?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: &units)
+                    event?.flags = []
+                    post(event)
+                }
+                try await Task.sleep(for: .milliseconds(15))
+            }
+        }
     }
 
     // MARK: Helpers

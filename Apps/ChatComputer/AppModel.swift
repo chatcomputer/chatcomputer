@@ -79,6 +79,25 @@ final class AppModel {
         isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
         applyDevelopmentModel()
+        exportHarnessSecretsIfRequested()
+    }
+
+    /// Development: CC_DEV_HARNESS_SECRETS=1 writes this VM's guest password and pairing token to
+    /// harness-secrets.json (0600) in the bundle, so `cc-harness` can drive the same VM without
+    /// reading this app's Keychain items. The next normal launch imports and deletes the file again.
+    private func exportHarnessSecretsIfRequested() {
+        guard ProcessInfo.processInfo.environment["CC_DEV_HARNESS_SECRETS"] == "1", let id = vm?.spec.id else { return }
+        var values: [String: String] = [:]
+        for account in [SecretAccount.guestPassword(vmID: id), SecretAccount.pairingToken(vmID: id)] {
+            if let value = try? secrets.read(account) { values[account] = value }
+        }
+        let file = bundle.url.appendingPathComponent("harness-secrets.json")
+        do {
+            try JSONEncoder().encode(values).write(to: file, options: .atomic)
+            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
+        } catch {
+            errorMessage = "Could not write harness-secrets.json: \(error)"
+        }
     }
 
     // MARK: Development switches (environment variables, never set in normal use)
@@ -102,6 +121,20 @@ final class AppModel {
         }
         saveModelSettings(settings)
         if (try? bundle.loadSpec().stage) == .ready { isReady = true }
+    }
+
+    /// CC_DEV_LOG=/path appends every runner update to that file, for unattended runs.
+    private func devLog(_ update: RunnerUpdate) {
+        guard let path = ProcessInfo.processInfo.environment["CC_DEV_LOG"], !path.isEmpty else { return }
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(update)\n"
+        let url = URL(fileURLWithPath: path)
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile()
+            handle.write(Data(line.utf8))
+            try? handle.close()
+        } else {
+            try? Data(line.utf8).write(to: url)
+        }
     }
 
     /// CC_DEV_TASK="…" submits that message once the guest agent is connected and the desktop is ready.
@@ -217,6 +250,7 @@ final class AppModel {
     }
 
     private func apply(_ update: RunnerUpdate) {
+        devLog(update)
         switch update {
         case .phase(let phase):
             self.phase = phase
@@ -241,7 +275,9 @@ final class AppModel {
     func cancel() { Task { await runner?.cancel() } }
 
     /// The user touched the VM screen while the agent held input.
-    func takeOver() {
+    /// The user takes input control from the agent. `reason` says what triggered it, shown in the chat.
+    func takeOver(reason: String = "you chose Take Over") {
+        if agentHoldsInput { transcript.append(ChatItem(role: .system, text: "You took over: \(reason). The agent paused.")) }
         Task {
             if let runner { await runner.takeOver() } else { await lease.grantToUser() }
         }

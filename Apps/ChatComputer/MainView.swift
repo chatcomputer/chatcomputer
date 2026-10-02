@@ -29,7 +29,7 @@ struct MainView: View {
     var body: some View {
         Workspace {
             GuestStage(virtualMachine: model.vm?.virtualMachine, aspectRatio: model.guestAspectRatio,
-                       agentHoldsInput: model.agentHoldsInput, onUserIntervention: { model.takeOver() },
+                       agentHoldsInput: model.agentHoldsInput, onUserIntervention: { model.takeOver(reason: $0) },
                        onViewReady: { model.guestView = $0 }) {
                 GuestPlaceholder(title: model.vm?.state == .starting ? "Starting your virtual Mac…" : "Your virtual Mac is off")
             }

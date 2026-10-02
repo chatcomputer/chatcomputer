@@ -15,6 +15,9 @@ import VMKit
 ///         --agent PATH                            install ChatComputerAgent.app over SSH (P1c)
 ///         --bridge                                vsock handshake, health and latency (P3)
 ///         --screenshot                            one screenshot through the agent (P6)
+///         --update-agent                          send the agent in Shared/bootstrap to the guest (self-update)
+///         --input-test N                          drive TextEdit and a save dialog through the agent N times and
+///                                                 compare the saved file with what was typed (driver reliability)
 ///         --window                                show the VM screen in a window (for manual steps)
 ///         --console DIR                           operate the guest from the host until `done` (see GuestConsole)
 ///         --wait-ready                            poll health until Accessibility + Screen Recording are granted
@@ -61,6 +64,9 @@ enum VMProbe {
         var window = false
         var waitReady = false
         var console: URL?
+        var inputTests = 0
+        var updateAgent = false
+        var agentConsole: URL?
 
         init(_ arguments: [String]) {
             var iterator = arguments.makeIterator()
@@ -73,6 +79,9 @@ enum VMProbe {
                 case "--hold": hold = iterator.next().flatMap(Double.init) ?? 0
                 case "--suspend": suspend = true
                 case "--window": window = true
+                case "--agent-console": agentConsole = iterator.next().map { URL(fileURLWithPath: $0) }; bridge = true
+                case "--update-agent": updateAgent = true; bridge = true
+                case "--input-test": inputTests = iterator.next().flatMap(Int.init) ?? 3; bridge = true
                 case "--console": console = iterator.next().map { URL(fileURLWithPath: $0) }; window = true
                 case "--wait-ready": waitReady = true; bridge = true
                 default: print("ignoring unknown option \(argument)")
@@ -159,8 +168,24 @@ enum VMProbe {
             guard let bridge else { throw ProbeError("no pairing token yet; run with --agent first") }
             try await probeBridge(bridge, vmID: spec.id, bootStarted: bootStarted)
             try await console?.serve()
+            if options.updateAgent {
+                let result = try await bridge.send(envelope(spec.id, .updateAgent))
+                log("update agent: \(result)")
+                if result == .ok {
+                    try await Task.sleep(for: .seconds(3))
+                    while await !bridge.isConnected { try await Task.sleep(for: .milliseconds(300)) }
+                    log("updated agent reconnected")
+                }
+            }
             if options.waitReady { try await waitUntilReady(bridge, vmID: spec.id) }
             if options.screenshot { try await probeScreenshot(bridge, vmID: spec.id) }
+            if let directory = options.agentConsole {
+                try await AgentConsole.serve(bridge, vmID: spec.id, directory: directory)
+            }
+            if options.inputTests > 0 {
+                try await InputTest.run(bridge, vmID: spec.id, outbox: bundle.sharedRoot.appendingPathComponent("outbox"),
+                                        rounds: options.inputTests)
+            }
         }
 
         if options.hold > 0 {
