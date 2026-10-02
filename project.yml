@@ -9,8 +9,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     # App and guest agent share one version; bump both here for every release.
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.1"
+    CURRENT_PROJECT_VERSION: "2"
     MACOSX_DEPLOYMENT_TARGET: "27.0"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Automatic

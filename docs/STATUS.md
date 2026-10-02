@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-02，对应版本 **0.1.0**（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.1.0)）。
+更新于 2026-10-02，对应版本 **0.1.1**（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.1.1)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -145,4 +145,5 @@
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.1.1 | 2026-10-02 | 快照：运行中连内存一起保存，可恢复、分支、保护，「Freshly set up」即重置；新图标 |
 | 0.1.0 | 2026-10-02 | 第一个可安装的预览版：完整引导、10 个厂商、两种协议、可靠的 guest 输入、自动授权、公证发布 |
