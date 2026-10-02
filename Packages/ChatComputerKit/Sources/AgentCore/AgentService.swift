@@ -5,6 +5,7 @@ import BridgeProtocol
 import Carbon.HIToolbox
 import Darwin
 import Foundation
+import ScreenCaptureKit
 
 /// Guest end of the control channel. Runs inside ChatComputerAgent.app (a LaunchAgent in the
 /// auto-logged-in Aqua session), connects to the host over vsock and executes commands with a driver.
@@ -205,6 +206,8 @@ enum PermissionSetup {
         reset.arguments = ["reset", kind.tccService, Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"]
         try? reset.run()
         reset.waitUntilExit()
+        // A request right after the reset can be dropped (observed for screen recording on macOS 27).
+        Thread.sleep(forTimeInterval: 0.5)
 
         let pane: String
         switch kind {
@@ -214,6 +217,8 @@ enum PermissionSetup {
             pane = "Privacy_Accessibility"
         case .screenRecording:
             _ = CGRequestScreenCaptureAccess()
+            // Trying to list shareable content also registers the app in the Screen Recording list.
+            Task { _ = try? await SCShareableContent.current }
             pane = "Privacy_ScreenCapture"
         }
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {

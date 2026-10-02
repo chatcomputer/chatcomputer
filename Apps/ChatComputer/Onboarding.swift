@@ -42,13 +42,19 @@ extension AppModel {
             onboarding.detail = "Chat Computer can turn these on for you: it clicks in the virtual Mac and types the "
                 + "guest password from your Keychain. You can watch it happen on the left."
             if vm?.state == .stopped { Task { await bootVM() } }
-            // Development: run the automatic grant right away (CC_AUTOGRANT=1).
-            if ProcessInfo.processInfo.environment["CC_AUTOGRANT"] == "1" {
-                Task {
-                    while !(await bridge?.isConnected ?? false) { try? await Task.sleep(for: .seconds(1)) }
-                    try? await Task.sleep(for: .seconds(3))
-                    await grantPermissionsStep()
-                }
+        }
+    }
+
+    /// Development: CC_AUTO_ONBOARD=1 runs every setup step in turn, up to connecting a model,
+    /// stopping at the first step that does not complete.
+    func startAutoOnboardingIfRequested() {
+        guard ProcessInfo.processInfo.environment["CC_AUTO_ONBOARD"] == "1", !autoOnboardingStarted else { return }
+        autoOnboardingStarted = true
+        Task {
+            while onboarding.step != .apiKey {
+                let step = onboarding.step
+                if step == .grantPermissions { await grantPermissionsStep() } else { await runOnboardingStep() }
+                guard onboarding.step != step else { break }
             }
         }
     }
@@ -94,7 +100,10 @@ extension AppModel {
 
             case .firstBoot:
                 guard let vm else { return }
-                let options = try GuestProvisioner(bundle: bundle, secrets: secrets).firstBootOptions(spec: vm.spec)
+                // Development: CC_GUEST_PASSWORD sets a known guest password instead of a random one.
+                let options = try GuestProvisioner(bundle: bundle, secrets: secrets)
+                    .firstBootOptions(spec: vm.spec, password: ProcessInfo.processInfo.environment["CC_GUEST_PASSWORD"])
+                try options.validate()
                 onboarding.detail = "Starting the virtual Mac and creating the account…"
                 await vm.start(provisioning: options)
                 try vm.updateSpec { $0.stage = .provisioned }
@@ -229,7 +238,10 @@ struct OnboardingView: View {
         }
         .navigationTitle("Chat Computer")
         .navigationSubtitle("Setting up · step \(model.onboarding.step.rawValue + 1) of \(OnboardingState.Step.allCases.count)")
-        .onAppear { model.resumeOnboarding() }
+        .onAppear {
+            model.resumeOnboarding()
+            model.startAutoOnboardingIfRequested()
+        }
     }
 
     private func icon(for step: OnboardingState.Step) -> String {

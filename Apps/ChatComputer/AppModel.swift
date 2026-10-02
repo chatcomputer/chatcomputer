@@ -38,6 +38,7 @@ final class AppModel {
     var errorMessage: String?
 
     var onboarding = OnboardingState()
+    var autoOnboardingStarted = false
 
     /// Whether onboarding has finished. Decided once at launch and set by the last onboarding step,
     /// never re-read from disk while the app runs (the VM's stage turns `.ready` one step earlier,

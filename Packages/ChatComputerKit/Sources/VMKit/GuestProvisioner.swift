@@ -16,9 +16,10 @@ public struct GuestProvisioner: Sendable {
 
     /// Options for the very first boot (macOS 27 `VZMacGuestProvisioningOptions`).
     /// A random per-VM password goes to the Keychain only; there is no default password.
+    /// `password` overrides it for development (a short password you can type into the guest).
     /// Remote login is enabled solely so `installAgent` can run; bootstrap turns it off again.
-    public func firstBootOptions(spec: VMSpec) throws -> VZMacGuestProvisioningOptions {
-        let password = Self.randomSecret()
+    public func firstBootOptions(spec: VMSpec, password override: String? = nil) throws -> VZMacGuestProvisioningOptions {
+        let password = override ?? Self.randomSecret()
         try secrets.write(password, for: SecretAccount.guestPassword(vmID: spec.id))
 
         let options = VZMacGuestProvisioningOptions()

@@ -54,6 +54,8 @@ public struct PermissionGrant {
         try await Task.sleep(for: .seconds(2.5))
 
         var switchClicks = 0
+        var idleRounds = 0
+        var prepares = 1
         var restarted = false
         for _ in 0..<20 {
             if try await isGranted(kind) {
@@ -106,6 +108,16 @@ public struct PermissionGrant {
                 log("\(kind): turning on the switch")
                 display.click(toggle)
                 switchClicks += 1
+                try await Task.sleep(for: .seconds(2.5))
+                continue
+            }
+            // The pane is open but the agent is not listed: its request did not register (seen on a
+            // fresh guest for screen recording, right after the TCC reset). Ask again.
+            idleRounds += 1
+            if idleRounds % 4 == 0, prepares < 3 {
+                log("\(kind): the agent is not listed yet; asking again")
+                try await prepare(kind)
+                prepares += 1
                 try await Task.sleep(for: .seconds(2.5))
                 continue
             }
