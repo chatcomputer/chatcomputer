@@ -39,6 +39,10 @@ final class AppModel {
 
     var onboarding = OnboardingState()
 
+    /// A snapshot being taken or restored, shown over the guest screen (see Snapshots.swift).
+    var snapshotActivity: SnapshotActivity?
+    var showingSnapshots = false
+
     /// Which provider, protocol, endpoint and model tasks use. Saved in user defaults.
     private(set) var modelSettings: ModelSettings = {
         guard let data = UserDefaults.standard.data(forKey: "modelSettings"),
@@ -218,6 +222,10 @@ final class AppModel {
         }
         guard phase.isTerminal || phase == .ready else {
             transcript.append(ChatItem(role: .system, text: "A task is already active. Pause or cancel it first."))
+            return
+        }
+        guard snapshotActivity == nil, vm?.isWorkingOnSnapshots != true else {
+            transcript.append(ChatItem(role: .system, text: "Wait until the snapshot is finished, then send the task again."))
             return
         }
         startTask(goal: text)

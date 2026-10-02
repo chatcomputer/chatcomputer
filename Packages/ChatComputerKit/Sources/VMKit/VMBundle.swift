@@ -12,6 +12,7 @@ import Foundation
 ///       Disk/base.asif          golden image, read-only once frozen
 ///       Disk/overlay-N.asif     copy-on-write layers (DiskImageKit)
 ///       SavedState.vzvmsave     suspended VM memory, optional
+///       Snapshots/              saved states of the whole machine (`SnapshotStore`)
 ///       known_hosts             pinned guest SSH host key (bootstrap only)
 ///       Shared/inbox|outbox     per-task folders shared over virtio-fs
 ///       Shared/bootstrap        agent installer, mounted read-only
@@ -36,6 +37,7 @@ public struct VMBundle: Sendable {
     public var baseDiskURL: URL { diskDirectory.appendingPathComponent("base.asif") }
     public func overlayURL(_ index: Int) -> URL { diskDirectory.appendingPathComponent("overlay-\(index).asif") }
     public var savedStateURL: URL { url.appendingPathComponent("SavedState.vzvmsave") }
+    public var snapshotsDirectory: URL { url.appendingPathComponent("Snapshots", isDirectory: true) }
     public var knownHostsURL: URL { url.appendingPathComponent("known_hosts") }
     public var sharedRoot: URL { url.appendingPathComponent("Shared", isDirectory: true) }
     public var bootstrapDirectory: URL { sharedRoot.appendingPathComponent("bootstrap", isDirectory: true) }
@@ -55,10 +57,28 @@ public struct VMBundle: Sendable {
     }
 
     public func save(_ spec: VMSpec) throws {
+        try Self.encode(spec).write(to: specURL, options: .atomic)
+    }
+
+    static func encode<Value: Encodable>(_ value: Value) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode(spec).write(to: specURL, options: .atomic)
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(date.formatted(dateFormat))
+        }
+        return try encoder.encode(value)
     }
+
+    static func decoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            try dateFormat.parse(decoder.singleValueContainer().decode(String.self))
+        }
+        return decoder
+    }
+
+    private static let dateFormat = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 }
 
 /// Resource and lifecycle settings for a VM. Secrets (guest password, pairing token) live in the Keychain.

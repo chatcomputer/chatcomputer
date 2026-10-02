@@ -12,7 +12,7 @@
 - [x] `brew install xcodegen`
 - [x] 在 `project.yml` 里填 `DEVELOPMENT_TEAM`（签名要固定：guest 里的辅助功能、屏幕录制授权绑定签名身份）
 - [x] `xcodegen generate && open ChatComputer.xcodeproj`
-- [x] `cd Packages/ChatComputerKit && swift test`：确认单元测试在 macOS 上同样通过（当时 25 个，现为 43 个）
+- [x] `cd Packages/ChatComputerKit && swift test`：确认单元测试在 macOS 上同样通过（当时 25 个，现为 57 个）
 
 ## 1. 首次编译（修编译错误）
 
@@ -42,14 +42,14 @@
   - [ ] 中文输入法、系统快捷键（`capturesSystemKeys`）
   - [ ] 输入遮罩：代理执行时点击画面 → 转入接管状态；⌘. 能不能被虚拟机画面吞掉
 - [x] **P3 vsock 通道**：代理连上宿主、握手通过（`pairingToken` 校验），测延迟；虚拟机挂起恢复、宿主 App 重启后能否重连
-- [ ] **P4 DiskImageKit**：base + overlay 能启动；丢弃 overlay 后回到干净状态；测启动与磁盘 IO 性能
+- [ ] **P4 DiskImageKit**：~~base + overlay 能启动；回到干净状态~~（已验证，见快照）；剩磁盘 IO 性能
 - [ ] **P5 vmnet**：固定子网和 DHCP 范围（`NetworkProvider` 里的 TODO）；测试 guest 能否访问宿主 localhost 服务和局域网，把结论写进隐私说明；确认 `/var/db/dhcpd_leases` 查 IP 的方式在 vmnet 自定义网络下是否仍然有效
 - [x] **P6 驱动**：
   - [x] `NativeDriver` 跑通截图、点击、输入、滚动、拖拽，确认坐标空间正确（默认显示 2560×1600 @2×，截图为 1280×800 点）。`vm up --input-test` 13/13 通过；DeepSeek 真实任务 3/3 完成
   - [ ] 试 Cua Driver 的 embedded 模式：只给 ChatComputerAgent 授权就够用吗？行的话锁定一个版本，写 `CuaDriverAdapter`（实现 `DriverAdapter` 协议）；不行就继续用原生驱动
 - [ ] **P7 virtio-fs**：inbox 只读、outbox 可写；宿主 `ExportValidator` 能拦住 guest 里构造的符号链接
 
-> 探针结果见 `docs/ROADMAP.md` §5.1。guest 授权已由引导第 4 步自动完成，P6 原生驱动已验证。剩余：P6 的 Cua Driver 评估；P2 的中文输入法和系统快捷键；P4 带 overlay 启动与 IO 性能；P5 guest 访问宿主服务；P7 只读与符号链接在 guest 侧验证。
+> 探针结果见 `docs/ROADMAP.md` §5.1。guest 授权已由引导第 4 步自动完成，P6 原生驱动已验证。剩余：P6 的 Cua Driver 评估；P2 的中文输入法和系统快捷键；P4 IO 性能；P5 guest 访问宿主服务；P7 只读与符号链接在 guest 侧验证。
 
 ## 3. 跑通 M1 闭环
 
@@ -69,6 +69,8 @@
 - [ ] 上下文增长：每轮截图都留在对话里，长任务会越来越大。不要在客户端删旧截图（会让后续 thinking 块失效），改用服务端的 tool result 清理
 - [ ] 模型请求改为流式，聊天里实时显示进度说明
 - [ ] 就绪探针：每次虚拟机启动或解锁后跑一次 health，不满足条件时显示"等待桌面登录或权限"
+- [x] 快照：运行中连内存一起保存，APFS 克隆，分支历史，恢复前自动保存当前状态，「Freshly set up」即重置；日志式恢复可从崩溃中回滚（`SnapshotStore`、`vm snapshot-test`）
+- [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [ ] 宿主 App 退出时调用 `suspend()` 挂起虚拟机，下次启动时恢复
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
 - [ ] 给 VMKit / GuestBridge / AgentCore 补测试：`KeyMap`（AgentCore）和 DHCP 租约解析（VMKit）已有；还缺 GuestBridge 的协议握手

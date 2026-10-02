@@ -12,6 +12,12 @@ public enum VMError: Error, Equatable, LocalizedError {
     case bootstrapFailed(String)
     case restoreImageCatalogUnavailable(String)
     case shutdownTimedOut
+    case busy
+    case notEnoughSpace(needed: Int64, available: Int64)
+    case snapshotNotFound
+    case snapshotProtected
+    case snapshotDamaged(String)
+    case restoreJournalUnreadable
 
     public var errorDescription: String? {
         switch self {
@@ -24,9 +30,21 @@ public enum VMError: Error, Equatable, LocalizedError {
         case .guestAddressUnknown: "The virtual machine has no network address yet."
         case .bootstrapFailed(let detail): "Installing the guest agent failed: \(detail)"
         case .shutdownTimedOut: "The virtual Mac did not shut down in time."
+        case .busy: "The virtual Mac is busy. Try again in a moment."
+        case .notEnoughSpace(let needed, let available):
+            "Not enough free disk space: this needs about \(Self.bytes(needed)), but only \(Self.bytes(available)) is free."
+        case .snapshotNotFound: "That snapshot no longer exists."
+        case .snapshotProtected: "This snapshot is protected. Unprotect it before deleting it."
+        case .snapshotDamaged(let detail): "The snapshot is damaged: \(detail)"
+        case .restoreJournalUnreadable:
+            "An interrupted restore could not be finished automatically. Its files were kept in the Snapshots folder of the virtual machine."
         case .restoreImageCatalogUnavailable(let detail):
             "Apple's restore image catalog could not be loaded (\(detail)). Choose a downloaded macOS restore image (.ipsw) instead."
         }
+    }
+
+    private static func bytes(_ count: Int64) -> String {
+        ByteCountFormatter.string(fromByteCount: count, countStyle: .file)
     }
 }
 #endif

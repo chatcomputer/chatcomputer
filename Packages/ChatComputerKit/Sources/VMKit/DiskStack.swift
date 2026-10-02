@@ -8,8 +8,8 @@ import Virtualization
 /// - base: the golden image (macOS + provisioned account + guest agent), read-only once frozen.
 /// - overlays: ASIF copy-on-write layers; the topmost is writable.
 ///
-/// "Reset this computer" discards overlays; a checkpoint freezes the top overlay and adds a new one.
-/// Stacks should stay shallow (WWDC26 session 224), so checkpoints are merged periodically (M4).
+/// Snapshots (`SnapshotStore`) are APFS clones of the overlays, so the stack itself stays one layer deep.
+/// Stacks should stay shallow (WWDC26 session 224).
 ///
 /// API names follow WWDC26 session 224 and must be checked against the Xcode 27 SDK (probe P4).
 public struct DiskStack: Sendable {
@@ -50,21 +50,26 @@ public struct DiskStack: Sendable {
     }
 
     /// Adds a new writable overlay on top of the current stack. Call with the VM stopped.
-    /// Used to freeze the golden image after onboarding and to take checkpoints.
+    /// Used to freeze the golden image after onboarding.
     public func pushOverlay(spec: inout VMSpec) throws {
         let next = spec.overlayCount + 1
-        var image = try DiskImage(opening: .open(url: bundle.baseDiskURL, mode: .readOnly))
-        for index in stride(from: 1, through: spec.overlayCount, by: 1) {
-            image = try image.appending(DiskImage(opening: .open(url: bundle.overlayURL(index), mode: .readOnly)))
-        }
-        // TODO(P4): confirm the layer type name for a copy-on-write overlay (`.cache` is shown in the session).
-        _ = try image.appending(.asifLayer(url: bundle.overlayURL(next), type: .overlay))
+        try createOverlay(at: bundle.overlayURL(next), above: spec.overlayCount)
         spec.overlayCount = next
     }
 
+    /// Creates an empty copy-on-write layer at `url` on top of the base and the first `count` overlays,
+    /// without adding it to the spec. Snapshots use it to record the freshly set up state. Call with the VM stopped.
+    public func createOverlay(at url: URL, above count: Int) throws {
+        var image = try DiskImage(opening: .open(url: bundle.baseDiskURL, mode: .readOnly))
+        for index in stride(from: 1, through: count, by: 1) {
+            image = try image.appending(DiskImage(opening: .open(url: bundle.overlayURL(index), mode: .readOnly)))
+        }
+        // TODO(P4): confirm the layer type name for a copy-on-write overlay (`.cache` is shown in the session).
+        _ = try image.appending(.asifLayer(url: url, type: .overlay))
+    }
+
     /// Drops every overlay above `keeping` and adds a fresh writable one. After freezing, overlay 1 is the
-    /// writable layer on the golden base, so `keeping: 0` returns to the freshly onboarded state;
-    /// `keeping: n` returns to checkpoint n.
+    /// writable layer on the golden base, so `keeping: 0` returns to the freshly onboarded state.
     public func discardOverlays(spec: inout VMSpec, keeping: Int) throws {
         guard spec.overlayCount > keeping else { return }
         for index in (keeping + 1)...spec.overlayCount {

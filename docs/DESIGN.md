@@ -53,6 +53,7 @@
 ### 1.3 其他界面
 
 - **首次引导**：单窗口向导，6 步（`Onboarding.swift`）。实测耗时：安装 173 秒，首次启动并自动登录约 45 秒，装 agent 约 14 秒。授权一步也已自动化：宿主读取虚拟机画面，用本机文字识别找到开关并打开，再输入钥匙串里的 guest 密码，全程无需人手。macOS 27 把"辅助功能"改名为 **Device Control and Data Access**，文案已更新。
+- **快照**：面板底部的时钟按钮或 ⇧⌘S 打开快照列表（sheet），⌥⌘S 直接拍一张。列表按时间倒序，每行有画面缩略图、相对时间、是否含内存及大小，当前所在的快照标「Current」，恢复后新开的分支标「Branches from …」。恢复时提供两个选择：「Save Current State and Restore」（默认）和「Restore Without Saving」。拍摄或恢复期间虚拟机会停下再启动，左侧保留最后一帧并变暗，叠加进度提示，窗口副标题同步显示；完成后在聊天里写一条记录。任务进行中不能拍快照或恢复。
 - **菜单栏**：宿主不放菜单栏图标（是窗口应用）；guest 里的 agent 是菜单栏应用，显示连接状态和两个授权按钮。
 - **以后（M2）**：聊天区引入 Markdown 渲染和流式输出；任务历史放在可折叠的左侧边栏，默认隐藏，避免挤占虚拟机画面。
 
@@ -104,11 +105,11 @@
 
 | 层 | 内容 | 命令 | 耗时 | 需要 |
 |---|---|---|---|---|
-| L0 单元测试 | 协议编解码、状态机、租约、预算、导出校验、工具映射、方言转换、KeyMap、DHCP 租约解析 | `swift test` | 秒级 | 无（平台无关部分 Linux 也能跑） |
+| L0 单元测试 | 协议编解码、状态机、租约、预算、导出校验、工具映射、方言转换、KeyMap、DHCP 租约解析、快照存储与中断恢复 | `swift test` | 秒级 | 无（平台无关部分 Linux 也能跑） |
 | L1 构建 | 两个 App、entitlement 检查 | `scripts/test-mac.sh` | 约 1 分钟 | Xcode 27 |
 | L2 宿主 API 自检 | DiskImageKit 分层/重置、vmnet | `harness.sh vm selftest` | 1 秒 | 无 guest |
 | L3 真实模型 + 模拟桌面 | `AgentRunner` + 真实模型 + `FakeDesktop`（渲染真实 PNG）；场景：notes / approval / injection | `harness.sh live-loop --scenario …` | 每个约 10 秒 | API Key |
-| L4 真实虚拟机 | 安装、自动初始化、SSH 装 agent、vsock 握手与延迟、租约、截图、挂起/恢复、干净关机 | `harness.sh vm install / up …` | 分钟级 | IPSW、约 60 GB 磁盘 |
+| L4 真实虚拟机 | 安装、自动初始化、SSH 装 agent、vsock 握手与延迟、租约、截图、挂起/恢复、干净关机、快照 | `harness.sh vm install / up … / snapshot-test` | 分钟级 | IPSW、约 60 GB 磁盘 |
 | L5 发布 | Developer ID 签名、公证、装订、Gatekeeper 检查 | `scripts/release.sh` | 约 3 分钟 | 证书和公证凭据 |
 
 ### 3.1 关键设计

@@ -50,6 +50,10 @@ struct ChatPanel: View {
         HStack {
             Text(phaseText).font(.caption)
             Spacer()
+            Button("Snapshots", systemImage: "clock.arrow.circlepath") { model.showingSnapshots = true }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Snapshots: save the virtual Mac and return to it later (⇧⌘S)")
             Toggle("Steps", isOn: $showActions).toggleStyle(.switch).controlSize(.mini).font(.caption)
             Text("\(model.tokens.input + model.tokens.output) tokens").font(.caption).monospacedDigit()
         }

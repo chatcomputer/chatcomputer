@@ -14,6 +14,14 @@ struct ChatComputerApp: App {
         .defaultSize(WorkspaceMetrics.defaultContentSize)
         .windowResizability(.contentMinSize)
         .commands {
+            CommandMenu("Machine") {
+                Button("Take Snapshot") { Task { await model.takeSnapshot() } }
+                    .keyboardShortcut("s", modifiers: [.command, .option])
+                    .disabled(!model.canManageSnapshots)
+                Button("Snapshots…") { model.showingSnapshots = true }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                    .disabled(!model.isReady)
+            }
             CommandMenu("Agent") {
                 // Emergency stop is handled by the host, independent of guest or model (proposal §04).
                 // The input shield holds focus while the agent runs, so the VM view can't swallow it.

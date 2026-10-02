@@ -33,6 +33,11 @@ struct MainView: View {
                        onViewReady: { model.guestView = $0 }) {
                 GuestPlaceholder(title: model.vm?.state == .starting ? "Starting your virtual Mac…" : "Your virtual Mac is off")
             }
+            // The VM stops and starts again while a snapshot is taken or restored; keep its last frame up meanwhile.
+            .overlay {
+                if let activity = model.snapshotActivity { SnapshotActivityOverlay(activity: activity) }
+            }
+            .animation(.easeInOut(duration: 0.2), value: model.snapshotActivity != nil)
         } panel: {
             ChatPanel()
         }
@@ -56,6 +61,9 @@ struct MainView: View {
                 }
             }
         }
+        .sheet(isPresented: Bindable(model).showingSnapshots) {
+            SnapshotsSheet().environment(model)
+        }
         .task {
             if model.vm?.state == .stopped { await model.bootVM() }
             await model.startDevelopmentTaskIfRequested()
@@ -63,6 +71,7 @@ struct MainView: View {
     }
 
     private var statusText: String {
+        if let activity = model.snapshotActivity { return activity.title }
         let vmState = switch model.vm?.state {
         case .running: "Running"
         case .starting: "Starting"

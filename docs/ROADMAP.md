@@ -53,7 +53,7 @@ config.storageDevices = [VZVirtioBlockDeviceConfiguration(attachment: attachment
 产品用途：
 
 - **金镜像**：安装 + provisioning + agent 安装完成后冻结为只读 base。「重置电脑」= 丢弃 overlay，秒级完成，不必重新下载 IPSW。
-- **检查点**：高风险任务前（关机或暂停状态下）冻结当前 overlay、叠一层新 overlay，失败时回退。对应方案第 8 节的备份点，空间成本只是增量。
+- **快照**（已实现，`SnapshotStore`）：不再叠加 overlay，而是用 APFS 克隆保存 overlay、AuxiliaryStorage 和（运行中时）内存状态。磁盘栈始终只有一层，任意快照可以单独恢复或删除，空间成本只是增量。运行中的虚拟机先挂起再克隆，然后恢复运行。参考了 ezvm 的日志式恢复与快照分支。
 - **注意**（session 原话）：栈越浅性能越好，需要定期合并；复制 VM 时必须同时复制辅助存储（auxiliary storage）、硬件模型和机器标识。这些由同一个 `VMBundle` 管理器统一维护。
 
 ### 1.3 网络：vmnet 自定义网络（host 26+）
@@ -203,7 +203,7 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 | P1 装 agent | ✅ | 冷启动后约 **14 秒**装好。**注意**：SSH 关闭后无法再通过 SSH 更新 agent，需要 agent 自更新通道（M2） |
 | P2 显示 | ✅（部分） | `VZVirtualMachineView` 正常显示，鼠标坐标准确；中文输入法未测 |
 | P3 vsock | ✅ | 冷启动后 **13.8 秒**完成配对；health 往返 p50 **1.6 ms**（预热后 0.27 ms），p95 5.5 ms；无租约输入被 guest 拒绝；挂起 **3.0 秒**（状态文件 2.7 GB），恢复 **2.8 秒**后 agent **1.1 秒**内重连 |
-| P4 DiskImageKit | ✅（API 层） | ASIF base + overlay 叠加、重置均正常（`vm selftest`）；带 overlay 启动和 IO 性能未测 |
+| P4 DiskImageKit | ✅（IO 性能未测） | ASIF base + overlay 叠加、重置均正常（`vm selftest`）；带 overlay 启动正常（日常使用）。快照（2026-10-02，`vm snapshot-test`）：运行中快照 **6.4 秒**（含 2.5 GB 内存），之后 agent 1.3 秒重连、画面不变；恢复含内存的快照 **4.6 秒**，打开的 Spotlight 消失；重置到空 overlay（克隆出的新 overlay）冷启动后 agent 15 秒就绪；撤销重置 3.4 秒。ASIF overlay 文件可直接 APFS 克隆并换回原路径使用 |
 | P5 vmnet | ✅ | shared 模式不需要 root；guest 能上网；宿主能访问 guest:22。**每个 network 实例的子网可能不同**（先后观察到 192.168.64/24 和 192.168.66/24），租约文件里会留旧条目，已改为按当前子网（`vmnet_network_get_ipv4_subnet`）取最新租约。guest 访问宿主服务尚未测 |
 | P6 驱动 | ✅ | 两项授权由宿主级控制自动完成（`HostControl`，读取 VM 画面并输入密码，密码不经过模型或屏幕）。修复前快捷键与输入在保存对话框等跨进程面板里会丢失：修饰键必须作为带设备位的真实按键发送，文字按真实按键逐字输入。`vm up --input-test`（TextEdit + 保存对话框，逐字节比对）从 0/3 提升到 13/13。真实任务「在 TextEdit 写一行字并保存到 outbox」用 deepseek-flash 3/3 完成（136–448 秒，每次都交付了经过校验的文件） |
 | P7 virtio-fs | ✅（部分） | 自动挂载在 `/Volumes/My Shared Files`，guest 从 bootstrap 共享读文件正常；只读与符号链接逃逸未在 guest 侧测 |

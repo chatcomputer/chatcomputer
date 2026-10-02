@@ -23,6 +23,7 @@ import VMKit
 ///         --wait-ready                            poll health until Accessibility + Screen Recording are granted
 ///         --hold SECONDS                          keep running before shutdown (default 0)
 ///         --suspend                               save state instead of shutting down; next `up` restores
+///     cc-harness vm snapshot-test                 take, restore and reset snapshots on a paired VM (SnapshotTest)
 ///     cc-harness vm status                        bundle stage and files
 ///
 /// The bundle lives at $CC_VM_BUNDLE or ~/Library/Application Support/ChatComputer/Harness.vm.
@@ -43,8 +44,9 @@ enum VMProbe {
             case "up": try await up(Options(Array(arguments.dropFirst())))
             case "status": try status()
             case "selftest": try selftest()
+            case "snapshot-test": try await SnapshotTest.run()
             default:
-                print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | status")
+                print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | snapshot-test | status")
                 return 2
             }
             return 0

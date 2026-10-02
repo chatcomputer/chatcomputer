@@ -156,6 +156,8 @@ extension AppModel {
                     spec.stage = .ready
                 }
                 loadVM()
+                // The protected "Freshly set up" snapshot: restoring it resets the computer.
+                try self.vm?.recordInitialSnapshot()
                 onboarding.step = .apiKey
 
             case .apiKey:
