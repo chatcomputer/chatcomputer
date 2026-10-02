@@ -114,3 +114,118 @@ import BridgeProtocol
         #expect(CompatibleDialect.responseContent([report]) == [report])
     }
 }
+
+@Suite struct OpenAICompatibleClientTests {
+    let client = OpenAICompatibleClient(configuration: .init(model: "gpt-test", baseURL: URL(string: "https://example.com/v1")!)) { "sk-test" }
+
+    @Test func buildsChatCompletionsRequest() throws {
+        let request = try client.makeRequest(system: "sys", tools: [ComputerToolset.definition] + HostTools.definitions,
+                                             messages: [["role": "user", "content": "hi"]])
+        #expect(request.url?.absoluteString == "https://example.com/v1/chat/completions")
+        #expect(request.value(forHTTPHeaderField: "authorization") == "Bearer sk-test")
+        let body = try JSONDecoder().decode(JSONValue.self, from: request.httpBody!)
+        let messages = body["messages"]?.arrayValue ?? []
+        #expect(messages.first == ["role": "system", "content": "sys"])
+        #expect(messages.last == ["role": "user", "content": "hi"])
+        let names = body["tools"]?.arrayValue?.compactMap { $0["function"]?["name"]?.stringValue }
+        #expect(names == ["computer", "report_result", "ask_user"])
+        #expect(body["max_tokens"] != nil)
+    }
+
+    @Test func toolTurnsTranslateBothWays() throws {
+        // Response: a tool call on the `computer` function comes back as a toolset member.
+        let response = """
+            {"model":"m","choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":"Clicking.",
+            "reasoning_content":"secret","tool_calls":[{"id":"c1","type":"function","function":{"name":"computer",
+            "arguments":"{\\"action\\":\\"left_click\\",\\"coordinate\\":[10,20]}"}}]}}],"usage":{"prompt_tokens":7,"completion_tokens":3}}
+            """
+        let parsed = try OpenAICompatibleClient.parse(status: 200, retryAfter: nil, body: Data(response.utf8))
+        #expect(parsed.stopReason == "tool_use")
+        #expect(parsed.inputTokens == 7)
+        #expect(parsed.content.count == 3)   // reasoning, text, tool call
+        #expect(parsed.content[2]["name"] == "left_click")
+        #expect(parsed.content[2]["toolset_name"] == "computer")
+
+        // History: the call goes back as tool_calls, its result as a tool message, the screenshot as a user image.
+        let screenshot = ComputerToolset.imageResult(toolUseID: "c1", screenshot: .init(
+            imageData: Data([1, 2, 3]), mediaType: "image/png", width: 1, height: 1, capturedAt: Date(), observationVersion: 1))
+        let history: [JSONValue] = [
+            ["role": "user", "content": "goal"],
+            ["role": "assistant", "content": .array(parsed.content)],
+            ["role": "user", "content": [screenshot]],
+        ]
+        let chat = OpenAICompatibleClient.chatMessages(system: "s", messages: history)
+        #expect(chat.count == 5)   // system, user, assistant, tool, user(image)
+        let assistant = chat[2]
+        #expect(assistant["content"] == "Clicking.")
+        #expect(assistant["reasoning_content"] == "secret")
+        let call = assistant["tool_calls"]?.arrayValue?.first
+        #expect(call?["function"]?["name"] == "computer")
+        let arguments = try JSONDecoder().decode(JSONValue.self, from: Data((call?["function"]?["arguments"]?.stringValue ?? "{}").utf8))
+        #expect(arguments["action"] == "left_click")
+        #expect(chat[3]["role"] == "tool")
+        #expect(chat[3]["tool_call_id"] == "c1")
+        let image = chat[4]["content"]?.arrayValue?.first { $0["type"] == "image_url" }
+        #expect(image?["image_url"]?["url"]?.stringValue?.hasPrefix("data:image/png;base64,") == true)
+    }
+
+    @Test func errorsMapToModelErrors() {
+        #expect(throws: ModelError.authentication("bad key")) {
+            try OpenAICompatibleClient.parse(status: 401, retryAfter: nil, body: Data(#"{"error":{"message":"bad key"}}"#.utf8))
+        }
+    }
+}
+
+@Suite struct VendorEchoAndTrimmingTests {
+    @Test func reasoningAndExtraContentAreEchoedUnchanged() throws {
+        let response = """
+            {"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"reasoning_content":"think",
+            "tool_calls":[{"id":"c1","type":"function","extra_content":{"google":{"thought_signature":"sig"}},
+            "function":{"name":"report_result","arguments":"{}"}}]}}]}
+            """
+        let parsed = try OpenAICompatibleClient.parse(status: 200, retryAfter: nil, body: Data(response.utf8))
+        let chat = OpenAICompatibleClient.chatMessages(system: "s", messages: [["role": "assistant", "content": .array(parsed.content)]])
+        let assistant = chat[1]
+        #expect(assistant["reasoning_content"] == "think")
+        #expect(assistant["tool_calls"]?.arrayValue?.first?["extra_content"]?["google"]?["thought_signature"] == "sig")
+        // Nothing is invented for vendors that did not send these fields.
+        let plain = OpenAICompatibleClient.chatMessages(system: "s", messages: [["role": "assistant", "content": [["type": "text", "text": "hi"]]]])
+        #expect(plain[1]["reasoning_content"] == nil)
+    }
+
+    @Test func onlyTheNewestScreenshotsAreKept() {
+        func shot(_ id: String) -> JSONValue {
+            ComputerToolset.imageResult(toolUseID: id, screenshot: .init(imageData: Data([1]), mediaType: "image/png", width: 1, height: 1,
+                                                                        capturedAt: Date(), observationVersion: 1))
+        }
+        let history: [JSONValue] = (1...5).map { ["role": "user", "content": [shot("t\($0)")]] }
+        let trimmed = CompatibleDialect.keepingRecentImages(history, limit: 3)
+        let kinds = trimmed.map { $0["content"]?.arrayValue?.first?["content"]?.arrayValue?.first?["type"]?.stringValue }
+        #expect(kinds == ["text", "text", "image", "image", "image"])
+    }
+}
+
+@Suite struct ModelCatalogTests {
+    @Test func tenVendorsWithThreeModelsEach() {
+        let vendors = ModelCatalog.providers.filter { $0.id != "custom" }
+        #expect(vendors.count == 10)
+        #expect(vendors.contains { $0.id == "deepseek" })
+        for vendor in vendors {
+            #expect(vendor.models.count >= 3, "\(vendor.name)")
+            #expect(!vendor.protocols.isEmpty, "\(vendor.name)")
+            for (_, base) in vendor.endpoints { #expect(URL(string: base)?.scheme == "https", "\(vendor.name)") }
+        }
+        #expect(Set(ModelCatalog.providers.map(\.id)).count == ModelCatalog.providers.count)
+    }
+
+    @Test func settingsBuildTheRightClient() throws {
+        let deepseek = try #require(ModelCatalog.provider("deepseek"))
+        var settings = ModelSettings.preset(deepseek)
+        #expect(settings.protocolKind == .openAI)
+        #expect(try settings.makeClient { "k" } is OpenAICompatibleClient)
+        settings.protocolKind = .anthropic
+        settings.baseURL = deepseek.endpoints[.anthropic]!
+        #expect(try settings.makeClient { "k" } is AnthropicClient)
+        #expect(ModelSettings.keychainAccount(for: "anthropic") == "model.anthropic.apiKey")
+    }
+}

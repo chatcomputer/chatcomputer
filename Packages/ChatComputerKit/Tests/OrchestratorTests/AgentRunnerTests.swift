@@ -129,4 +129,24 @@ func makeRunner(model: ScriptedModel, guest: FakeGuest) -> (AgentRunner, SharedF
         #expect(reply?["tool_use_id"] == "t1")
         #expect(reply?["content"] == "No, don't send it.")
     }
+
+    @Test func remindsTheModelOnceWhenTurnsRunLow() async throws {
+        // 12 screenshot turns under a 12-turn budget: the reminder appears once, when 10 turns are left.
+        let model = ScriptedModel(turns: (1...12).map { [toolUse("t\($0)", "screenshot")] })
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        let runner = AgentRunner(goal: "Look", dependencies: .init(
+            model: model, guest: FakeGuest(), store: InMemoryTaskStore(), lease: ControlLease(), folders: folders,
+            budget: TaskBudget(maxModelTurns: 12)))
+
+        try await runner.start()
+
+        let requests = await model.requests
+        let reminders = requests.enumerated().filter { _, messages in
+            messages.last?["content"]?.arrayValue?.contains { $0["text"]?.stringValue?.hasPrefix("Host notice") == true } == true
+        }
+        #expect(reminders.count == 1)
+        #expect(reminders.first?.offset == 2)   // third request: 2 turns used, 10 left
+        // Later requests keep it in history (append-only) but do not add another.
+        #expect(requests.last?.last?["content"]?.arrayValue?.contains { $0["text"]?.stringValue?.hasPrefix("Host notice") == true } == false)
+    }
 }

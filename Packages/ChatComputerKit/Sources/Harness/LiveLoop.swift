@@ -57,12 +57,24 @@ enum LiveLoop {
         }
         let dialect: AnthropicClient.Configuration.Dialect = environment["CC_DIALECT"] == "claude"
             ? .claude : .compatible(displayWidth: FakeDesktop.size.width, displayHeight: FakeDesktop.size.height)
-        let configuration = AnthropicClient.Configuration(
-            model: environment["CC_MODEL"] ?? "deepseek-chat",
-            maxTokens: 4_000,
-            endpoint: URL(string: environment["CC_ENDPOINT"] ?? "https://api.deepseek.com/anthropic/v1/messages")!,
-            dialect: dialect)
-        let model = AnthropicClient(configuration: configuration) { key }
+        // CC_PROTOCOL=openai: OpenAI-compatible Chat Completions; CC_ENDPOINT is then the base URL (…/v1).
+        let model: any ModelClient
+        let endpointDescription: String
+        if environment["CC_PROTOCOL"] == "openai" {
+            let base = URL(string: environment["CC_ENDPOINT"] ?? "https://api.deepseek.com/v1")!
+            model = OpenAICompatibleClient(configuration: .init(
+                model: environment["CC_MODEL"] ?? "deepseek-chat", baseURL: base, maxTokens: 4_000,
+                displayWidth: FakeDesktop.size.width, displayHeight: FakeDesktop.size.height)) { key }
+            endpointDescription = "\(base.host() ?? "") (OpenAI-compatible)"
+        } else {
+            let configuration = AnthropicClient.Configuration(
+                model: environment["CC_MODEL"] ?? "deepseek-chat",
+                maxTokens: 4_000,
+                endpoint: URL(string: environment["CC_ENDPOINT"] ?? "https://api.deepseek.com/anthropic/v1/messages")!,
+                dialect: dialect)
+            model = AnthropicClient(configuration: configuration) { key }
+            endpointDescription = "\(configuration.endpoint.host() ?? "") (Anthropic-compatible)"
+        }
 
         let workDirectory = URL(fileURLWithPath: environment["CC_WORK_DIR"] ?? NSTemporaryDirectory())
             .appendingPathComponent("cc-live-\(Int(Date().timeIntervalSince1970))")
@@ -81,7 +93,7 @@ enum LiveLoop {
             budget: TaskBudget(maxModelTurns: 25)))
         jobBox.id = await runner.task.id
 
-        print("model: \(configuration.model) @ \(configuration.endpoint.host() ?? "")")
+        print("model: \(model.modelID) @ \(endpointDescription)")
         print("work:  \(workDirectory.path)")
         print("goal:  \(goal)\n")
 

@@ -33,35 +33,14 @@ struct ChatComputerApp: App {
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @State private var apiKey = ""
-    @State private var savedSuffix: String?
 
     var body: some View {
         Form {
             Section("Model") {
-                LabeledContent("Model", value: "Claude Opus 5.5")
-                if let savedSuffix { LabeledContent("Saved key", value: "…\(savedSuffix)") }
-                SecureField("Anthropic API key", text: $apiKey)
-                HStack {
-                    Button("Save") {
-                        try? model.secrets.write(apiKey, for: SecretAccount.anthropicAPIKey)
-                        apiKey = ""
-                        refresh()
-                    }
-                    .disabled(apiKey.isEmpty)
-                    Button("Remove", role: .destructive) {
-                        try? model.secrets.delete(SecretAccount.anthropicAPIKey)
-                        refresh()
-                    }
-                }
+                ModelSettingsForm()
             }
         }
-        .padding()
-        .frame(width: 420)
-        .onAppear(perform: refresh)
-    }
-
-    private func refresh() {
-        savedSuffix = (try? model.secrets.read(SecretAccount.anthropicAPIKey))?.suffix(4).description
+        .formStyle(.grouped)
+        .frame(width: 520)
     }
 }

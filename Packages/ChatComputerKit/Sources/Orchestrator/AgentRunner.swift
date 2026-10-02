@@ -55,6 +55,10 @@ public actor AgentRunner {
     private var pendingResults: [JSONValue] = []
     /// The `ask_user` call waiting for the user's answer.
     private var pendingQuestionID: String?
+    /// Whether the model has been told its turns are running out (once per task).
+    private var warnedAboutTurns = false
+    /// Turns left when that reminder is sent.
+    static let turnReminderThreshold = 10
 
     public init(goal: String, dependencies: Dependencies) {
         self.deps = dependencies
@@ -143,6 +147,18 @@ public actor AgentRunner {
             if let exhausted = usage.exceeded(deps.budget) {
                 try? await transition(.fail("Stopped: \(exhausted) reached."))
                 break
+            }
+            // Some models keep re-checking finished work instead of reporting. A plain reminder
+            // near the limit (outside the model's control, like every other budget rule) lets the
+            // task end with a verified result instead of running out of turns.
+            let turnsLeft = deps.budget.maxModelTurns - usage.modelTurns
+            if !warnedAboutTurns, turnsLeft <= Self.turnReminderThreshold, !pendingResults.isEmpty {
+                warnedAboutTurns = true
+                pendingResults.append(["type": "text", "text": .string("""
+                    Host notice: \(turnsLeft) model turns are left for this task. If the work is done, call report_result now; \
+                    it checks that the listed files exist in the outbox, so you do not need to verify them yourself. \
+                    If it is not done, finish the essential steps first.
+                    """)])
             }
             if !pendingResults.isEmpty {
                 messages.append(["role": "user", "content": .array(pendingResults)])

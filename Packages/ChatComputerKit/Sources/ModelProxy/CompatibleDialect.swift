@@ -87,4 +87,31 @@ public enum CompatibleDialect {
             return .object(object)
         }
     }
+
+    /// Keeps the newest `limit` images in the history and replaces older ones with a text note.
+    /// Only for endpoints other than Claude's own (Claude keeps history unchanged; see AgentRunner).
+    public static func keepingRecentImages(_ messages: [JSONValue], limit: Int) -> [JSONValue] {
+        var remaining = max(limit, 0)
+        let note: JSONValue = ["type": "text", "text": "[Earlier screenshot removed to save space.]"]
+
+        func trim(_ block: JSONValue) -> JSONValue {
+            guard case .object(var object) = block else { return block }
+            if object["type"] == "image" {
+                if remaining > 0 { remaining -= 1; return block }
+                return note
+            }
+            if object["type"] == "tool_result", let content = object["content"]?.arrayValue {
+                object["content"] = .array(content.reversed().map(trim).reversed())
+                return .object(object)
+            }
+            return block
+        }
+
+        // Walk newest to oldest so the most recent images are the ones kept.
+        return messages.reversed().map { message -> JSONValue in
+            guard case .object(var object) = message, let content = object["content"]?.arrayValue else { return message }
+            object["content"] = .array(content.reversed().map(trim).reversed())
+            return .object(object)
+        }.reversed()
+    }
 }

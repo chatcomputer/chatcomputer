@@ -38,7 +38,29 @@ final class AppModel {
     var errorMessage: String?
 
     var onboarding = OnboardingState()
+
+    /// Which provider, protocol, endpoint and model tasks use. Saved in user defaults.
+    private(set) var modelSettings: ModelSettings = {
+        guard let data = UserDefaults.standard.data(forKey: "modelSettings"),
+              let saved = try? JSONDecoder().decode(ModelSettings.self, from: data) else { return .default }
+        return saved
+    }()
+
+    func saveModelSettings(_ settings: ModelSettings) {
+        modelSettings = settings
+        if let data = try? JSONEncoder().encode(settings) { UserDefaults.standard.set(data, forKey: "modelSettings") }
+    }
+
+    /// Client for the given settings, with the key read from the Keychain at request time.
+    func makeModelClient(for settings: ModelSettings) throws -> any ModelClient {
+        let secrets = self.secrets
+        let account = settings.keychainAccount
+        let width = (vm?.spec.displayWidth ?? 2560) / 2
+        let height = (vm?.spec.displayHeight ?? 1600) / 2
+        return try settings.makeClient(displayWidth: width, displayHeight: height) { try secrets.read(account) }
+    }
     var autoOnboardingStarted = false
+    private var devTaskStarted = false
 
     /// Whether onboarding has finished. Decided once at launch and set by the last onboarding step,
     /// never re-read from disk while the app runs (the VM's stage turns `.ready` one step earlier,
@@ -56,6 +78,48 @@ final class AppModel {
         importHarnessSecrets()
         isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
+        applyDevelopmentModel()
+    }
+
+    // MARK: Development switches (environment variables, never set in normal use)
+
+    /// CC_DEV_MODEL="provider:protocol:model" (e.g. "deepseek:openAI:deepseek-chat") with CC_DEV_API_KEY
+    /// configures the model as if entered in the form; the app stores the key in its own Keychain.
+    private func applyDevelopmentModel() {
+        let environment = ProcessInfo.processInfo.environment
+        guard let value = environment["CC_DEV_MODEL"] else { return }
+        let parts = value.split(separator: ":", maxSplits: 2).map(String.init)
+        guard parts.count == 3, let provider = ModelCatalog.provider(parts[0]), let kind = ModelProtocol(rawValue: parts[1]) else {
+            errorMessage = "CC_DEV_MODEL must look like provider:protocol:model, for example deepseek:openAI:deepseek-chat."
+            return
+        }
+        var settings = ModelSettings.preset(provider)
+        settings.protocolKind = kind
+        settings.baseURL = provider.endpoints[kind] ?? settings.baseURL
+        settings.model = parts[2]
+        if let key = environment["CC_DEV_API_KEY"], !key.isEmpty {
+            do { try secrets.write(key, for: settings.keychainAccount) } catch { errorMessage = "Could not store the API key: \(error)" }
+        }
+        saveModelSettings(settings)
+        if (try? bundle.loadSpec().stage) == .ready { isReady = true }
+    }
+
+    /// CC_DEV_TASK="…" submits that message once the guest agent is connected and the desktop is ready.
+    func startDevelopmentTaskIfRequested() async {
+        guard let goal = ProcessInfo.processInfo.environment["CC_DEV_TASK"], !goal.isEmpty, !devTaskStarted, let vm else { return }
+        devTaskStarted = true
+        for _ in 0..<120 {
+            if let bridge, await bridge.isConnected,
+               case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                        deadline: Date().addingTimeInterval(10), command: .health)),
+               report.isDesktopReady {
+                try? await Task.sleep(for: .seconds(3))
+                submit(goal)
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
+        transcript.append(ChatItem(role: .system, text: "The virtual Mac did not become ready for the development task."))
     }
 
     func finishOnboarding() {
@@ -131,8 +195,13 @@ final class AppModel {
             errorMessage = "The virtual Mac is not set up yet."
             return
         }
-        let secrets = self.secrets
-        let model = AnthropicClient { try secrets.read(SecretAccount.anthropicAPIKey) }
+        let model: any ModelClient
+        do {
+            model = try makeModelClient(for: modelSettings)
+        } catch {
+            errorMessage = "The model is not set up: \(error). Choose a model in Settings."
+            return
+        }
         let runner = AgentRunner(goal: goal, dependencies: .init(
             model: model, guest: bridge, store: store, lease: lease,
             folders: SharedFolders(root: vm.bundle.sharedRoot)))

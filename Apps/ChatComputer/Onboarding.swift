@@ -177,7 +177,6 @@ extension AppModel {
 
 struct OnboardingView: View {
     @Environment(AppModel.self) private var model
-    @State private var apiKey = ""
 
     var body: some View {
         Workspace {
@@ -197,18 +196,9 @@ struct OnboardingView: View {
                 }
                 Divider()
                 if model.onboarding.step == .apiKey {
-                    SecureField("Anthropic API key", text: $apiKey)
-                    Button("Save key") {
-                        do {
-                            try model.secrets.write(apiKey, for: SecretAccount.anthropicAPIKey)
-                            model.finishOnboarding()
-                        } catch {
-                            model.errorMessage = error.localizedDescription
-                        }
+                    ScrollView {
+                        ModelSettingsForm(onSaved: { model.finishOnboarding() })
                     }
-                    .disabled(apiKey.isEmpty)
-                    Text("The key stays in this Mac's Keychain. Screenshots and text from the virtual Mac are sent to Anthropic while a task runs.")
-                        .font(.caption).foregroundStyle(.secondary)
                 } else {
                     if let progress = model.onboarding.progress { ProgressView(value: progress) }
                     Text(model.onboarding.detail).font(.callout).foregroundStyle(.secondary)

@@ -60,8 +60,13 @@ public struct AnthropicClient: ModelClient {
                 "max_tokens": .number(Double(configuration.maxTokens)),
                 "system": .string(system),
                 "tools": .array(CompatibleDialect.requestTools(tools, displayWidth: width, displayHeight: height)),
-                "messages": .array(CompatibleDialect.requestMessages(messages)),
+                "messages": .array(CompatibleDialect.requestMessages(CompatibleDialect.keepingRecentImages(messages, limit: 3))),
             ]
+            // Some compatible endpoints reject an empty tool list (e.g. a connection test without tools).
+            if tools.isEmpty, case .object(var object) = body {
+                object["tools"] = nil
+                return try request(body: .object(object), key: key, betas: [])
+            }
             return try request(body: body, key: key, betas: [])
         }
 
