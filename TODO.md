@@ -42,8 +42,8 @@
 - [x] **P3 vsock 通道**：代理连上宿主、握手通过（`pairingToken` 校验），测延迟；虚拟机挂起恢复、宿主 App 重启后能否重连
 - [ ] **P4 DiskImageKit**：base + overlay 能启动；丢弃 overlay 后回到干净状态；测启动与磁盘 IO 性能
 - [ ] **P5 vmnet**：固定子网和 DHCP 范围（`NetworkProvider` 里的 TODO）；测试 guest 能否访问宿主 localhost 服务和局域网，把结论写进隐私说明；确认 `/var/db/dhcpd_leases` 查 IP 的方式在 vmnet 自定义网络下是否仍然有效
-- [ ] **P6 驱动**：
-  - [ ] `NativeDriver` 跑通截图、点击、输入、滚动、拖拽，确认坐标空间正确（默认显示 2560×1600 @2×，截图为 1280×800 点）
+- [x] **P6 驱动**：
+  - [x] `NativeDriver` 跑通截图、点击、输入、滚动、拖拽，确认坐标空间正确（默认显示 2560×1600 @2×，截图为 1280×800 点）。`vm up --input-test` 13/13 通过；DeepSeek 真实任务 3/3 完成
   - [ ] 试 Cua Driver 的 embedded 模式：只给 ChatComputerAgent 授权就够用吗？行的话锁定一个版本，写 `CuaDriverAdapter`（实现 `DriverAdapter` 协议）；不行就继续用原生驱动
 - [ ] **P7 virtio-fs**：inbox 只读、outbox 可写；宿主 `ExportValidator` 能拦住 guest 里构造的符号链接
 

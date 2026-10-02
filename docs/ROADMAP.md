@@ -205,7 +205,7 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 | P3 vsock | ✅ | 冷启动后 **13.8 秒**完成配对；health 往返 p50 **1.6 ms**（预热后 0.27 ms），p95 5.5 ms；无租约输入被 guest 拒绝；挂起 **3.0 秒**（状态文件 2.7 GB），恢复 **2.8 秒**后 agent **1.1 秒**内重连 |
 | P4 DiskImageKit | ✅（API 层） | ASIF base + overlay 叠加、重置均正常（`vm selftest`）；带 overlay 启动和 IO 性能未测 |
 | P5 vmnet | ✅ | shared 模式不需要 root；guest 能上网；宿主能访问 guest:22。**每个 network 实例的子网可能不同**（先后观察到 192.168.64/24 和 192.168.66/24），租约文件里会留旧条目，已改为按当前子网（`vmnet_network_get_ipv4_subnet`）取最新租约。guest 访问宿主服务尚未测 |
-| P6 驱动 | ⏳ | 授权需要在 guest 里输入账户密码（macOS 27 叫 Device Control and Data Access），按设计由人完成。未授权时截图和输入都返回 `permissionDenied`，行为正确 |
+| P6 驱动 | ✅ | 两项授权由宿主级控制自动完成（`HostControl`，读取 VM 画面并输入密码，密码不经过模型或屏幕）。修复前快捷键与输入在保存对话框等跨进程面板里会丢失：修饰键必须作为带设备位的真实按键发送，文字按真实按键逐字输入。`vm up --input-test`（TextEdit + 保存对话框，逐字节比对）从 0/3 提升到 13/13。真实任务「在 TextEdit 写一行字并保存到 outbox」用 deepseek-flash 3/3 完成（136–448 秒，每次都交付了经过校验的文件） |
 | P7 virtio-fs | ✅（部分） | 自动挂载在 `/Volumes/My Shared Files`，guest 从 bootstrap 共享读文件正常；只读与符号链接逃逸未在 guest 侧测 |
 | 关机 | ✅（修复后） | `VZVirtualMachine.requestStop()` 在 macOS guest 里只弹出"确定要关机吗"对话框，**永远不会自己完成**，会让"冻结金镜像"一步卡死。已改为 agent 发送 loginwindow 的 `aevtrsdn` 事件（无需授权，对话框 60 秒后自动关机；有辅助功能权限时立即确认），实测 66 秒干净关机 |
 | 公证 | ✅ | Developer ID + hardened runtime + 时间戳，公证 Accepted，已装订，Gatekeeper：`Notarized Developer ID`（`scripts/release.sh`） |
