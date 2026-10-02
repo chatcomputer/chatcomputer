@@ -12,7 +12,7 @@
 - [x] `brew install xcodegen`
 - [x] 在 `project.yml` 里填 `DEVELOPMENT_TEAM`（签名要固定：guest 里的辅助功能、屏幕录制授权绑定签名身份）
 - [x] `xcodegen generate && open ChatComputer.xcodeproj`
-- [x] `cd Packages/ChatComputerKit && swift test`：确认 25 个测试在 macOS 上同样通过（目前只在 Linux 上跑过）
+- [x] `cd Packages/ChatComputerKit && swift test`：确认单元测试在 macOS 上同样通过（当时 25 个，现为 43 个）
 
 ## 1. 首次编译（修编译错误）
 
@@ -49,7 +49,7 @@
   - [ ] 试 Cua Driver 的 embedded 模式：只给 ChatComputerAgent 授权就够用吗？行的话锁定一个版本，写 `CuaDriverAdapter`（实现 `DriverAdapter` 协议）；不行就继续用原生驱动
 - [ ] **P7 virtio-fs**：inbox 只读、outbox 可写；宿主 `ExportValidator` 能拦住 guest 里构造的符号链接
 
-> 探针结果见 `docs/ROADMAP.md` §5.1。剩余：P6 需要人在 guest 里授权后跑 `scripts/harness.sh vm up --bridge --wait-ready --screenshot`；P2 的中文输入法和系统快捷键；P4 带 overlay 启动与 IO 性能；P5 guest 访问宿主服务；P7 只读与符号链接在 guest 侧验证。
+> 探针结果见 `docs/ROADMAP.md` §5.1。guest 授权已由引导第 4 步自动完成，P6 原生驱动已验证。剩余：P6 的 Cua Driver 评估；P2 的中文输入法和系统快捷键；P4 带 overlay 启动与 IO 性能；P5 guest 访问宿主服务；P7 只读与符号链接在 guest 侧验证。
 
 ## 3. 跑通 M1 闭环
 
@@ -71,5 +71,5 @@
 - [ ] 就绪探针：每次虚拟机启动或解锁后跑一次 health，不满足条件时显示"等待桌面登录或权限"
 - [ ] 宿主 App 退出时调用 `suspend()` 挂起虚拟机，下次启动时恢复
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
-- [ ] 给 VMKit / GuestBridge / AgentCore 补测试（至少覆盖协议握手和 `KeyMap`）
+- [ ] 给 VMKit / GuestBridge / AgentCore 补测试：`KeyMap`（AgentCore）和 DHCP 租约解析（VMKit）已有；还缺 GuestBridge 的协议握手
 - [ ] 加 CI：`scripts/test-linux.sh` 可以直接在 Linux runner 上跑
