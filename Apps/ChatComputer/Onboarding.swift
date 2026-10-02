@@ -1,6 +1,8 @@
+import AppKit
 import ChatCore
 import GuestBridge
 import SwiftUI
+import UniformTypeIdentifiers
 import VMKit
 import Virtualization
 
@@ -25,6 +27,8 @@ struct OnboardingState {
     var progress: Double?
     var detail = ""
     var isWorking = false
+    /// A local IPSW to install from instead of downloading one.
+    var restoreImage: URL?
 }
 
 extension AppModel {
@@ -92,7 +96,7 @@ extension AppModel {
             switch onboarding.step {
             case .installMacOS:
                 let spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
-                _ = try await MacOSInstaller(bundle: bundle).install(spec: spec) { [weak self] progress in
+                _ = try await MacOSInstaller(bundle: bundle).install(spec: spec, restoreImage: onboarding.restoreImage) { [weak self] progress in
                     self?.show(progress)
                 }
                 loadVM()
@@ -220,6 +224,16 @@ struct OnboardingView: View {
                         }
                         .disabled(model.onboarding.isWorking)
                         .keyboardShortcut(.defaultAction)
+                        if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
+                            // A restore image downloaded earlier (about 26 GB) saves the download.
+                            Button(model.onboarding.restoreImage.map { "Using \($0.lastPathComponent)" } ?? "Use a downloaded restore image…") {
+                                let panel = NSOpenPanel()
+                                panel.allowedContentTypes = [UTType(filenameExtension: "ipsw") ?? .data]
+                                panel.message = "Choose a macOS restore image (.ipsw)"
+                                if panel.runModal() == .OK { model.onboarding.restoreImage = panel.url }
+                            }
+                            .buttonStyle(.link)
+                        }
                     }
                 }
                 Spacer()

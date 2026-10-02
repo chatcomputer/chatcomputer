@@ -35,8 +35,14 @@ public final class MacOSInstaller {
             do { try FileManager.default.linkItem(at: restoreImage, to: ipswURL) } catch { try FileManager.default.copyItem(at: restoreImage, to: ipswURL) }
         }
         if !FileManager.default.fileExists(atPath: ipswURL.path) {
-            let latest = try await Self.latestSupportedImage()
-            try await download(latest.url, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
+            let remote: URL
+            do {
+                remote = try await Self.latestSupportedImage().url
+            } catch {
+                // The catalog can fail while Apple's CDN works; use the known image for this macOS release.
+                remote = Self.fallbackRestoreImage
+            }
+            try await download(remote, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
         }
 
         onProgress(.preparing)
@@ -94,6 +100,10 @@ public final class MacOSInstaller {
             throw VMError.unsupportedHost("\(needed >> 30) GB of free disk space is needed, \(free >> 30) GB available")
         }
     }
+
+    /// macOS 27.0.1 (26A434) from Apple's CDN, used when the restore image catalog is unavailable.
+    public static let fallbackRestoreImage = URL(string:
+        "https://updates.cdn-apple.com/2026FallFCS/59241290-5d51-4ca8-9df4-31624b9a4eac/UniversalMac_27.0.1_26A434_Restore.ipsw")!
 
     private static func latestSupportedImage() async throws -> VZMacOSRestoreImage {
         // Observed on macOS 27.0 (26A428): the catalog fails with VZErrorDomain 10001 "Installation service
