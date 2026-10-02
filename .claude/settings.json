@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(shasum *)",
+      "Bash(security find-identity *)",
+      "Bash(ping *)",
+      "mcp__ccd_pr__get_status"
+    ]
+  }
+}
