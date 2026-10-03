@@ -89,6 +89,11 @@ public struct GuestProvisioner: Sendable {
         # (as the user it fails with 125 "Domain does not support specified action", macOS 27).
         printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl bootout "gui/$(id -u)/app.chatcomputer.agent" 2>/dev/null || true
         printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/app.chatcomputer.agent.plist"
+        # A machine that only the agent works on: never sleep, blank or lock the screen. A locked guest stops
+        # the agent (and the host's own permission step) until someone types the password.
+        printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" pmset -a sleep 0 displaysleep 0 disksleep 0
+        sysadminctl -screenLock off -password "$CC_GUEST_PASSWORD" 2>/dev/null || true
+        defaults -currentHost write com.apple.screensaver idleTime -int 0
         # Detached and delayed so this SSH session exits cleanly before sshd goes away.
         nohup bash -c 'sleep 3; printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" systemsetup -f -setremotelogin off' >/dev/null 2>&1 &
         """#

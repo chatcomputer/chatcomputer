@@ -23,6 +23,7 @@ import Testing
         #expect(try request(["screenshot", "0", "0", "640", "400"]) == .screenshot(region: ScreenRect(x0: 0, y0: 0, x1: 640, y1: 400)))
         #expect(try request(["snapshot", "restore", "Before", "update", "--no-save"]) == .snapshotRestore(snapshot: "Before update", saveCurrent: false))
         #expect(try request(["snapshot", "take"]) == .snapshotTake(name: nil))
+        #expect(try request(["snapshot", "delete", "Before", "regression"]) == .snapshotDelete(snapshot: "Before regression"))
         #expect(try request(["wait", "1.5"]) == .wait(seconds: 1.5))
 
         // The same command as an MCP client sends it.

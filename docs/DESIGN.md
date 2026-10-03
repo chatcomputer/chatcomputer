@@ -56,6 +56,10 @@
 - **快照**：面板底部的时钟按钮或 ⇧⌘S 打开快照列表（sheet），⌥⌘S 直接拍一张。列表按时间倒序，每行有画面缩略图、相对时间、是否含内存及大小，当前所在的快照标「Current」，恢复后新开的分支标「Branches from …」。恢复时提供两个选择：「Save Current State and Restore」（默认）和「Restore Without Saving」。拍摄或恢复期间虚拟机会停下再启动，左侧保留最后一帧并变暗，叠加进度提示，窗口副标题同步显示；完成后在聊天里写一条记录。任务进行中不能拍快照或恢复。
 - **收起面板**：⌃⌘S 或面板顶部右侧的按钮把右侧收成 52 pt 竖栏，窗口同步变窄，虚拟机画面不缩放。竖栏从上到下：展开聊天（有新消息蓝点，等待回答橙点）、当前控制者图标、暂停/继续、接管/交还，底部是拍快照和快照列表。面板展开时顶部一行显示谁在控制。
 - **外部 coding agent**：`chatcomputer` 命令行和 MCP 服务（`ComputerControl` 模块，App 内由 `ExternalControl` 执行）。外部 agent 拿到租约后画面同样有蓝框，副标题显示「Claude Code has control」，每个动作以「Claude Code: click 640, 400」记入聊天的步骤。用户点画面即接管，工具栏和竖栏出现「Hand back to Claude Code」。命令行优先（通用、按需读取、可组合），MCP 给只认 MCP 的客户端。
+- **任务不丢**：任务事件写入 `Tasks/<id>/events.jsonl`；退出时 runner 暂停并导出 checkpoint（与模型的完整对话、欠模型的工具结果、预算），和聊天一起存入 session.json。checkpoint 会给尚未记下结果的工具调用补一条"可能执行了也可能没有"，否则恢复后的请求不合法。重开后任务是「已暂停」，由用户点 Continue。
+- **实时进度**：runner 每次请求模型前发出 `thinking(turn:of:)`，聊天底部一行计时显示；做动作时显示动作。完整流式输出暂缓：要从流里逐块拼回原始回复且对每家模型都原样回传，验证条件不够。
+- **系统弹窗由宿主处理**：macOS 定期再问的录屏授权（`ConsentPrompt`）和锁屏（`GuestUnlock`）都由宿主读画面、点按钮或输入 guest 密码，和引导里的自动授权同一套办法；新装的虚拟机在安装 agent 时就关掉睡眠和锁屏。
+- **回归集**：10 个固定任务，每个从受保护快照「Regression base」开始，结果由程序检查（outbox 文件内容、回答、发邮件前是否先问）。内置 agent 用 `cc-harness vm regress`，外部 agent 用 `scripts/regress/external.py` 驱动 `claude -p`。改提示词、驱动或模型前后各跑一遍对照。
 - **共享文件夹**：一个固定 tag 的 virtio-fs 设备，内容是 `VZMultipleDirectoryShare`（inbox、outbox、用户文件夹，安装期间加 bootstrap），运行中直接替换 `share` 生效（借鉴 ezvm）。用户文件夹记在 bundle 的 `shares.json`，属于宿主配置，不进快照。默认只读；可写需确认，因为快照撤销不了宿主文件的改动。内置 agent 没有修改共享的工具。
 - **菜单栏**：宿主不放菜单栏图标（是窗口应用）；guest 里的 agent 是菜单栏应用，显示连接状态和两个授权按钮。
 - **以后（M2）**：聊天区引入 Markdown 渲染和流式输出；任务历史放在可折叠的左侧边栏，默认隐藏，避免挤占虚拟机画面。

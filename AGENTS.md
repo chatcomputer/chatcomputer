@@ -24,6 +24,9 @@ cd Packages/ChatComputerKit && swift test           # unit tests: run after ever
 scripts/test-mac.sh                                 # unit tests, Xcode build, host API checks, live scenarios
 ```
 
+Don't build the Swift package while `cc-harness` is running a VM: the build relinks the binary in place and
+code signing kills the running process. Use `xcodebuild` (its own derived data) or wait.
+
 Before claiming a change works, run the layer that exercises it:
 
 | Change touches | Run |
@@ -31,6 +34,7 @@ Before claiming a change works, run the layer that exercises it:
 | Portable logic (BridgeProtocol, ChatCore, ModelProxy, Orchestrator) | `swift test` |
 | The agent loop or a model client | `scripts/harness.sh live-loop --scenario notes|approval|injection` (needs `CC_API_KEY`) |
 | The guest driver (`AgentCore`) | `scripts/harness.sh vm up --update-agent --input-test 3` |
+| Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code), before and after |
 | Apps, onboarding, signing | `scripts/release.sh`, then launch `build/release/ChatComputer.app` |
 
 ## Rules that are easy to break
@@ -47,8 +51,7 @@ Before claiming a change works, run the layer that exercises it:
 4. **Secrets stay on the host, in 0600 files** (`HostSecretStore`): the guest password and pairing token in
    the VM bundle's `secrets.json`, API keys in `~/Library/Application Support/ChatComputer/credentials.json`.
    Never log them, print them, put them in a URL, or commit them. Don't go back to the login Keychain: its
-   items are bound to the build that wrote them, so every other build prompts. Items 0.1.x left there move
-   to the files on first read. For a sandboxed release, use the data-protection keychain, which needs a
+   items are bound to the build that wrote them, so every other build prompts. For a sandboxed release, use the data-protection keychain, which needs a
    provisioning profile (without one, a Developer ID build gets -34018 on every call).
 5. **The guest agent's signature matters.** Privacy grants in the guest belong to its signing identity.
    Release builds must use the same Developer ID. Replace the agent bundle; never overwrite it in place,
@@ -71,6 +74,8 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_DEV_MODEL`, `CC_DEV_API_KEY` | Configure the model, e.g. `deepseek:openAI:deepseek-flash` |
 | `CC_DEV_TASK` | Submit this task once the guest is ready |
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |
+| `CC_DEV_CONTINUE=1` | Continue a task restored from the last session once the guest is ready |
+| `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs |
 
 To drive the app's own VM from `cc-harness`, quit the app and set
 `CC_VM_BUNDLE="$HOME/Library/Application Support/ChatComputer/ChatComputer.vm"`; both read the bundle's `secrets.json`.

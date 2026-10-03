@@ -20,6 +20,7 @@ public enum ControlCommand: Sendable, Equatable {
     case snapshotList
     case snapshotTake(name: String?)
     case snapshotRestore(snapshot: String, saveCurrent: Bool)
+    case snapshotDelete(snapshot: String)
     case putFile(path: String)
     case outbox
     case shareList
@@ -101,6 +102,7 @@ public enum ControlCommand: Sendable, Equatable {
         case "snapshot_restore":
             let save: Bool = if case .bool(let value)? = arguments["save_current"] { value } else { true }
             self = .snapshotRestore(snapshot: try string("snapshot"), saveCurrent: save)
+        case "snapshot_delete": self = .snapshotDelete(snapshot: try string("snapshot"))
         case "put_file": self = .putFile(path: try string("path"))
         case "outbox": self = .outbox
         case "share_list": self = .shareList
@@ -168,6 +170,8 @@ public struct ControlTool: Sendable {
                         inputSchema: object(["name": text("Optional name")])),
             ControlTool(name: "snapshot_restore", description: "Return the virtual Mac to a snapshot (by name or id). By default the current state is saved first, so it can be undone.",
                         inputSchema: object(["snapshot": text("Snapshot name or id"), "save_current": ["type": "boolean"]], required: ["snapshot"])),
+            ControlTool(name: "snapshot_delete", description: "Delete a snapshot (by name or id). Protected snapshots can't be deleted.",
+                        inputSchema: object(["snapshot": text("Snapshot name or id")], required: ["snapshot"])),
             ControlTool(name: "put_file", description: "Copy a file from this Mac into the virtual Mac. Returns its path inside the virtual Mac (read-only there).",
                         inputSchema: object(["path": text("Absolute path of a file on this Mac")], required: ["path"])),
             ControlTool(name: "outbox", description: "List files the virtual Mac saved to its outbox (/Volumes/My Shared Files/outbox), with their paths on this Mac.",
@@ -226,6 +230,7 @@ public enum ControlGuide {
           snapshot list
           snapshot take [NAME]
           snapshot restore NAME|ID [--no-save]
+          snapshot delete NAME|ID
 
         Files
           put FILE                            copy a file into the virtual Mac (read-only there)

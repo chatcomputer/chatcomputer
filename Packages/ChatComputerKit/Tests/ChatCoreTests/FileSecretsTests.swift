@@ -28,15 +28,4 @@ import Testing
         #expect(try store.machine.read("model.deepseek.apiKey") == nil)
         #expect(try store.credentials.read("model.deepseek.apiKey") == "sk-test")
     }
-
-    @Test func legacySecretsMoveOverOnFirstRead() throws {
-        let keychain = InMemorySecretStore()
-        try keychain.write("old-token", for: "vm.1234.pairingToken")
-        let store = HostSecretStore(machineFile: directory.appendingPathComponent("vm/secrets.json"),
-                                    credentialsFile: directory.appendingPathComponent("credentials.json"), legacy: keychain)
-        #expect(try store.read("vm.1234.pairingToken") == "old-token")
-        #expect(try keychain.read("vm.1234.pairingToken") == nil)
-        #expect(try store.machine.read("vm.1234.pairingToken") == "old-token")
-        #expect(try store.read("model.none.apiKey") == nil)
-    }
 }

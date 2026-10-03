@@ -24,6 +24,7 @@ import VMKit
 ///         --hold SECONDS                          keep running before shutdown (default 0)
 ///         --suspend                               save state instead of shutting down; next `up` restores
 ///     cc-harness vm snapshot-test                 take, restore and reset snapshots on a paired VM (SnapshotTest)
+///     cc-harness vm regress [--model p:proto:model] [--runs N] [--only ids]  fixed task set (scripts/regress)
 ///     cc-harness vm share-test                    change shared folders while the VM runs and watch the agent (ShareTest)
 ///     cc-harness vm status                        bundle stage and files
 ///
@@ -46,6 +47,7 @@ enum VMProbe {
             case "selftest": try selftest()
             case "snapshot-test": try await SnapshotTest.run()
             case "share-test": try await ShareTest.run()
+            case "regress": try await Regress.run(arguments: Array(arguments.dropFirst()))
             default:
                 print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | snapshot-test | share-test | status")
                 return 2

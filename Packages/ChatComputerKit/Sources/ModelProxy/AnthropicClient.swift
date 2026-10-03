@@ -142,8 +142,11 @@ public struct AnthropicClient: ModelClient {
         return ModelResponse(
             content: content,
             stopReason: stopReason,
-            inputTokens: json["usage"]?["input_tokens"]?.intValue ?? 0,
+            // Anthropic's input_tokens excludes cache reads and writes; count them all as input.
+            inputTokens: (json["usage"]?["input_tokens"]?.intValue ?? 0) + (json["usage"]?["cache_read_input_tokens"]?.intValue ?? 0)
+                + (json["usage"]?["cache_creation_input_tokens"]?.intValue ?? 0),
             outputTokens: json["usage"]?["output_tokens"]?.intValue ?? 0,
+            cachedInputTokens: json["usage"]?["cache_read_input_tokens"]?.intValue ?? 0,
             servedModel: json["model"]?.stringValue
         )
     }

@@ -56,18 +56,15 @@ public final class FileSecretStore: SecretStore, @unchecked Sendable {
 /// bundle (whoever can read the bundle can read the whole guest disk anyway), and model API keys in a
 /// file in Application Support, as Claude Code and Codex keep their credentials.
 ///
-/// Up to 0.1.1 these lived in the login Keychain, whose items are bound to the signature of the build
-/// that wrote them, so every other build had to ask. A secret missing from the files is looked up there
-/// once (`legacy`) and moved over.
+/// Not the login Keychain: its items are bound to the signature of the build that wrote them, so every
+/// other build (Debug, Release, a new version) has to ask the user.
 public struct HostSecretStore: SecretStore {
     public let machine: FileSecretStore
     public let credentials: FileSecretStore
-    private let legacy: (any SecretStore)?
 
-    public init(machineFile: URL, credentialsFile: URL, legacy: (any SecretStore)? = nil) {
+    public init(machineFile: URL, credentialsFile: URL) {
         machine = FileSecretStore(url: machineFile)
         credentials = FileSecretStore(url: credentialsFile)
-        self.legacy = legacy
     }
 
     private func store(for account: String) -> FileSecretStore {
@@ -75,12 +72,7 @@ public struct HostSecretStore: SecretStore {
     }
 
     public func read(_ account: String) throws -> String? {
-        let store = store(for: account)
-        if let value = try store.read(account) { return value }
-        guard let legacy, let value = try legacy.read(account) else { return nil }
-        try store.write(value, for: account)
-        try? legacy.delete(account)
-        return value
+        try store(for: account).read(account)
     }
 
     public func write(_ value: String, for account: String) throws {
@@ -89,6 +81,5 @@ public struct HostSecretStore: SecretStore {
 
     public func delete(_ account: String) throws {
         try store(for: account).delete(account)
-        try? legacy?.delete(account)
     }
 }

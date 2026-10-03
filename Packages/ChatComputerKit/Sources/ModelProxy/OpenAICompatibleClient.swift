@@ -257,6 +257,9 @@ public struct OpenAICompatibleClient: ModelClient {
             stopReason: stopReason,
             inputTokens: json["usage"]?["prompt_tokens"]?.intValue ?? 0,
             outputTokens: json["usage"]?["completion_tokens"]?.intValue ?? 0,
+            // DeepSeek reports prompt_cache_hit_tokens; OpenAI and most others prompt_tokens_details.cached_tokens.
+            cachedInputTokens: json["usage"]?["prompt_cache_hit_tokens"]?.intValue
+                ?? json["usage"]?["prompt_tokens_details"]?["cached_tokens"]?.intValue ?? 0,
             servedModel: json["model"]?.stringValue
         )
     }

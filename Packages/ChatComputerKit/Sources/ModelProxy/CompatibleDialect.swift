@@ -75,6 +75,11 @@ public enum CompatibleDialect {
         return .object(object)
     }
 
+    static func imageCount(_ value: JSONValue) -> Int {
+        if value["type"] == "image" { return 1 }
+        return (value["content"]?.arrayValue ?? []).reduce(0) { $0 + imageCount($1) }
+    }
+
     /// Rewrites `computer` tool calls in a response back into toolset shape.
     static func responseContent(_ content: [JSONValue]) -> [JSONValue] {
         content.map { block in
@@ -88,10 +93,17 @@ public enum CompatibleDialect {
         }
     }
 
-    /// Keeps the newest `limit` images in the history and replaces older ones with a text note.
+    /// Replaces older images in the history with a text note, keeping at least the newest `limit`.
     /// Only for endpoints other than Claude's own (Claude keeps history unchanged; see AgentRunner).
-    public static func keepingRecentImages(_ messages: [JSONValue], limit: Int) -> [JSONValue] {
-        var remaining = max(limit, 0)
+    ///
+    /// Images are removed `batch` at a time, so between removals the history sent is the previous request
+    /// plus new turns, and the provider's prefix cache (DeepSeek, OpenAI, …) keeps hitting. Removing the oldest
+    /// image every turn would change the prefix on every request.
+    public static func keepingRecentImages(_ messages: [JSONValue], limit: Int, batch: Int = 4) -> [JSONValue] {
+        let total = messages.reduce(0) { $0 + imageCount($1) }
+        let batch = max(batch, 1)
+        let removed = total > limit ? ((total - limit) / batch) * batch : 0
+        var remaining = total - removed
         let note: JSONValue = ["type": "text", "text": "[Earlier screenshot removed to save space.]"]
 
         func trim(_ block: JSONValue) -> JSONValue {

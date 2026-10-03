@@ -9,12 +9,33 @@ import Orchestrator
 import VMKit
 import Virtualization
 
-struct ChatItem: Identifiable, Equatable {
-    enum Role { case user, agent, action, system }
-    let id = UUID()
+struct ChatItem: Identifiable, Equatable, Codable {
+    enum Role: String, Codable { case user, agent, action, system }
+    var id = UUID()
     let role: Role
     let text: String
     var files: [URL] = []
+}
+
+/// What the agent is doing right now, for the live progress line in the chat.
+struct TaskProgress: Equatable {
+    var turn: Int
+    var maxTurns: Int
+    /// Set while a request to the model is out.
+    var waitingSince: Date?
+    var lastAction: String?
+}
+
+/// The chat and the unfinished task, saved when the app quits so the next launch continues where it stopped.
+struct SavedSession: Codable {
+    var transcript: [ChatItem]
+    var task: AgentRunner.Checkpoint?
+    var inputTokens: Int
+    var outputTokens: Int
+
+    static var url: URL {
+        VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("session.json")
+    }
 }
 
 /// App-wide state: the one VM, its bridge, and the current task.
@@ -25,10 +46,10 @@ final class AppModel {
     /// Secrets in files: the VM's in its bundle, API keys in Application Support (see `HostSecretStore`).
     let secrets = HostSecretStore(
         machineFile: VMBundle(url: VMBundle.defaultLocation).secretStore().url,
-        credentialsFile: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json"),
-        legacy: KeychainStore())
+        credentialsFile: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json"))
     let lease = ControlLease()
-    let store = InMemoryTaskStore()   // TODO(M2): SQLite-backed store
+    /// Every task and its event log, in Application Support/ChatComputer/Tasks.
+    let store = FileTaskStore(root: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("Tasks", isDirectory: true))
 
     private(set) var vm: VirtualMachineController?
     /// The on-screen VM view; host-level control (`HostDisplay`) reads and drives the guest through it.
@@ -39,6 +60,9 @@ final class AppModel {
     var transcript: [ChatItem] = []
     private(set) var phase: TaskPhase = .ready
     private(set) var tokens: (input: Int, output: Int) = (0, 0)
+    private(set) var progress: TaskProgress?
+    /// Of the input tokens, how many the provider served from its prompt cache.
+    private(set) var cachedTokens = 0
     var errorMessage: String?
 
     var onboarding = OnboardingState()
@@ -126,6 +150,8 @@ final class AppModel {
         isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
         applyDevelopmentModel()
+        restoreSession()
+        watchConsentPrompts()
         let external = ExternalControl(model: self)
         external.start()
         self.external = external
@@ -169,6 +195,21 @@ final class AppModel {
     }
 
     /// CC_DEV_TASK="…" submits that message once the guest agent is connected and the desktop is ready.
+    /// CC_DEV_CONTINUE=1 continues a task restored from the last session once the guest is ready.
+    func continueRestoredTaskIfRequested() async {
+        guard ProcessInfo.processInfo.environment["CC_DEV_CONTINUE"] == "1", phase == .paused, let vm, let bridge else { return }
+        for _ in 0..<120 {
+            if await bridge.isConnected,
+               case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                        deadline: Date().addingTimeInterval(10), command: .health)),
+               report.isDesktopReady {
+                resume()
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
+    }
+
     func startDevelopmentTaskIfRequested() async {
         guard let goal = ProcessInfo.processInfo.environment["CC_DEV_TASK"], !goal.isEmpty, !devTaskStarted, let vm else { return }
         devTaskStarted = true
@@ -219,7 +260,9 @@ final class AppModel {
         for _ in 0..<240 where snapshotActivity != nil || vm.isWorkingOnSnapshots {
             try? await Task.sleep(for: .milliseconds(500))
         }
-        if isRunningTask, let runner { await runner.cancel() }
+        // An unfinished task is paused and saved with the chat; the next launch offers to continue it.
+        if isRunningTask, let runner, phase == .running { await runner.pause() }
+        await persistSession()
         if externalHolder != nil { await external?.release(note: nil) }
         guard vm.state == .running else { return }
 
@@ -296,25 +339,116 @@ final class AppModel {
         let runner = AgentRunner(goal: goal, attachments: attachments, dependencies: .init(
             model: model, guest: bridge, store: store, lease: lease,
             folders: SharedFolders(root: vm.bundle.sharedRoot)))
-        self.runner = runner
+        follow(runner)
         tokens = (0, 0)
+        Task {
+            await makeWayForBuiltInTask()
+            await unlockGuestIfLocked()
+            do { try await runner.start() } catch { errorMessage = error.localizedDescription }
+        }
+    }
 
+    /// Shows a runner's updates in the chat.
+    private func follow(_ runner: AgentRunner) {
+        self.runner = runner
         Task {
             for await update in runner.updates { apply(update) }
         }
-        let external = self.external
-        Task {
-            // The user's own task comes first: a coding agent holding the virtual Mac gives it up.
-            if let holder = externalHolder {
-                await external?.release(note: "\(holder) lost control of the virtual Mac to your task.")
-            }
-            if let blocked = externalBlockedBy {
-                await lease.releaseFromUser()
-                externalBlockedBy = nil
-                transcript.append(ChatItem(role: .system, text: "\(blocked) can take control again after your task."))
-            }
-            do { try await runner.start() } catch { errorMessage = error.localizedDescription }
+    }
+
+    /// The user's own task comes first: a coding agent holding the virtual Mac gives it up.
+    private func makeWayForBuiltInTask() async {
+        if let holder = externalHolder {
+            await external?.release(note: "\(holder) lost control of the virtual Mac to your task.")
         }
+        if let blocked = externalBlockedBy {
+            await lease.releaseFromUser()
+            externalBlockedBy = nil
+            transcript.append(ChatItem(role: .system, text: "\(blocked) can take control again after your task."))
+        }
+    }
+
+    /// Answers macOS's periodic "keep bypassing the private window picker?" prompt for the guest agent, which
+    /// would otherwise cover the guest's screen (see `ConsentPrompt`). Checks the guest screen every 20 seconds.
+    private func watchConsentPrompts() {
+        Task { [weak self] in
+            while true {
+                try? await Task.sleep(for: .seconds(20))
+                guard let self else { return }
+                guard self.isReady, let vm = self.vm, vm.state == .running, self.snapshotActivity == nil,
+                      let view = self.guestView, view.window != nil else { continue }
+                let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+                if await ConsentPrompt.approveIfShown(on: display) {
+                    self.transcript.append(ChatItem(role: .system, text: "macOS asked again whether the agent in the virtual Mac may keep recording its screen; Chat Computer answered Allow."))
+                }
+            }
+        }
+    }
+
+    /// If the guest's screen is locked, wakes it and types the guest password from the host.
+    /// Returns true if it tried. The password goes from the secret store straight into the guest.
+    @discardableResult
+    func unlockGuestIfLocked() async -> Bool {
+        guard let vm, let bridge, let view = guestView, await bridge.isConnected,
+              case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                       deadline: Date().addingTimeInterval(5), command: .health)),
+              report.screenLocked,
+              let password = try? secrets.read(SecretAccount.guestPassword(vmID: vm.spec.id)) else { return false }
+        let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+        try? await GuestUnlock.unlock(on: display, password: password)
+        transcript.append(ChatItem(role: .system, text: "The virtual Mac's screen was locked; Chat Computer unlocked it."))
+        return true
+    }
+
+    // MARK: Session
+
+    /// Restores the chat and an unfinished task saved when the app last quit. The task comes back paused
+    /// (or still waiting for an answer); the VM itself resumes from its saved memory, so the screen matches.
+    private func restoreSession() {
+        guard let data = try? Data(contentsOf: SavedSession.url),
+              let saved = try? JSONDecoder().decode(SavedSession.self, from: data) else { return }
+        transcript = saved.transcript
+        tokens = (saved.inputTokens, saved.outputTokens)
+        guard let checkpoint = saved.task, !checkpoint.task.phase.isTerminal, let vm, let bridge,
+              let model = try? makeModelClient(for: modelSettings) else { return }
+        let runner = AgentRunner(restoring: checkpoint, dependencies: .init(
+            model: model, guest: bridge, store: store, lease: lease, folders: SharedFolders(root: vm.bundle.sharedRoot)))
+        follow(runner)
+        phase = runner.initialPhase
+        let note = if case .waitingForUser = phase {
+            "The task from last time is still waiting for your answer."
+        } else {
+            "The task from last time was paused when Chat Computer quit. Choose Continue to pick it up."
+        }
+        transcript.append(ChatItem(role: .system, text: note))
+    }
+
+    func saveSession() {
+        Task { await persistSession() }
+    }
+
+    /// Writes the chat and the task's checkpoint (0600: it holds the conversation and screenshots).
+    func persistSession() async {
+        var saved = SavedSession(transcript: transcript, task: nil, inputTokens: tokens.input, outputTokens: tokens.output)
+        if let runner {
+            let checkpoint = await runner.checkpoint()
+            if !checkpoint.task.phase.isTerminal { saved.task = checkpoint }
+        }
+        guard let data = try? JSONEncoder().encode(saved) else { return }
+        let url = SavedSession.url
+        let temporary = url.deletingLastPathComponent().appendingPathComponent(".session-\(UUID().uuidString).json")
+        guard FileManager.default.createFile(atPath: temporary.path, contents: data, attributes: [.posixPermissions: 0o600]) else { return }
+        if rename(temporary.path, url.path) != 0 { try? FileManager.default.removeItem(at: temporary) }
+    }
+
+    /// Starts a fresh chat. Not while a task is unfinished.
+    func clearChat() {
+        guard !isRunningTask else { return }
+        transcript = []
+        tokens = (0, 0)
+        runner = nil
+        phase = .ready
+        saveSession()
     }
 
     private func apply(_ update: RunnerUpdate) {
@@ -323,14 +457,23 @@ final class AppModel {
         case .phase(let phase):
             self.phase = phase
             if case .failed(let reason) = phase { transcript.append(ChatItem(role: .system, text: reason)) }
+            if phase != .running { progress = nil }
+            if phase.isTerminal { saveSession() }
         case .assistantNote(let text):
             transcript.append(ChatItem(role: .agent, text: text))
         case .action(let name):
             transcript.append(ChatItem(role: .action, text: name))
+            progress?.lastAction = name
+            progress?.waitingSince = nil
+        case .thinking(let turn, let maxTurns):
+            progress = TaskProgress(turn: turn, maxTurns: maxTurns, waitingSince: Date(), lastAction: nil)
+            // Saved once per model turn, so a crash loses at most the turn in progress.
+            saveSession()
         case .needsUser(let ask):
             transcript.append(ChatItem(role: .agent, text: "\(ask.question)\n→ \(ask.target)"))
-        case .usage(let input, let output):
+        case .usage(let input, let output, let cached):
             tokens = (input, output)
+            cachedTokens = cached
         case .delivered(let files):
             transcript.append(ChatItem(role: .system, text: "Verified results", files: files))
         }
@@ -343,7 +486,12 @@ final class AppModel {
         if externalHolder != nil, !isRunningTask { return takeOver(reason: "you chose Pause") }
         Task { await runner?.pause() }
     }
-    func resume() { Task { await runner?.resume() } }
+    func resume() {
+        Task {
+            await makeWayForBuiltInTask()
+            await runner?.resume()
+        }
+    }
     func cancel() { Task { await runner?.cancel() } }
 
     /// The user touched the VM screen while the agent held input.

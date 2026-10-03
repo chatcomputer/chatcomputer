@@ -62,5 +62,6 @@ let package = Package(
         .testTarget(name: "AgentCoreTests", dependencies: ["AgentCore"]),
         .testTarget(name: "VMKitTests", dependencies: ["VMKit"]),
         .testTarget(name: "ComputerControlTests", dependencies: ["ComputerControl"]),
+        .testTarget(name: "HostControlTests", dependencies: ["HostControl"]),
     ]
 )

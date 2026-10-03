@@ -122,8 +122,13 @@ public enum ControlCLI {
                 let name = rest.joined(separator: " ")
                 rest = []
                 return try done("snapshot_restore", ["snapshot": .string(name), "save_current": .bool(!noSave)])
+            case "delete":
+                guard !rest.isEmpty else { throw ControlError.usage("Usage: chatcomputer snapshot delete NAME|ID") }
+                let name = rest.joined(separator: " ")
+                rest = []
+                return try done("snapshot_delete", ["snapshot": .string(name)])
             case let other:
-                throw ControlError.usage("Unknown snapshot command `\(other)`. Use list, take or restore.")
+                throw ControlError.usage("Unknown snapshot command `\(other)`. Use list, take, restore or delete.")
             }
         default:
             throw ControlError.unknownCommand(first)
@@ -145,7 +150,7 @@ public enum ControlCLI {
     public static let toolsByCommand: [String: [String]] = [
         "status": ["status"], "screenshot": ["screenshot"], "click": ["click"], "move": ["move"], "drag": ["drag"],
         "scroll": ["scroll"], "type": ["type"], "key": ["key"], "wait": ["wait"], "release": ["release"],
-        "snapshot": ["snapshot_list", "snapshot_take", "snapshot_restore"],
+        "snapshot": ["snapshot_list", "snapshot_take", "snapshot_restore", "snapshot_delete"],
         "put": ["put_file"], "outbox": ["outbox"],
         "share": ["share_list", "share_add", "share_remove"],
     ]

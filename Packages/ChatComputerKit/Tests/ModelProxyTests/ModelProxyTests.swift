@@ -198,10 +198,28 @@ import BridgeProtocol
             ComputerToolset.imageResult(toolUseID: id, screenshot: .init(imageData: Data([1]), mediaType: "image/png", width: 1, height: 1,
                                                                         capturedAt: Date(), observationVersion: 1))
         }
-        let history: [JSONValue] = (1...5).map { ["role": "user", "content": [shot("t\($0)")]] }
-        let trimmed = CompatibleDialect.keepingRecentImages(history, limit: 3)
-        let kinds = trimmed.map { $0["content"]?.arrayValue?.first?["content"]?.arrayValue?.first?["type"]?.stringValue }
-        #expect(kinds == ["text", "text", "image", "image", "image"])
+        func kinds(_ count: Int) -> [String?] {
+            let history: [JSONValue] = (1...count).map { ["role": "user", "content": [shot("t\($0)")]] }
+            return CompatibleDialect.keepingRecentImages(history, limit: 3, batch: 4)
+                .map { $0["content"]?.arrayValue?.first?["content"]?.arrayValue?.first?["type"]?.stringValue }
+        }
+        // Up to limit + batch - 1 images go out unchanged.
+        #expect(kinds(6) == Array(repeating: "image", count: 6))
+        // Then the oldest four go at once, and stay gone while new ones arrive.
+        #expect(kinds(7) == ["text", "text", "text", "text", "image", "image", "image"])
+        #expect(kinds(9).prefix(4) == ["text", "text", "text", "text"])
+        #expect(kinds(9).dropFirst(4).allSatisfy { $0 == "image" })
+    }
+
+    @Test func trimmingKeepsThePrefixStableBetweenBatches() {
+        func shot(_ id: String) -> JSONValue { ["type": "image", "source": ["type": "base64", "media_type": "image/png", "data": .string(id)]] }
+        func request(_ count: Int) -> [JSONValue] {
+            CompatibleDialect.keepingRecentImages((1...count).map { ["role": "user", "content": [shot("s\($0)")]] }, limit: 3, batch: 4)
+        }
+        // Each request is the previous one plus a new turn, except when a batch is removed.
+        // 7 → 10 lie between batches (the next removal is at 11).
+        for count in 7...9 { #expect(Array(request(count + 1).prefix(count)) == request(count)) }
+        #expect(Array(request(11).prefix(10)) != request(10))
     }
 }
 

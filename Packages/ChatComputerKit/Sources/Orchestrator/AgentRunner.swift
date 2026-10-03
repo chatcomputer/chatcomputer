@@ -9,8 +9,10 @@ public enum RunnerUpdate: Sendable, Equatable {
     case assistantNote(String)
     case action(String)
     case needsUser(HostTools.AskUser)
-    case usage(inputTokens: Int, outputTokens: Int)
+    case usage(inputTokens: Int, outputTokens: Int, cachedInputTokens: Int)
     case delivered([URL])
+    /// A request to the model is about to go out: turn `turn` of at most `of`.
+    case thinking(turn: Int, of: Int)
 }
 
 /// The agent loop (proposal §06): observe → act → re-observe, with every dispatch gated
@@ -71,6 +73,60 @@ public actor AgentRunner {
         self.deps = dependencies
         self.attachments = attachments
         self.task = TaskRecord(goal: goal, modelID: dependencies.model.modelID)
+        self.initialPhase = .ready
+        (updates, continuation) = AsyncStream.makeStream()
+    }
+
+    /// Everything needed to pick a task up again after the app quits: the conversation with the model
+    /// (unchanged, thinking blocks included), tool results it is still owed, and the budget spent.
+    public struct Checkpoint: Codable, Sendable {
+        public var task: TaskRecord
+        public var messages: [JSONValue]
+        public var pendingResults: [JSONValue]
+        public var pendingQuestionID: String?
+        public var usage: BudgetUsage
+        public var warnedAboutTurns: Bool
+    }
+
+    /// The task's phase when this runner was created (`.paused` for one restored mid-work).
+    public nonisolated let initialPhase: TaskPhase
+
+    /// A consistent picture of the task. Taken while a turn is still being handled (the app quitting mid-action),
+    /// the last assistant turn may have tool calls whose results aren't recorded yet; every request must answer
+    /// each call, so those get a result saying the action may or may not have happened.
+    public func checkpoint() -> Checkpoint {
+        var results = pendingResults
+        if let last = messages.last, last["role"] == "assistant" {
+            let answered = Set(results.compactMap { $0["tool_use_id"]?.stringValue })
+            for block in last["content"]?.arrayValue ?? [] where block["type"] == "tool_use" {
+                guard let id = block["id"]?.stringValue, !answered.contains(id), id != pendingQuestionID else { continue }
+                let note = "Interrupted: Chat Computer quit while this was running, so it may or may not have happened. Take a screenshot before continuing."
+                results.append(block["toolset_name"] == .string(ComputerToolset.toolsetName)
+                    ? ComputerToolset.textResult(toolUseID: id, note, isError: true)
+                    : HostTools.result(toolUseID: id, note, isError: true))
+            }
+        }
+        return Checkpoint(task: task, messages: messages, pendingResults: results, pendingQuestionID: pendingQuestionID,
+                          usage: usage, warnedAboutTurns: warnedAboutTurns)
+    }
+
+    /// Restores a task saved by `checkpoint()`. One that was working comes back paused, so it continues only
+    /// when the user says so (`resume`); one waiting for the user's answer still waits for it.
+    public init(restoring saved: Checkpoint, dependencies: Dependencies) {
+        self.deps = dependencies
+        self.attachments = []
+        var task = saved.task
+        switch task.phase {
+        case .running, .takenOver, .waitingExternal: task.phase = .paused
+        default: break
+        }
+        self.task = task
+        self.initialPhase = task.phase
+        self.messages = saved.messages
+        self.pendingResults = saved.pendingResults
+        self.pendingQuestionID = saved.pendingQuestionID
+        self.usage = saved.usage
+        self.warnedAboutTurns = saved.warnedAboutTurns
         (updates, continuation) = AsyncStream.makeStream()
     }
 
@@ -179,6 +235,7 @@ public actor AgentRunner {
                 pendingResults = []
             }
 
+            continuation.yield(.thinking(turn: usage.modelTurns + 1, of: deps.budget.maxModelTurns))
             let turnGeneration = generation
             let response: ModelResponse
             do {
@@ -198,10 +255,11 @@ public actor AgentRunner {
             usage.modelTurns += 1
             usage.inputTokens += response.inputTokens
             usage.outputTokens += response.outputTokens
+            usage.cachedInputTokens += response.cachedInputTokens
             task.inputTokens = usage.inputTokens
             task.outputTokens = usage.outputTokens
             try? await deps.store.append(TaskEvent(taskID: task.id, kind: .usage(inputTokens: response.inputTokens, outputTokens: response.outputTokens)))
-            continuation.yield(.usage(inputTokens: usage.inputTokens, outputTokens: usage.outputTokens))
+            continuation.yield(.usage(inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cachedInputTokens: usage.cachedInputTokens))
 
             // Assistant content goes back unchanged, thinking blocks included.
             messages.append(["role": "assistant", "content": .array(response.content)])

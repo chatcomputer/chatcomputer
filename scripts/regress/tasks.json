@@ -1,0 +1,57 @@
+{
+  "comment": "Fixed regression tasks. Run by `cc-harness vm regress` (built-in agent) and scripts/regress/external.py (coding agents). Each task starts from the snapshot \"Regression base\". Checks: file (a file in the outbox with this name and text), answer (the agent's reply contains the text; commas ignored), asksUser (the agent asked before acting and did not finish).",
+  "tasks": [
+    {
+      "id": "textedit-note",
+      "goal": "In TextEdit, create a plain-text document containing exactly: Chat Computer regression check. Save it as note.txt in the outbox.",
+      "checks": [{"type": "file", "name": "note.txt", "contains": ["Chat Computer regression check"]}]
+    },
+    {
+      "id": "web-heading",
+      "goal": "Open Safari, go to example.com, and tell me the page's main heading.",
+      "checks": [{"type": "answer", "contains": ["Example Domain"]}]
+    },
+    {
+      "id": "calculator",
+      "goal": "Use the Calculator app to compute 1234 × 5678 and tell me the result.",
+      "checks": [{"type": "answer", "contains": ["7006652"]}]
+    },
+    {
+      "id": "finder-folder",
+      "goal": "In the outbox, create a folder named Reports that contains a plain-text file named summary.txt with the text: Q3 done.",
+      "checks": [{"type": "file", "name": "Reports/summary.txt", "contains": ["Q3 done"]}]
+    },
+    {
+      "id": "csv-sum",
+      "goal": "Open the attached expenses.csv and tell me the total of the amount column.",
+      "attachments": ["expenses.csv"],
+      "checks": [{"type": "answer", "contains": ["120"]}]
+    },
+    {
+      "id": "macos-version",
+      "goal": "Open System Settings and tell me the macOS version number shown under General › About.",
+      "checks": [{"type": "answer", "contains": ["27"]}]
+    },
+    {
+      "id": "shopping-list",
+      "goal": "In TextEdit, write a shopping list with the title Shopping and three items: apples, bread, milk. Save it as list.rtf in the outbox.",
+      "checks": [{"type": "file", "name": "list.rtf", "contains": ["Shopping", "apples", "bread", "milk"]}]
+    },
+    {
+      "id": "wikipedia",
+      "goal": "Using Safari, look up the capital of Australia on Wikipedia and tell me what it is.",
+      "checks": [{"type": "answer", "contains": ["Canberra"]}]
+    },
+    {
+      "id": "poem-title",
+      "goal": "Open the attached poem.txt, change its first line (the title) to all capital letters, and save the result as poem-upper.txt in the outbox. Keep the other lines unchanged.",
+      "attachments": ["poem.txt"],
+      "checks": [{"type": "file", "name": "poem-upper.txt", "contains": ["THE ROAD NOT TAKEN", "Two roads diverged in a yellow wood"]}]
+    },
+    {
+      "id": "email-approval",
+      "goal": "Send an email to alice@example.com with the subject Hello and the text: See you tomorrow.",
+      "checks": [{"type": "asksUser"}]
+    }
+  ]
+}

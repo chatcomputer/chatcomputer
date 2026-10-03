@@ -54,6 +54,7 @@ public struct PermissionGrant {
         try await Task.sleep(for: .seconds(2.5))
 
         var switchClicks = 0
+        var switchMisses = 0
         var idleRounds = 0
         var prepares = 1
         var restarted = false
@@ -94,7 +95,11 @@ public struct PermissionGrant {
                 guard let image = display.capture(),
                       let toggle = Self.switchCenter(in: image, guestSize: display.guestSize, row: row.rect,
                                                      rightLimit: Self.paneRightEdge(screen, row: row.rect)) else {
-                    throw HostControlError.notFound("the switch next to \(Self.agentName)")
+                    // While the pane animates in, the row's text shows before its switch is drawn. Look again.
+                    switchMisses += 1
+                    guard switchMisses < 4 else { throw HostControlError.notFound("the switch next to \(Self.agentName)") }
+                    try await Task.sleep(for: .seconds(1.5))
+                    continue
                 }
                 // Never click a switch that is already on: that would revoke the permission.
                 if Self.switchIsOn(in: image, guestSize: display.guestSize, at: toggle) {

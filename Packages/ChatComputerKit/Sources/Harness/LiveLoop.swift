@@ -107,8 +107,9 @@ enum LiveLoop {
                 case .needsUser(let ask):
                     asks.append(ask)
                     print("[ask] \(ask.kind): \(ask.question) → \(ask.target)")
-                case .usage(let input, let output): print("[usage] in=\(input) out=\(output)")
+                case .usage(let input, let output, let cached): print("[usage] in=\(input) out=\(output) cached=\(cached)")
                 case .delivered(let files): print("[delivered] \(files.map(\.lastPathComponent))")
+                case .thinking(let turn, _): print("[turn] \(turn)")
                 }
             }
         }

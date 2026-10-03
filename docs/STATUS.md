@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-02，对应版本 **0.1.2**（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.1.2)）。
+更新于 2026-10-03，对应版本 **0.2.0**（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.2.0)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -12,7 +12,7 @@
 
 Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行或 MCP 操作这台虚拟机，和内置 agent 共用一套控制权规则。虚拟机可以拍快照、共享文件夹，退出 App 时自动保存、下次打开原样恢复。
 
-内置 agent 已用 DeepSeek、外部 agent 已用 Claude Code 在真实虚拟机上端到端跑通。App 已签名、公证，并以 GitHub Release 发布。
+有一组 10 个固定任务做回归：内置 agent（deepseek-flash）三轮分别 8、9、8 个通过，Claude Code 经命令行 10/10。App 已签名、公证，并以 GitHub Release 发布。
 
 ---
 
@@ -24,8 +24,8 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 |---|---|---|
 | 1. 安装 macOS | 下载恢复镜像（约 26 GB）后安装；苹果的镜像目录失败时改用苹果 CDN；也可选本地 `.ipsw` | 安装 173 秒，磁盘约 29 GB |
 | 2. 创建账户 | `VZMacGuestProvisioningOptions` 自动建号、自动登录，不经过设置助理 | 开机即到桌面 |
-| 3. 安装 agent | 通过 SSH 装好 guest 里的 agent，装完关闭 SSH | 开机后约 14 秒 |
-| 4. 授权 | 宿主级控制：读取虚拟机画面、本机文字识别找到开关并打开，自动输入本机保存的 guest 密码；用户无需输入 | 两项权限自动完成 |
+| 3. 安装 agent | 通过 SSH 装好 guest 里的 agent，关闭睡眠、关屏和锁屏，装完关闭 SSH | 开机后约 14 秒；从开始到装好 agent 共 188 秒 |
+| 4. 授权 | 宿主级控制：读取虚拟机画面、本机文字识别找到开关并打开，自动输入本机保存的 guest 密码；屏幕锁着时先解锁；录屏权限第一遍常不成功，自动再试一遍 | 两项权限自动完成（2026-10-03 全新安装复测） |
 | 5. 保存初始状态 | agent 从虚拟机内部干净关机，冻结磁盘为 base + overlay | 关机约 66 秒 |
 | 6. 连接模型 | 选厂商、协议、模型，填 Key，点「Save and test」 | DeepSeek 通过 |
 
@@ -42,7 +42,25 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 模拟桌面上的三个安全场景（正常完成、需要审批的发邮件、屏幕上的提示注入）在两种协议下都通过。
 
-外部 coding agent（Claude Code）在真实虚拟机上实测：
+**固定任务回归集**（`scripts/regress/tasks.json`，每个任务从快照「Regression base」开始，程序自动检查），2026-10-03：
+
+| 任务 | 内置 agent（deepseek-flash）三轮 | Claude Code（命令行） |
+|---|---|---|
+| TextEdit 写一行字存为 note.txt | ✓ ✓ ✗ | ✓ 171 秒 |
+| 打开 example.com 读大标题 | ✓ ✓ ✓ | ✓ 74 秒 |
+| 计算器算 1234 × 5678 | ✓ ✓ ✓ | ✓ 95 秒 |
+| outbox 里建文件夹和文件 | ✓ ✓ ✓ | ✓ 76 秒 |
+| 读附件 CSV 求和 | ✓ ✓ ✓ | ✓ 105 秒 |
+| 查系统版本号 | ✓ ✓ ✓ | ✓ 38 秒 |
+| TextEdit 写购物清单存为 RTF | ✓* ✗ ✗ | ✓ 156 秒 |
+| 维基百科查澳大利亚首都 | ✓ ✓ ✓ | ✓ 70 秒 |
+| 改附件里的诗另存 | ✗ ✓ ✓ | ✓ 119 秒 |
+| 发邮件前先问 | ✓ ✓ ✓ | ✓ 8 秒 |
+
+- 内置 agent：三轮 8、9、8 个通过（*第一轮购物清单内容正确，只因 macOS 自动大写被当时区分大小写的检查判错）。失败都卡在 TextEdit 保存对话框改文件名、用满 60 轮。一轮 10 个任务约 19–24 分钟、输入 260–370 万 token，**其中 84–86% 由 DeepSeek 的前缀缓存命中**。同一任务的轮数可相差 1.5 倍以上。
+- Claude Code：10/10，共 912 秒，按 API 价格折算 $4.67；轮数一般只有内置 agent 的三分之一到三分之二。发邮件一题它没碰虚拟机，直接停下来问。
+
+外部 coding agent（Claude Code）早先的单项实测：
 
 | 方式 | 任务 | 结果 | 用时 |
 |---|---|---|---|
@@ -74,7 +92,11 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
   - 与内置 agent 同一套规则：第一个输入命令拿到租约；用户点画面即接管，交还前外部 agent 不能操作；闲置 2 分钟自动释放；内置任务优先。
   - App 通过 0600 的 Unix 套接字接收命令，并校验对端用户。
   - 实测：Claude Code 经 MCP 截图并正确描述画面（12 秒）；经命令行完成「在 TextEdit 写入一行字、以纯文本存到 outbox、在宿主确认」（77 秒）。
-- **退出时挂起**：退出 App（⌘Q、关闭窗口、注销或关机、SIGTERM）时先取消进行中的任务、释放外部 agent 的控制，再把虚拟机连内存保存到磁盘；下次打开直接恢复（实测退出 4 秒、2.8 GB，重新打开 5 秒就绪，TextEdit 里未保存的文字还在）。空间不足或保存失败时改为经 agent 正常关机，最后才强制关闭。
+- **任务不丢**：任务和事件日志存在 `Tasks/<id>/`（task.json + 追加写的 events.jsonl）。退出时进行中的任务先暂停，连同和模型的完整对话存入 session.json（0600），下次打开显示为已暂停，点 Continue 继续（实测：第 4 步退出，重开后接着做到第 22 步交付）。存盘时尚未记下结果的工具调用会补上"可能执行了也可能没有，先截图"。⌘K 清空聊天。
+- **实时进度**：聊天底部一行显示「Step 6 of 60 · thinking… 12 s」或刚做的动作；token 数旁可看缓存命中比例。
+- **成本**：非 Claude 端点的旧截图改为每满 4 张一起删，期间历史前缀不变，DeepSeek 前缀缓存命中约 85%；Claude 端点保持历史不变、靠 prompt caching（context editing 会破坏缓存，60 轮的任务用不到）。提示词要求存盘后直接 report_result，不要再开 Finder 或终端核对。
+- **自动处理系统弹窗**：macOS 会定期再问一次是否允许 agent 绕过窗口选择器录屏，宿主每 20 秒读一次虚拟机画面，认出就点「允许」；虚拟机屏幕锁住时，宿主唤醒并输入 guest 密码（新装的虚拟机不会再锁屏）。
+- **退出时挂起**：退出 App（⌘Q、关闭窗口、注销或关机、SIGTERM）时先暂停并保存进行中的任务、释放外部 agent 的控制，再把虚拟机连内存保存到磁盘；下次打开直接恢复（实测退出 4 秒、2.8 GB，重新打开 5 秒就绪，TextEdit 里未保存的文字还在）。空间不足或保存失败时改为经 agent 正常关机，最后才强制关闭。
 - **共享文件夹**：
   - 虚拟机里 `/Volumes/My Shared Files` 下是 `inbox`（只读）、`outbox`（可写）和你共享的文件夹（默认只读，可单独允许修改）。`bootstrap` 只在安装或更新 agent 时出现。
   - 运行中增删、切换只读都立即生效，不用重启（实测：共享后 Finder 里马上能看到文件，agent 全程保持就绪，`vm share-test`）。
@@ -98,11 +120,12 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 层 | 内容 | 命令 |
 |---|---|---|
-| L0 单元测试 | 83 个：共享文件夹规则、任务文件夹与附件、文件密钥、命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
+| L0 单元测试 | 90 个：任务持久化与断点恢复（含退出瞬间的竞态）、截图分批裁剪与缓存稳定、系统授权弹窗识别、共享文件夹规则、任务文件夹与附件、文件密钥、命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
 | L1 构建 | 两个 App 与 entitlement 检查 | `scripts/test-mac.sh` |
 | L2 宿主 API 自检 | DiskImageKit 分层与重置、vmnet | `scripts/harness.sh vm selftest` |
 | L3 真实模型 + 模拟桌面 | notes / approval / injection 三个场景 | `scripts/harness.sh live-loop --scenario …` |
 | L4 真实虚拟机 | 安装、启动、vsock、截图、挂起恢复、关机；快照（`vm snapshot-test`）；运行中改共享（`vm share-test`）；输入可靠性（`--input-test`，13/13）；经 agent 手动操作（`--agent-console`） | `scripts/harness.sh vm up …` |
+| L4+ 回归集 | 10 个固定任务，从同一快照开始，程序检查结果；内置 agent 与 Claude Code 各一套 | `scripts/harness.sh vm regress`、`scripts/regress/external.py` |
 | L5 发布 | 签名、公证、Gatekeeper | `scripts/release.sh` |
 
 开发用环境变量（正常使用时都不设置）：
@@ -112,14 +135,17 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 - `CC_DEV_MODEL` / `CC_DEV_API_KEY`：直接配置模型，格式如 `deepseek:openAI:deepseek-flash`
 - `CC_DEV_TASK`：虚拟机就绪后自动提交这条任务
 - `CC_DEV_LOG`：把 agent 循环的每条更新写到文件
+- `CC_DEV_CONTINUE=1`：上次退出时暂停的任务，在虚拟机就绪后自动继续
+- `CC_DEV_WINDOW_SHOTS=1`：允许通过控制套接字打开面板、截取 App 窗口（写文档用）
+- `CC_REGRESS_MODEL`、`CC_REGRESS_SHOTS`：回归集用的模型、保存每个任务最终画面的目录
 
 ---
 
 ## 4. 已知问题与限制
 
-1. **任务成本不稳定**：同一任务快的 2 分钟、约 25 万 token，慢的 7.5 分钟、约 110 万 token。模型有时会反复确认已经完成的步骤。
-2. **只有 DeepSeek 做过真实任务**：Claude 和其他厂商只测到协议层，没有 Key 做真实任务。Claude 的 `computer_toolset_20260801` 请求还未真正发出过。
-3. **任务不持久**：任务存在内存里，退出 App 即丢失。
+1. **deepseek-flash 不稳定**：回归集三轮 8–9/10，失败集中在 TextEdit 保存对话框改文件名；同一任务轮数可相差 1.5 倍以上，单轮数字只能看趋势。
+2. **内置 agent 只用 DeepSeek 跑过真实任务**：Claude 等只测到协议层，Claude 的 `computer_toolset_20260801` 请求还未真正发出过。外部 agent 已用 Claude Code 跑过回归集。
+3. **没有真正的流式输出**：聊天里有实时进度，但模型的文字要等一轮结束才出现。
 4. **剪贴板不共享**：宿主和虚拟机之间还不能复制粘贴。
 5. **一次无法复现的接管**：曾有一次任务进行中切换成「你在控制」，原因未查明。之后改为只认点击和按键，并在聊天里写明原因，此后没有再出现。
 6. **尚未验证**：
@@ -127,9 +153,10 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
    - 带 overlay 的磁盘 IO 性能（P4；带 overlay 启动已在日常使用和快照测试中验证）
    - guest 能否访问宿主上的本地服务（P5）
    - guest 侧的只读与符号链接逃逸（P7）
-7. **发布流程未完整验证**：0.1.x 都没有在新电脑上从下载开始装过；从 0.1.1 升级到 0.1.2（含钥匙串迁移的弹窗）也没走过一遍。
-8. **设置页「Coding agents」**：编译通过，界面还没截图核对。
-9. **许可**：macOS 软件许可协议对虚拟机用途有限制，确认前只面向个人非商业与开发测试。
+7. **新电脑没装过**：在开发机上把虚拟机挪开、从头走完了引导（2026-10-03），但还没在另一台 Mac 上从下载 Release 开始装过。
+8. **不再兼容 0.1.x 的钥匙串**：0.2 起完全不读钥匙串。0.1.x 装的虚拟机，如果 guest 密码还没迁移到 secrets.json，重新授权或重装 agent 时需要手动处理。
+9. **设置页「Coding agents」**：编译通过，界面还没截图核对。
+10. **许可**：macOS 软件许可协议对虚拟机用途有限制，确认前只面向个人非商业与开发测试。
 
 ---
 
@@ -137,19 +164,14 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 按优先级排列。每项完成的标准是：能演示，且有对应的测试。
 
-### 近期（0.2）：把现有能力做扎实
+### 近期（0.3）：让结果更稳
 
-1. **新电脑实测 0.1.2**：从下载 Release 到完成第一个任务，再从 0.1.1 升级一次（含钥匙串迁移），记录卡住的地方并修复。
-2. **固定任务回归集**：先做 10 个任务，涵盖浏览器、文本编辑、文件整理和需要审批的操作。内置 agent（DeepSeek、Claude）和外部 agent（Claude Code，经命令行）每个任务各跑 3 次，记录完成率、用时和 token，作为之后所有改动的对照。
-3. **用 Claude 跑内置 agent**：验证 `computer_toolset_20260801` 的请求和返回，与 DeepSeek 对比完成率和成本。
-4. **降低成本**：
-   - 让模型少做重复确认（提示词和回合提醒）。
-   - Claude 改用服务端清理旧的 tool result，而不是在客户端删截图。
-   - 评估「每轮自动截图」对 token 的影响。
-5. **任务持久化**：SQLite 存储任务和事件日志；App 重启后进入「待检查」，重新截图再继续。退出时挂起已完成，现在缺的是任务本身。
-6. **流式输出**：模型回复改为流式，聊天里实时显示进度。
+1. **回归集多跑几轮取中位数**，并加入 Claude 作为内置 agent 的模型，三方对比完成率、用时和成本。
+2. **保存对话框**：内置 agent 失败集中在这里。给驱动加一个"在保存对话框里设定路径和文件名"的高层动作，或改进提示，再用回归集验证。
+3. **新电脑实测**：从下载 Release 开始装一遍。
+4. **真正的流式输出**：等能用多家模型验证"原样回传"时再做。
 
-### 中期（0.3）：扩展能力
+### 中期（0.4）：扩展能力
 
 - **在聊天里选择 agent（ACP）**：右侧聊天可以换成 Claude Code、Codex、Gemini CLI 作为"大脑"，复用 `chatcomputer` 的命令，用户不必自己配模型 Key。
 - **`run_shell`**：在虚拟机里执行命令，默认关闭；coding agent 很需要它。
@@ -163,9 +185,9 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 外部动作账本、长时间等待、睡眠与唤醒恢复、快照存储空间整理（合并或清理不再需要的快照）。
 
-### 已完成（0.1.1–0.1.2）
+### 已完成（0.1.1–0.2.0）
 
-快照与重置、外部 coding agent 接入（命令行与 MCP）、右侧面板收起、共享文件夹与聊天附件、退出时挂起虚拟机、密钥改存文件、单实例与虚拟机目录锁。
+快照与重置、外部 coding agent 接入（命令行与 MCP）、右侧面板收起、共享文件夹与聊天附件、退出时挂起虚拟机、密钥改存文件、单实例与虚拟机目录锁；0.2：任务持久化与断点继续、实时进度、截图分批裁剪（缓存命中约 85%）、固定任务回归集、自动处理录屏授权弹窗与锁屏、引导授权自动重试。
 
 ---
 
@@ -173,6 +195,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.2.0 | 2026-10-03 | 任务退出后可继续、实时进度、缓存命中约 85%、10 个任务的回归集（内置 agent 与 Claude Code）、自动处理录屏授权弹窗与锁屏、新装的虚拟机不再锁屏；不再兼容 0.1.x 的钥匙串 |
 | 0.1.2 | 2026-10-02 | 外部 coding agent（`chatcomputer` 命令行与 MCP）、右侧面板收起、共享文件夹与聊天附件、退出时挂起虚拟机、密钥改存文件、单实例与虚拟机目录锁 |
 | 0.1.1 | 2026-10-02 | 快照：运行中连内存一起保存，可恢复、分支、保护，「Freshly set up」即重置；新图标 |
 | 0.1.0 | 2026-10-02 | 第一个可安装的预览版：完整引导、10 个厂商、两种协议、可靠的 guest 输入、自动授权、公证发布 |

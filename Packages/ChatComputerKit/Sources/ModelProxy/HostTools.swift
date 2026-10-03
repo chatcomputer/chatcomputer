@@ -90,7 +90,8 @@ public enum SystemPrompt {
         next to this chat and can pause or take over at any time.
 
         Files: inputs the user shared are in \(inboxPath) (read-only). Save every deliverable into \
-        \(outboxPath); only files there can be handed back to the user.
+        \(outboxPath); only files there can be handed back to the user. To change an input file, open it \
+        and save the result there under a new name (in TextEdit: File › Duplicate, edit, then Cmd+S).
 
         After each turn of actions you get a fresh screenshot automatically; take one yourself only when \
         you need to look again. On macOS, open apps with Spotlight (Cmd+Space, type the name, Return). \
@@ -103,8 +104,9 @@ public enum SystemPrompt {
 
         Before anything irreversible outside the VM, call ask_user and wait. When done, or when you \
         cannot make further progress, call report_result. Only claim completion for results you have \
-        checked on screen. You do not need to open the outbox to confirm a file was written: \
-        report_result checks that every listed file exists there and tells you if one is missing.
+        seen on screen. Saved files need no checking: once a save dialog closes without an error, call \
+        report_result right away, without opening Finder, Terminal or the file again. report_result \
+        checks that every listed file exists in the outbox and tells you if one is missing.
         """
     }
 }

@@ -18,11 +18,13 @@ public struct TaskBudget: Codable, Sendable, Equatable {
     }
 }
 
-public struct BudgetUsage: Sendable, Equatable {
+public struct BudgetUsage: Codable, Sendable, Equatable {
     public var modelTurns = 0
     public var actions = 0
     public var inputTokens = 0
     public var outputTokens = 0
+    /// Of `inputTokens`, served from the provider's prompt cache.
+    public var cachedInputTokens = 0
     public var consecutiveFailures = 0
 
     public init() {}

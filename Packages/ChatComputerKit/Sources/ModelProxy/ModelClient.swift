@@ -7,14 +7,18 @@ public struct ModelResponse: Sendable, Equatable {
     public var stopReason: String?
     public var inputTokens: Int
     public var outputTokens: Int
+    /// Of `inputTokens`, how many the provider served from its prompt cache (billed at a fraction).
+    public var cachedInputTokens: Int
     /// The model that actually served the turn (differs from the request after a fallback).
     public var servedModel: String?
 
-    public init(content: [JSONValue], stopReason: String?, inputTokens: Int, outputTokens: Int, servedModel: String?) {
+    /// `inputTokens` counts every input token, cached or not.
+    public init(content: [JSONValue], stopReason: String?, inputTokens: Int, outputTokens: Int, cachedInputTokens: Int = 0, servedModel: String?) {
         self.content = content
         self.stopReason = stopReason
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
+        self.cachedInputTokens = cachedInputTokens
         self.servedModel = servedModel
     }
 

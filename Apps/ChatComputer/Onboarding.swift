@@ -74,7 +74,16 @@ extension AppModel {
                 try await Task.sleep(for: .seconds(1))
                 waited += 1
             }
-            try await grantPermissionsAutomatically()
+            await unlockGuestIfLocked()
+            do {
+                try await grantPermissionsAutomatically()
+            } catch {
+                // Screen recording often needs a second pass on a fresh guest: the agent restarts to pick up the
+                // permission and may reconnect after the first pass gave up. A second pass has always finished it.
+                onboarding.detail = "Trying once more…"
+                try await Task.sleep(for: .seconds(3))
+                try await grantPermissionsAutomatically()
+            }
             onboarding.isWorking = false
             await runOnboardingStep()
         } catch {

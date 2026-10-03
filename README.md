@@ -7,7 +7,7 @@ has verified. You can pause, take over by clicking the VM screen, or cancel at a
 Host and guest are both **macOS 27 on Apple silicon only**, so the app uses the WWDC26 Virtualization
 features directly: guest provisioning, DiskImageKit layered disks and vmnet networks.
 
-**Status:** 0.1.2 preview. Setup, model connection and real tasks work end to end on a macOS 27 VM.
+**Status:** 0.2.0 preview. Setup, model connection and real tasks work end to end on a macOS 27 VM.
 See [docs/STATUS.md](docs/STATUS.md) for what works, measured results, known issues and the plan.
 
 ## Install
@@ -98,6 +98,8 @@ cd Packages/ChatComputerKit && swift test            # unit tests only
 scripts/harness.sh live-loop --scenario notes        # real model against a simulated desktop
 scripts/harness.sh vm up --input-test 3              # typing and save-dialog check through the guest agent
 scripts/test-linux.sh                                # portable modules in Docker, without a Mac
+scripts/harness.sh vm regress                        # the fixed task set with the built-in agent (scripts/regress)
+scripts/regress/external.py --cli chatcomputer       # the same tasks with Claude Code through the CLI
 ```
 
 `docs/STATUS.md` §3 lists the test layers and the development environment variables.

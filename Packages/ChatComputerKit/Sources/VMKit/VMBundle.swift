@@ -45,13 +45,9 @@ public struct VMBundle: Sendable {
     public var sharedRoot: URL { url.appendingPathComponent("Shared", isDirectory: true) }
     public var bootstrapDirectory: URL { sharedRoot.appendingPathComponent("bootstrap", isDirectory: true) }
 
-    /// The bundle's secrets file. Bundles made by `cc-harness` before 0.1.2 kept it as harness-secrets.json.
+    /// The bundle's secrets file.
     public func secretStore() -> FileSecretStore {
-        let old = url.appendingPathComponent("harness-secrets.json")
-        if !FileManager.default.fileExists(atPath: secretsURL.path), FileManager.default.fileExists(atPath: old.path) {
-            try? FileManager.default.moveItem(at: old, to: secretsURL)
-        }
-        return FileSecretStore(url: secretsURL)
+        FileSecretStore(url: secretsURL)
     }
 
     public var exists: Bool { FileManager.default.fileExists(atPath: specURL.path) }

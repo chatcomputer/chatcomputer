@@ -17,11 +17,17 @@ struct ChatPanel: View {
                         ForEach(visibleItems) { item in
                             ChatRow(item: item) { model.export($0) }.id(item.id)
                         }
+                        if model.phase == .running, let progress = model.progress {
+                            ProgressLine(progress: progress).id("progress")
+                        }
                     }
                     .padding()
                 }
                 .onChange(of: model.transcript.count) {
                     if let last = model.transcript.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+                .onChange(of: model.progress) {
+                    if model.progress != nil { proxy.scrollTo("progress", anchor: .bottom) }
                 }
             }
             Divider()
@@ -102,6 +108,9 @@ struct ChatPanel: View {
                 .help("Snapshots: save the virtual Mac and return to it later (⇧⌘S)")
             Toggle("Steps", isOn: $showActions).toggleStyle(.switch).controlSize(.mini).font(.caption)
             Text("\(model.tokens.input + model.tokens.output) tokens").font(.caption).monospacedDigit()
+                .help(model.tokens.input > 0
+                      ? "\(model.tokens.input) in (\(model.cachedTokens * 100 / max(model.tokens.input, 1))% from the provider's cache), \(model.tokens.output) out"
+                      : "No model requests yet")
         }
         .foregroundStyle(.secondary)
         .padding(.horizontal, 12)
@@ -145,5 +154,27 @@ private struct ChatRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: item.role == .user ? .trailing : .leading)
+    }
+}
+
+/// What the agent is doing now: the step, and how long the model has been thinking.
+private struct ProgressLine: View {
+    let progress: TaskProgress
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(text(at: context.date)).font(.callout).foregroundStyle(.secondary).monospacedDigit()
+            }
+        }
+    }
+
+    private func text(at now: Date) -> String {
+        let step = "Step \(progress.turn) of \(progress.maxTurns)"
+        if let since = progress.waitingSince {
+            return "\(step) · thinking… \(max(0, Int(now.timeIntervalSince(since)))) s"
+        }
+        return "\(step) · \(progress.lastAction ?? "working")"
     }
 }

@@ -1,7 +1,9 @@
+import AppKit
 import BridgeProtocol
 import ChatCore
 import ComputerControl
 import GuestBridge
+import HostControl
 import Foundation
 import ModelProxy
 import VMKit
@@ -61,6 +63,9 @@ final class ExternalControl {
 
     private func execute(_ request: ControlRequest) async -> ControlResponse {
         let client = request.client
+        if request.command.hasPrefix("dev_"), ProcessInfo.processInfo.environment["CC_DEV_WINDOW_SHOTS"] == "1" {
+            return await developmentCommand(request)
+        }
         do {
             let command = try ControlCommand(name: request.command, arguments: request.arguments)
             lastActivity = Date()
@@ -98,6 +103,11 @@ final class ExternalControl {
                 _ = try await readyGuest()
                 let saved = saveCurrent ? " The previous state was saved as “Before restoring “\(snapshot.name)””." : ""
                 return ControlResponse(text: "Restored “\(snapshot.name)”. Take a screenshot before acting.\(saved)")
+            case .snapshotDelete(let wanted):
+                let snapshot = try findSnapshot(wanted)
+                guard let vm = model.vm else { throw Failure("Chat Computer is not set up yet.") }
+                try vm.deleteSnapshot(snapshot.id)
+                return ControlResponse(text: "Deleted snapshot “\(snapshot.name)”.")
             case .putFile(let path):
                 return ControlResponse(text: try putFile(path))
             case .outbox:
@@ -146,6 +156,54 @@ final class ExternalControl {
         case .cursor(let point): return ControlResponse(text: "Pointer at \(point.x), \(point.y).")
         case .failure(let error): throw Failure("The virtual Mac refused: \(error.message)")
         default: return ControlResponse(text: "Done.")
+        }
+    }
+
+    // MARK: Development
+
+    /// CC_DEV_WINDOW_SHOTS=1 only: drive the app's own UI and capture its windows, for documentation.
+    /// `dev_ui` takes an "action"; `dev_window_shot` writes each visible window to "dir" and lists the files.
+    private func developmentCommand(_ request: ControlRequest) async -> ControlResponse {
+        switch request.command {
+        case "dev_ui":
+            switch request.arguments["action"]?.stringValue {
+            case "snapshots": model.showingSnapshots = true
+            case "sharedFolders": model.showingSharedFolders = true
+            case "closeSheets": model.showingSnapshots = false; model.showingSharedFolders = false
+            case "collapse": model.setPanelCollapsed(true)
+            case "expand": model.setPanelCollapsed(false)
+            case "settings": NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            case "closeSettings": NSApp.windows.first { $0.title.contains("Settings") || $0.identifier?.rawValue.contains("Settings") == true }?.close()
+            case "wake":
+                guard let view = model.guestView else { return .error("no guest view") }
+                let display = HostDisplay(view: view, guestSize: CGSize(width: 1280, height: 800))
+                display.move(to: CGPoint(x: 600, y: 400))
+                display.move(to: CGPoint(x: 640, y: 420))
+            case "resumeOnboarding":
+                model.autoOnboardingStarted = false
+                model.startAutoOnboardingIfRequested()
+            case "takeOver": model.takeOver(reason: "you clicked the virtual Mac")
+            case "handBack": model.returnControl()
+            case "attach": model.pendingAttachments = (request.arguments["files"]?.arrayValue ?? []).compactMap(\.stringValue).map { URL(fileURLWithPath: $0) }
+            case "submit": model.submit(request.arguments["text"]?.stringValue ?? "")
+            case let other: return .error("unknown action \(other ?? "")")
+            }
+            return ControlResponse(text: "ok")
+        case "dev_window_shot":
+            let directory = URL(fileURLWithPath: request.arguments["dir"]?.stringValue ?? NSTemporaryDirectory())
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let prefix = request.arguments["name"]?.stringValue ?? "window"
+            var written: [String] = []
+            for (index, window) in NSApp.windows.enumerated() where window.isVisible && window.frame.width > 200 {
+                guard let view = window.contentView?.superview ?? window.contentView,
+                      let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+                view.cacheDisplay(in: view.bounds, to: rep)
+                let url = directory.appendingPathComponent("\(prefix)-\(index).png")
+                if (try? rep.representation(using: .png, properties: [:])?.write(to: url)) != nil { written.append(url.path) }
+            }
+            return ControlResponse(text: written.joined(separator: "\n"))
+        default:
+            return .error("unknown development command")
         }
     }
 
@@ -230,6 +288,7 @@ final class ExternalControl {
         // command doesn't hold up every command queued behind it.
         var deadline = Date().addingTimeInterval(vm.state == .running ? 20 : 150)
         var started = false
+        var unlocked = false
         var reason = "it is \(vm.state)"
         while Date() < deadline {
             if model.snapshotActivity != nil || vm.isWorkingOnSnapshots {
@@ -246,6 +305,10 @@ final class ExternalControl {
                     let readiness = await guestReadiness(bridge)
                     if readiness == nil { return bridge }
                     reason = readiness ?? reason
+                    if !unlocked, reason.contains("locked") {
+                        unlocked = true
+                        await model.unlockGuestIfLocked()
+                    }
                 default:
                     reason = "it is \(vm.state)"
                 }

@@ -53,8 +53,7 @@ public struct TaskEvent: Codable, Sendable, Equatable {
     }
 }
 
-/// Persistence boundary. The shipping implementation is SQLite (see ROADMAP §2.1);
-/// the in-memory one backs tests and early prototypes.
+/// Persistence boundary. The app uses `FileTaskStore`; the in-memory one backs tests.
 public protocol TaskStore: Sendable {
     func create(_ task: TaskRecord) async throws
     func task(_ id: UUID) async throws -> TaskRecord?
@@ -74,4 +73,70 @@ public actor InMemoryTaskStore: TaskStore {
     public func update(_ task: TaskRecord) { tasks[task.id] = task }
     public func append(_ event: TaskEvent) { log.append(event) }
     public func events(for taskID: UUID) -> [TaskEvent] { log.filter { $0.taskID == taskID } }
+}
+
+/// Tasks on disk: `<root>/<task id>/task.json` and an append-only `events.jsonl`, one JSON event per line.
+/// Appends are single writes to the end of the file, so a crash loses at most the line being written,
+/// and a torn last line is skipped when reading.
+public actor FileTaskStore: TaskStore {
+    public let root: URL
+
+    public init(root: URL) {
+        self.root = root
+    }
+
+    private func folder(_ id: UUID) -> URL { root.appendingPathComponent(id.uuidString, isDirectory: true) }
+
+    public func create(_ task: TaskRecord) throws {
+        try FileManager.default.createDirectory(at: folder(task.id), withIntermediateDirectories: true)
+        try update(task)
+    }
+
+    public func task(_ id: UUID) -> TaskRecord? {
+        guard let data = try? Data(contentsOf: folder(id).appendingPathComponent("task.json")) else { return nil }
+        return try? Self.decoder.decode(TaskRecord.self, from: data)
+    }
+
+    public func update(_ task: TaskRecord) throws {
+        try FileManager.default.createDirectory(at: folder(task.id), withIntermediateDirectories: true)
+        try Self.encoder.encode(task).write(to: folder(task.id).appendingPathComponent("task.json"), options: .atomic)
+    }
+
+    public func append(_ event: TaskEvent) throws {
+        let url = folder(event.taskID).appendingPathComponent("events.jsonl")
+        try FileManager.default.createDirectory(at: folder(event.taskID), withIntermediateDirectories: true)
+        var line = try Self.encoder.encode(event)
+        line.append(10)
+        if let handle = try? FileHandle(forWritingTo: url) {
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: line)
+        } else {
+            try line.write(to: url)
+        }
+    }
+
+    public func events(for taskID: UUID) -> [TaskEvent] {
+        guard let data = try? Data(contentsOf: folder(taskID).appendingPathComponent("events.jsonl")) else { return [] }
+        return data.split(separator: 10).compactMap { try? Self.decoder.decode(TaskEvent.self, from: Data($0)) }
+    }
+
+    /// Every task on disk, newest first.
+    public func allTasks() -> [TaskRecord] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+        return names.compactMap { UUID(uuidString: $0).flatMap(task) }.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return encoder
+    }()
+
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 }

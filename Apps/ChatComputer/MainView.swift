@@ -74,6 +74,7 @@ struct MainView: View {
         .task {
             if model.vm?.state == .stopped { await model.bootVM() }
             await model.startDevelopmentTaskIfRequested()
+            await model.continueRestoredTaskIfRequested()
         }
     }
 

@@ -62,12 +62,13 @@
 - [x] agent 自更新（`GuestCommand.updateAgent`，校验同团队签名）：首次安装后 SSH 已关闭，新版本 agent 通过 bootstrap 共享目录分发，由 agent 自己校验签名后替换并重启（注意先删除再复制，原地覆盖会被代码签名机制杀掉，`OS_REASON_CODESIGNING`）
 - [ ] 架构边界测试（参考 shk 的 ArchitectureTests）：Orchestrator / ModelProxy 不得 import VMKit、Virtualization
 
-- [ ] 任务存储换成 SQLite（`AppModel.store` 目前是 `InMemoryTaskStore`，退出即丢）
-- [ ] 宿主 App 重启后恢复任务：读取事件日志，进入"待检查"状态，重新截图后再继续
+- [x] 任务存储：`FileTaskStore`（每个任务一个目录，task.json + 追加写的 events.jsonl；比 SQLite 简单、可移植，写到一半崩溃只丢最后一行）
+- [x] 退出时任务暂停并连同对话历史存入 session.json，重新打开后显示为已暂停，Continue 继续（实测：第 4 步退出，重开后第 22 步交付）
 - [ ] `GuestCommand.cancel`：取消长时间的 `wait` / `hold_key`（`AgentService` 里的 TODO）
 - [ ] 过期截图检测：动作带着 `observationVersion`，guest 端还没有校验
-- [ ] 上下文增长：每轮截图都留在对话里，长任务会越来越大。不要在客户端删旧截图（会让后续 thinking 块失效），改用服务端的 tool result 清理
-- [ ] 模型请求改为流式，聊天里实时显示进度说明
+- [x] 上下文与成本：Claude 端点保持历史不变、靠 prompt caching；context editing 会破坏缓存，只在上下文窗口不够时才用，60 轮任务用不到。非 Claude 端点的截图改为分批裁剪，缓存命中约 85%
+- [x] 聊天里实时显示进度（第几步、模型思考了几秒、刚做的动作）
+- [ ] 真正的流式输出：需要从流里逐块拼回原始回复（thinking、reasoning_content、extra_content），多家模型都能验证时再做
 - [ ] 就绪探针：每次虚拟机启动或解锁后跑一次 health，不满足条件时显示"等待桌面登录或权限"
 - [x] 快照：运行中连内存一起保存，APFS 克隆，分支历史，恢复前自动保存当前状态，「Freshly set up」即重置；日志式恢复可从崩溃中回滚（`SnapshotStore`、`vm snapshot-test`）
 - [x] 外部 coding agent 接入：`chatcomputer` 命令行 + `chatcomputer mcp`，同一租约，用户接管/交还，闲置释放；Claude Code 经 MCP 和命令行实测通过
@@ -76,6 +77,9 @@
 - [x] 共享文件夹：运行中热更新、用户文件夹（默认只读、敏感目录拦截）、bootstrap 按需挂载、管理面板与清理、聊天附件、可读任务文件夹名、`share` 命令
 - [ ] 把文件夹拖到虚拟机画面上即共享（目前可拖到面板或聊天）
 - [ ] ACP：在聊天里选择 Claude Code / Codex 等作为 agent
+- [x] 固定任务回归集：`cc-harness vm regress`（内置 agent）与 `scripts/regress/external.py`（Claude Code），10 个任务，从同一张快照开始，自动检查
+- [x] 宿主自动回应 macOS 定期弹出的录屏授权对话框（`ConsentPrompt`）
+- [ ] 每个任务多跑几轮取中位数（deepseek-flash 同一任务轮数波动可达 1.5 倍）
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [x] 宿主 App 退出时挂起虚拟机，下次启动时恢复（含 SIGTERM；保存失败时改为正常关机）
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
