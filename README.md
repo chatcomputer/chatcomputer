@@ -36,6 +36,25 @@ Built-in providers are Anthropic, OpenAI, Google Gemini, DeepSeek, xAI, Mistral,
 Moonshot Kimi, Zhipu GLM and ByteDance Doubao, plus any custom compatible endpoint. See
 `Packages/ChatComputerKit/Sources/ModelProxy/ModelCatalog.swift`.
 
+## Coding agents
+
+Claude Code, Codex and other agents on your Mac can operate the virtual Mac too. The app's executable doubles
+as the `chatcomputer` command line tool (Settings › Coding agents installs it on your PATH):
+
+```sh
+chatcomputer help                      # usage and guidance for agents
+chatcomputer screenshot                # saves a PNG and prints its path
+chatcomputer click 640 400
+chatcomputer type "hello"; chatcomputer key cmd+s
+chatcomputer snapshot take "Before update"
+chatcomputer mcp                       # the same commands as an MCP server on stdio
+```
+
+For Claude Code: `claude mcp add chatcomputer -- chatcomputer mcp`, or just tell it to use the command.
+Agents follow the built-in agent's rules: the first input command takes the input lease, clicking the screen takes
+it back, and an idle agent loses it after 2 minutes. The app listens on a 0600 Unix socket in
+`~/Library/Application Support/ChatComputer/`. The chat panel collapses to a rail of controls (⌃⌘S) while an agent works.
+
 ## Layout
 
 ```
@@ -44,12 +63,13 @@ Apps/ChatComputer/           host app (SwiftUI): guest screen, chat, onboarding,
 Apps/ChatComputerAgent/      guest agent (menu bar app inside the VM)
 Packages/ChatComputerKit/    all logic, as a local Swift package
   BridgeProtocol             host⇄guest messages and framing (vsock)
-  ChatCore                   task state machine, control lease, budget, export checks, Keychain
+  ChatCore                   task state machine, control lease, budget, export checks, secret files
   ModelProxy                 Anthropic and OpenAI-compatible clients, provider catalog, computer toolset
   Orchestrator               the agent loop (AgentRunner)
   VMKit           (macOS)    VM bundle, install, provisioning, DiskImageKit, vmnet
   GuestBridge     (macOS)    vsock server on the host
   HostControl     (macOS)    host-level control of the guest (framebuffer, keyboard, mouse)
+  ComputerControl            `chatcomputer` CLI and MCP server for outside coding agents, control socket
   AgentCore       (macOS)    vsock client and NativeDriver in the guest
   Harness         (macOS)    cc-harness: live model scenarios and VM probes
 scripts/                     test-mac.sh, harness.sh, release.sh, test-linux.sh

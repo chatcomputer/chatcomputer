@@ -171,7 +171,7 @@ public enum ModelCatalog {
     }
 }
 
-/// The user's model choice. Saved in user defaults; the API key lives in the Keychain under `keychainAccount`.
+/// The user's model choice. Saved in user defaults; the API key is stored under `secretAccount` (`HostSecretStore`).
 public struct ModelSettings: Codable, Sendable, Equatable {
     public var providerID: String
     public var protocolKind: ModelProtocol
@@ -189,8 +189,8 @@ public struct ModelSettings: Codable, Sendable, Equatable {
                                                 baseURL: "https://api.anthropic.com", model: "claude-opus-5-5")
 
     /// One key per provider. Anthropic keeps the account name the app always used.
-    public static func keychainAccount(for providerID: String) -> String { "model.\(providerID).apiKey" }
-    public var keychainAccount: String { Self.keychainAccount(for: providerID) }
+    public static func secretAccount(for providerID: String) -> String { "model.\(providerID).apiKey" }
+    public var secretAccount: String { Self.secretAccount(for: providerID) }
 
     /// A settings value for a provider's default protocol, endpoint and first model.
     public static func preset(_ provider: ProviderPreset) -> ModelSettings {

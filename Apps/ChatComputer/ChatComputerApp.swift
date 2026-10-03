@@ -1,7 +1,32 @@
+import AppKit
 import ChatCore
+import ComputerControl
+import Foundation
 import SwiftUI
 
+/// One executable, two faces: `chatcomputer <command>` (or the app binary with a command) is the
+/// command line tool coding agents use; anything else opens the app.
 @main
+enum Entry {
+    static func main() {
+        let arguments = CommandLine.arguments
+        if ControlCommandLine.isCommandLine(arguments) {
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+            Task { exit(await ControlCommandLine.run(arguments, version: version)) }
+            dispatchMain()
+        }
+        // One copy at a time: a second one (another build, or a second launch from a different path)
+        // brings the running copy forward and quits, so it never competes for the virtual Mac or the socket.
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+        if let running = others.first {
+            running.activate()
+            exit(0)
+        }
+        ChatComputerApp.main()
+    }
+}
+
 struct ChatComputerApp: App {
     @State private var model = AppModel()
 
@@ -14,6 +39,12 @@ struct ChatComputerApp: App {
         .defaultSize(WorkspaceMetrics.defaultContentSize)
         .windowResizability(.contentMinSize)
         .commands {
+            CommandGroup(before: .toolbar) {
+                Button(model.isPanelCollapsed ? "Show Chat" : "Hide Chat") { model.setPanelCollapsed(!model.isPanelCollapsed) }
+                    .keyboardShortcut("s", modifiers: [.control, .command])
+                    .disabled(!model.isReady)
+                Divider()
+            }
             CommandMenu("Machine") {
                 Button("Take Snapshot") { Task { await model.takeSnapshot() } }
                     .keyboardShortcut("s", modifiers: [.command, .option])
@@ -46,6 +77,9 @@ struct SettingsView: View {
         Form {
             Section("Model") {
                 ModelSettingsForm()
+            }
+            Section("Coding agents") {
+                CodingAgentsSettings()
             }
         }
         .formStyle(.grouped)

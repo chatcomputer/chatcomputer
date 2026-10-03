@@ -92,7 +92,7 @@ struct ModelSettingsForm: View {
     }
 
     private var footnote: String {
-        var parts = ["The key stays in this Mac's Keychain. While a task runs, screenshots and text from the virtual Mac are sent to the provider you choose."]
+        var parts = ["The key stays on this Mac, in a file only your account can read. While a task runs, screenshots and text from the virtual Mac are sent to the provider you choose."]
         if provider?.isClaude == false {
             parts.append("The model must accept images and call tools.")
         }
@@ -109,7 +109,7 @@ struct ModelSettingsForm: View {
     }
 
     private func refreshSavedKey() {
-        savedKeySuffix = (try? model.secrets.read(settings.keychainAccount))?.suffix(4).description
+        savedKeySuffix = (try? model.secrets.read(settings.secretAccount))?.suffix(4).description
     }
 
     private func selectProvider(_ id: String) {
@@ -141,7 +141,7 @@ struct ModelSettingsForm: View {
         status = .testing
         do {
             if !apiKey.isEmpty {
-                try model.secrets.write(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: settings.keychainAccount)
+                try model.secrets.write(apiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: settings.secretAccount)
                 apiKey = ""
                 refreshSavedKey()
             }

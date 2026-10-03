@@ -226,6 +226,6 @@ import BridgeProtocol
         settings.protocolKind = .anthropic
         settings.baseURL = deepseek.endpoints[.anthropic]!
         #expect(try settings.makeClient { "k" } is AnthropicClient)
-        #expect(ModelSettings.keychainAccount(for: "anthropic") == "model.anthropic.apiKey")
+        #expect(ModelSettings.secretAccount(for: "anthropic") == "model.anthropic.apiKey")
     }
 }

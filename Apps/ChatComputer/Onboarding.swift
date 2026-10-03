@@ -44,7 +44,7 @@ extension AppModel {
         // These steps happen in (or with) the running guest, so bring it up when setup resumes there.
         if onboarding.step == .grantPermissions {
             onboarding.detail = "Chat Computer can turn these on for you: it clicks in the virtual Mac and types the "
-                + "guest password from your Keychain. You can watch it happen on the left."
+                + "guest password stored on this Mac. You can watch it happen on the left."
             if vm?.state == .stopped { Task { await bootVM() } }
         }
     }

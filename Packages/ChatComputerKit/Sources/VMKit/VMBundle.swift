@@ -1,4 +1,5 @@
 #if os(macOS)
+import ChatCore
 import Foundation
 
 /// Everything that defines one virtual Mac, kept together on disk (proposal §05: disk, auxiliary
@@ -37,12 +38,36 @@ public struct VMBundle: Sendable {
     public var baseDiskURL: URL { diskDirectory.appendingPathComponent("base.asif") }
     public func overlayURL(_ index: Int) -> URL { diskDirectory.appendingPathComponent("overlay-\(index).asif") }
     public var savedStateURL: URL { url.appendingPathComponent("SavedState.vzvmsave") }
+    /// Guest password and pairing token (0600), shared by the app and `cc-harness`.
+    public var secretsURL: URL { url.appendingPathComponent("secrets.json") }
     public var snapshotsDirectory: URL { url.appendingPathComponent("Snapshots", isDirectory: true) }
     public var knownHostsURL: URL { url.appendingPathComponent("known_hosts") }
     public var sharedRoot: URL { url.appendingPathComponent("Shared", isDirectory: true) }
     public var bootstrapDirectory: URL { sharedRoot.appendingPathComponent("bootstrap", isDirectory: true) }
 
+    /// The bundle's secrets file. Bundles made by `cc-harness` before 0.1.2 kept it as harness-secrets.json.
+    public func secretStore() -> FileSecretStore {
+        let old = url.appendingPathComponent("harness-secrets.json")
+        if !FileManager.default.fileExists(atPath: secretsURL.path), FileManager.default.fileExists(atPath: old.path) {
+            try? FileManager.default.moveItem(at: old, to: secretsURL)
+        }
+        return FileSecretStore(url: secretsURL)
+    }
+
     public var exists: Bool { FileManager.default.fileExists(atPath: specURL.path) }
+
+    /// Takes the bundle's lock for the life of this process, so two processes (two copies of the app, or the
+    /// app and `cc-harness`) never run the same machine on the same disk. Returns false if another holds it.
+    public func lock() -> Bool {
+        let fd = open(url.appendingPathComponent(".lock").path, O_CREAT | O_RDWR | O_CLOEXEC, 0o600)
+        guard fd >= 0 else { return false }
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else {
+            close(fd)
+            return false
+        }
+        // Deliberately kept open: the kernel releases the lock when the process exits.
+        return true
+    }
 
     public func create() throws {
         let fm = FileManager.default
@@ -81,7 +106,7 @@ public struct VMBundle: Sendable {
     private static let dateFormat = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 }
 
-/// Resource and lifecycle settings for a VM. Secrets (guest password, pairing token) live in the Keychain.
+/// Resource and lifecycle settings for a VM. Secrets (guest password, pairing token) live in the bundle's secrets.json.
 public struct VMSpec: Codable, Sendable, Equatable {
     public enum Stage: String, Codable, Sendable {
         case created          // platform files and blank disk exist

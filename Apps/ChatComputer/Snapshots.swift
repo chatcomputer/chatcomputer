@@ -5,6 +5,11 @@ import VMKit
 
 /// What the guest screen shows while a snapshot is taken or restored: the VM stops and starts again
 /// underneath, so the last frame stays on screen, dimmed, instead of the "off" placeholder.
+struct SnapshotUnavailable: LocalizedError {
+    let reason: String
+    var errorDescription: String? { reason }
+}
+
 struct SnapshotActivity {
     let title: String
     let frozenScreen: CGImage?
@@ -27,39 +32,49 @@ extension AppModel {
 
     var canManageSnapshots: Bool { snapshotsUnavailableReason == nil }
 
-    /// Saves the virtual Mac as it is now. Taken while it runs, the snapshot includes memory, so restoring it
-    /// brings back the open apps and windows.
+    /// Saves the virtual Mac as it is now, reporting failures in an alert.
     func takeSnapshot() async {
-        guard canManageSnapshots, let vm else { return }
-        let name = "Snapshot " + Date().formatted(.dateTime.month(.abbreviated).day().hour().minute())
+        do { try await saveSnapshot() } catch { errorMessage = "The snapshot could not be saved. \(error.localizedDescription)" }
+    }
+
+    /// Returns the virtual Mac to `snapshot`, reporting failures in an alert.
+    func restoreSnapshot(_ snapshot: VMSnapshot, savingCurrent: Bool) async {
+        do { try await returnTo(snapshot, savingCurrent: savingCurrent) } catch {
+            errorMessage = "The snapshot could not be restored. \(error.localizedDescription)"
+        }
+    }
+
+    /// Saves the virtual Mac as it is now. Taken while it runs, the snapshot includes memory, so restoring it
+    /// brings back the open apps and windows. `by` names a coding agent that asked for it.
+    @discardableResult
+    func saveSnapshot(name: String? = nil, by requester: String? = nil) async throws -> VMSnapshot {
+        if let reason = snapshotsUnavailableReason { throw SnapshotUnavailable(reason: reason) }
+        guard let vm else { throw SnapshotUnavailable(reason: "Finish setting up first.") }
+        let name = name ?? "Snapshot " + Date().formatted(.dateTime.month(.abbreviated).day().hour().minute())
         let screen = vm.state == .running ? captureGuestScreen() : nil
         snapshotActivity = SnapshotActivity(title: "Saving a snapshot…", frozenScreen: screen)
         defer { snapshotActivity = nil }
         let started = Date()
-        do {
-            let snapshot = try await vm.takeSnapshot(name: name, thumbnail: screen.flatMap(Self.thumbnail))
-            let seconds = Int(Date().timeIntervalSince(started).rounded())
-            transcript.append(ChatItem(role: .system, text: "Saved snapshot “\(snapshot.name)” in \(seconds) s."))
-        } catch {
-            errorMessage = "The snapshot could not be saved. \(error.localizedDescription)"
-        }
+        let snapshot = try await vm.takeSnapshot(name: name, thumbnail: screen.flatMap(Self.thumbnail))
+        let seconds = Int(Date().timeIntervalSince(started).rounded())
+        let who = requester.map { " for \($0)" } ?? ""
+        transcript.append(ChatItem(role: .system, text: "Saved snapshot “\(snapshot.name)”\(who) in \(seconds) s."))
+        return snapshot
     }
 
     /// Returns the virtual Mac to `snapshot`, first saving the current state as a snapshot if asked.
-    func restoreSnapshot(_ snapshot: VMSnapshot, savingCurrent: Bool) async {
-        guard canManageSnapshots, let vm else { return }
+    func returnTo(_ snapshot: VMSnapshot, savingCurrent: Bool, by requester: String? = nil) async throws {
+        if let reason = snapshotsUnavailableReason { throw SnapshotUnavailable(reason: reason) }
+        guard let vm else { throw SnapshotUnavailable(reason: "Finish setting up first.") }
         let screen = vm.state == .running ? captureGuestScreen() : nil
         snapshotActivity = SnapshotActivity(title: "Restoring “\(snapshot.name)”…", frozenScreen: screen)
         defer { snapshotActivity = nil }
-        do {
-            try await vm.restoreSnapshot(snapshot.id, savingCurrentAs: savingCurrent ? "Before restoring “\(snapshot.name)”" : nil,
-                                         thumbnail: screen.flatMap(Self.thumbnail))
-            if vm.state == .stopped { await vm.start() }
-            let detail = snapshot.includesMemory ? "" : " The virtual Mac is starting up from that disk."
-            transcript.append(ChatItem(role: .system, text: "Restored “\(snapshot.name)”.\(detail)"))
-        } catch {
-            errorMessage = "The snapshot could not be restored. \(error.localizedDescription)"
-        }
+        try await vm.restoreSnapshot(snapshot.id, savingCurrentAs: savingCurrent ? "Before restoring “\(snapshot.name)”" : nil,
+                                     thumbnail: screen.flatMap(Self.thumbnail))
+        if vm.state == .stopped { await vm.start() }
+        let who = requester.map { " for \($0)" } ?? ""
+        let detail = snapshot.includesMemory ? "" : " The virtual Mac is starting up from that disk."
+        transcript.append(ChatItem(role: .system, text: "Restored “\(snapshot.name)”\(who).\(detail)"))
     }
 
     func renameSnapshot(_ snapshot: VMSnapshot, to name: String) {

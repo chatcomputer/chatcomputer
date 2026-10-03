@@ -22,7 +22,11 @@ struct ChatItem: Identifiable, Equatable {
 @Observable
 final class AppModel {
     let bundle = VMBundle(url: VMBundle.defaultLocation)
-    let secrets = KeychainStore()
+    /// Secrets in files: the VM's in its bundle, API keys in Application Support (see `HostSecretStore`).
+    let secrets = HostSecretStore(
+        machineFile: VMBundle(url: VMBundle.defaultLocation).secretStore().url,
+        credentialsFile: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json"),
+        legacy: KeychainStore())
     let lease = ControlLease()
     let store = InMemoryTaskStore()   // TODO(M2): SQLite-backed store
 
@@ -43,6 +47,17 @@ final class AppModel {
     var snapshotActivity: SnapshotActivity?
     var showingSnapshots = false
 
+    /// A coding agent outside the app (via `chatcomputer` or MCP) that holds the input lease now.
+    var externalHolder: String?
+    /// A coding agent the user took control from; it waits until the user hands control back.
+    var externalBlockedBy: String?
+    private(set) var external: ExternalControl?
+
+    /// The right panel shows only a narrow rail of controls, e.g. while a coding agent drives the virtual Mac.
+    private(set) var isPanelCollapsed = UserDefaults.standard.bool(forKey: "panelCollapsed")
+    /// Chat messages seen before the panel was collapsed, for the rail's unread badge.
+    private(set) var seenMessageCount = 0
+
     /// Which provider, protocol, endpoint and model tasks use. Saved in user defaults.
     private(set) var modelSettings: ModelSettings = {
         guard let data = UserDefaults.standard.data(forKey: "modelSettings"),
@@ -55,10 +70,10 @@ final class AppModel {
         if let data = try? JSONEncoder().encode(settings) { UserDefaults.standard.set(data, forKey: "modelSettings") }
     }
 
-    /// Client for the given settings, with the key read from the Keychain at request time.
+    /// Client for the given settings, with the key read from the secret store at request time.
     func makeModelClient(for settings: ModelSettings) throws -> any ModelClient {
         let secrets = self.secrets
-        let account = settings.keychainAccount
+        let account = settings.secretAccount
         let width = (vm?.spec.displayWidth ?? 2560) / 2
         let height = (vm?.spec.displayHeight ?? 1600) / 2
         return try settings.makeClient(displayWidth: width, displayHeight: height) { try secrets.read(account) }
@@ -76,38 +91,47 @@ final class AppModel {
         guard let spec = vm?.spec, spec.displayHeight > 0 else { return WorkspaceMetrics.guestAspect }
         return CGFloat(spec.displayWidth) / CGFloat(spec.displayHeight)
     }
-    var agentHoldsInput: Bool { phase == .running }
+    var agentHoldsInput: Bool { phase == .running || externalHolder != nil }
+
+    /// The built-in agent has a task that isn't finished.
+    var isRunningTask: Bool { runner != nil && !(phase.isTerminal || phase == .ready) }
+
+    /// Chat messages (not steps) that arrived while the panel was collapsed.
+    var unreadMessageCount: Int { isPanelCollapsed ? max(0, messageCount - seenMessageCount) : 0 }
+    private var messageCount: Int { transcript.count { $0.role != .action } }
+
+    /// Collapses the panel to the rail, or expands it. The window changes width so the guest screen keeps its size.
+    func setPanelCollapsed(_ collapsed: Bool) {
+        guard collapsed != isPanelCollapsed else { return }
+        let delta = WorkspaceMetrics.panelWidth - WorkspaceMetrics.railWidth
+        var frame = guestView?.window?.frame
+        if var target = frame {
+            target.size.width += collapsed ? -delta : delta
+            if !collapsed, let screen = guestView?.window?.screen?.visibleFrame {
+                target.size.width = min(target.width, screen.width)
+                if target.maxX > screen.maxX { target.origin.x = max(screen.minX, screen.maxX - target.width) }
+            }
+            frame = target
+        }
+        isPanelCollapsed = collapsed
+        seenMessageCount = messageCount
+        UserDefaults.standard.set(collapsed, forKey: "panelCollapsed")
+        if let frame { guestView?.window?.setFrame(frame, display: true, animate: true) }
+    }
 
     init() {
-        importHarnessSecrets()
         isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
         applyDevelopmentModel()
-        exportHarnessSecretsIfRequested()
-    }
-
-    /// Development: CC_DEV_HARNESS_SECRETS=1 writes this VM's guest password and pairing token to
-    /// harness-secrets.json (0600) in the bundle, so `cc-harness` can drive the same VM without
-    /// reading this app's Keychain items. The next normal launch imports and deletes the file again.
-    private func exportHarnessSecretsIfRequested() {
-        guard ProcessInfo.processInfo.environment["CC_DEV_HARNESS_SECRETS"] == "1", let id = vm?.spec.id else { return }
-        var values: [String: String] = [:]
-        for account in [SecretAccount.guestPassword(vmID: id), SecretAccount.pairingToken(vmID: id)] {
-            if let value = try? secrets.read(account) { values[account] = value }
-        }
-        let file = bundle.url.appendingPathComponent("harness-secrets.json")
-        do {
-            try JSONEncoder().encode(values).write(to: file, options: .atomic)
-            try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
-        } catch {
-            errorMessage = "Could not write harness-secrets.json: \(error)"
-        }
+        let external = ExternalControl(model: self)
+        external.start()
+        self.external = external
     }
 
     // MARK: Development switches (environment variables, never set in normal use)
 
     /// CC_DEV_MODEL="provider:protocol:model" (e.g. "deepseek:openAI:deepseek-chat") with CC_DEV_API_KEY
-    /// configures the model as if entered in the form; the app stores the key in its own Keychain.
+    /// configures the model as if entered in the form; the app stores the key like one typed in the form.
     private func applyDevelopmentModel() {
         let environment = ProcessInfo.processInfo.environment
         guard let value = environment["CC_DEV_MODEL"] else { return }
@@ -121,7 +145,7 @@ final class AppModel {
         settings.baseURL = provider.endpoints[kind] ?? settings.baseURL
         settings.model = parts[2]
         if let key = environment["CC_DEV_API_KEY"], !key.isEmpty {
-            do { try secrets.write(key, for: settings.keychainAccount) } catch { errorMessage = "Could not store the API key: \(error)" }
+            do { try secrets.write(key, for: settings.secretAccount) } catch { errorMessage = "Could not store the API key: \(error)" }
         }
         saveModelSettings(settings)
         if (try? bundle.loadSpec().stage) == .ready { isReady = true }
@@ -161,24 +185,6 @@ final class AppModel {
 
     func finishOnboarding() {
         isReady = true
-    }
-
-    /// A VM set up with the developer harness (`cc-harness vm …`) keeps its guest password and pairing
-    /// token in `harness-secrets.json`. When such a bundle is moved to the app's location, take the
-    /// secrets into this app's Keychain so onboarding can continue where the harness stopped.
-    private func importHarnessSecrets() {
-        let file = bundle.url.appendingPathComponent("harness-secrets.json")
-        guard let data = try? Data(contentsOf: file),
-              let values = try? JSONDecoder().decode([String: String].self, from: data) else { return }
-        do {
-            for (account, value) in values where account.hasPrefix("vm.") {
-                try secrets.write(value, for: account)
-                guard try secrets.read(account) == value else { throw CocoaError(.coderValueNotFound) }
-            }
-            try FileManager.default.removeItem(at: file)
-        } catch {
-            errorMessage = "Could not move the harness VM's secrets into the Keychain: \(error)"
-        }
     }
 
     // MARK: VM
@@ -252,7 +258,17 @@ final class AppModel {
         Task {
             for await update in runner.updates { apply(update) }
         }
+        let external = self.external
         Task {
+            // The user's own task comes first: a coding agent holding the virtual Mac gives it up.
+            if let holder = externalHolder {
+                await external?.release(note: "\(holder) lost control of the virtual Mac to your task.")
+            }
+            if let blocked = externalBlockedBy {
+                await lease.releaseFromUser()
+                externalBlockedBy = nil
+                transcript.append(ChatItem(role: .system, text: "\(blocked) can take control again after your task."))
+            }
             do { try await runner.start() } catch { errorMessage = error.localizedDescription }
         }
     }
@@ -278,20 +294,34 @@ final class AppModel {
 
     // MARK: Control (proposal §04: pause, takeover and cancel are different)
 
-    func pause() { Task { await runner?.pause() } }
+    func pause() {
+        // ⌘. stops a coding agent too: for it, pausing means the user takes over.
+        if externalHolder != nil, !isRunningTask { return takeOver(reason: "you chose Pause") }
+        Task { await runner?.pause() }
+    }
     func resume() { Task { await runner?.resume() } }
     func cancel() { Task { await runner?.cancel() } }
 
     /// The user touched the VM screen while the agent held input.
     /// The user takes input control from the agent. `reason` says what triggered it, shown in the chat.
     func takeOver(reason: String = "you chose Take Over") {
+        if externalHolder != nil, !isRunningTask {
+            Task { await external?.userTookOver(reason: reason) }
+            return
+        }
         if agentHoldsInput { transcript.append(ChatItem(role: .system, text: "You took over: \(reason). The agent paused.")) }
         Task {
             if let runner { await runner.takeOver() } else { await lease.grantToUser() }
         }
     }
 
-    func returnControl() { Task { await runner?.returnControl() } }
+    func returnControl() {
+        if externalBlockedBy != nil, !isRunningTask {
+            Task { await external?.handBack() }
+            return
+        }
+        Task { await runner?.returnControl() }
+    }
 
     func export(_ file: URL) {
         let panel = NSSavePanel()
@@ -311,7 +341,7 @@ final class AppModel {
     // MARK: Host-level control
 
     /// Grants the guest agent its permissions by operating the guest from the host (onboarding step 4).
-    /// The guest password goes from the Keychain straight into the guest; it is never shown or logged.
+    /// The guest password goes from the secret store straight into the guest; it is never shown or logged.
     func grantPermissionsAutomatically() async throws {
         guard let vm, let bridge, let view = guestView else { throw HostControlError.noWindow }
         let vmID = vm.spec.id
@@ -342,7 +372,7 @@ final class AppModel {
             },
             password: {
                 guard let password = try secrets.read(SecretAccount.guestPassword(vmID: vmID)) else {
-                    throw HostControlError.gaveUp("The guest password is missing from the Keychain.")
+                    throw HostControlError.gaveUp("The guest password is missing from this Mac (secrets.json in the virtual machine folder).")
                 }
                 return password
             },

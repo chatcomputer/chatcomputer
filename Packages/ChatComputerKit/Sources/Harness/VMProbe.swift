@@ -27,8 +27,7 @@ import VMKit
 ///     cc-harness vm status                        bundle stage and files
 ///
 /// The bundle lives at $CC_VM_BUNDLE or ~/Library/Application Support/ChatComputer/Harness.vm.
-/// Secrets go to a 0600 file in the bundle, not the Keychain: ad-hoc rebuilds would otherwise
-/// trigger Keychain access prompts on every run.
+/// Secrets are in the bundle's 0600 `secrets.json`, the same file the app uses.
 @MainActor
 enum VMProbe {
     static var bundle: VMBundle {
@@ -123,7 +122,7 @@ enum VMProbe {
 
     static func up(_ options: Options) async throws {
         let bundle = self.bundle
-        let secrets = FileSecretStore(url: bundle.url.appendingPathComponent("harness-secrets.json"))
+        let secrets = bundle.secretStore()
         let controller = try VirtualMachineController(bundle: bundle)
         let spec = controller.spec
         log("spec: stage=\(spec.stage.rawValue) cpu=\(spec.cpuCount) mem=\(spec.memoryBytes >> 30)GB display=\(spec.displayWidth)x\(spec.displayHeight) overlays=\(spec.overlayCount)")
@@ -406,40 +405,6 @@ struct ProbeError: Error, CustomStringConvertible {
     init(_ description: String) { self.description = description }
 }
 
-/// Plain-file secret store for the harness only (0600, inside the VM bundle).
-final class FileSecretStore: SecretStore, @unchecked Sendable {
-    private let url: URL
-    private let lock = NSLock()
-
-    init(url: URL) { self.url = url }
-
-    private func load() -> [String: String] {
-        (try? JSONDecoder().decode([String: String].self, from: Data(contentsOf: url))) ?? [:]
-    }
-
-    private func save(_ values: [String: String]) throws {
-        try JSONEncoder().encode(values).write(to: url, options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
-    }
-
-    func read(_ account: String) throws -> String? { lock.withLock { load()[account] } }
-
-    func write(_ value: String, for account: String) throws {
-        try lock.withLock {
-            var values = load()
-            values[account] = value
-            try save(values)
-        }
-    }
-
-    func delete(_ account: String) throws {
-        try lock.withLock {
-            var values = load()
-            values[account] = nil
-            try save(values)
-        }
-    }
-}
 #endif
 
 #if os(macOS)

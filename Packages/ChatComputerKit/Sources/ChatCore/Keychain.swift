@@ -3,10 +3,8 @@ import Foundation
 import Security
 #endif
 
-/// Secrets the host keeps: the model API key and per-VM guest account passwords.
-///
-/// Per the proposal (§03) there is no plaintext fallback: if the Keychain fails,
-/// the caller surfaces the error to the user.
+/// Secrets the host keeps: model API keys, and per VM the guest password and pairing token.
+/// The app uses `HostSecretStore` (0600 files); `KeychainStore` remains to move items written by 0.1.x.
 public protocol SecretStore: Sendable {
     func read(_ account: String) throws -> String?
     func write(_ value: String, for account: String) throws
@@ -25,6 +23,7 @@ public struct SecretStoreError: Error, Equatable {
 }
 
 #if canImport(Security)
+/// The login Keychain, where 0.1.0 and 0.1.1 kept secrets. Now only read to move them into files.
 public struct KeychainStore: SecretStore {
     public let service: String
 

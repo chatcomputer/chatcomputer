@@ -70,6 +70,10 @@
 - [ ] 模型请求改为流式，聊天里实时显示进度说明
 - [ ] 就绪探针：每次虚拟机启动或解锁后跑一次 health，不满足条件时显示"等待桌面登录或权限"
 - [x] 快照：运行中连内存一起保存，APFS 克隆，分支历史，恢复前自动保存当前状态，「Freshly set up」即重置；日志式恢复可从崩溃中回滚（`SnapshotStore`、`vm snapshot-test`）
+- [x] 外部 coding agent 接入：`chatcomputer` 命令行 + `chatcomputer mcp`，同一租约，用户接管/交还，闲置释放；Claude Code 经 MCP 和命令行实测通过
+- [x] 右侧面板可收起为竖栏（⌃⌘S）；单实例与虚拟机目录锁
+- [ ] 设置 › Coding agents 页面的界面截图核对（编译通过，未截到图）
+- [ ] ACP：在聊天里选择 Claude Code / Codex 等作为 agent
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [ ] 宿主 App 退出时调用 `suspend()` 挂起虚拟机，下次启动时恢复
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）

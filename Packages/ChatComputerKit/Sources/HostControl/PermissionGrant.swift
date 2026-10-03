@@ -5,7 +5,7 @@ import Foundation
 
 /// Grants the guest agent its two privacy permissions by operating the guest from the host
 /// (`HostDisplay`): find the agent's row in the privacy pane, flip its switch, and answer the
-/// password prompt with the guest password from the host Keychain. Nothing is guessed blindly:
+/// password prompt with the guest password from the host's secret store. Nothing is guessed blindly:
 /// every step looks at the screen first (on-device text recognition), and the result is checked
 /// through the agent's own health report.
 @MainActor

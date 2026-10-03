@@ -27,7 +27,7 @@ struct MainView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Workspace {
+        Workspace(panelWidth: model.isPanelCollapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth) {
             GuestStage(virtualMachine: model.vm?.virtualMachine, aspectRatio: model.guestAspectRatio,
                        agentHoldsInput: model.agentHoldsInput, onUserIntervention: { model.takeOver(reason: $0) },
                        onViewReady: { model.guestView = $0 }) {
@@ -39,7 +39,7 @@ struct MainView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: model.snapshotActivity != nil)
         } panel: {
-            ChatPanel()
+            if model.isPanelCollapsed { ControlRail() } else { ChatPanel() }
         }
         // Status is plain text in the window subtitle; a toolbar item would render as a clickable-looking capsule.
         .navigationTitle("Chat Computer")
@@ -54,7 +54,11 @@ struct MainView: View {
                 case .takenOver:
                     Button("Hand back control", systemImage: "hand.raised") { model.returnControl() }
                 default:
-                    EmptyView()
+                    if let holder = model.externalHolder {
+                        Button("Take over from \(holder)", systemImage: "hand.raised.fill") { model.takeOver() }
+                    } else if let blocked = model.externalBlockedBy {
+                        Button("Hand back to \(blocked)", systemImage: "hand.raised") { model.returnControl() }
+                    }
                 }
                 if !model.phase.isTerminal, model.phase != .ready {
                     Button("Cancel task", systemImage: "xmark") { model.cancel() }
@@ -80,7 +84,8 @@ struct MainView: View {
         case .error(let message): "Error: \(message)"
         case .stopped, nil: "Stopped"
         }
-        let holder = model.agentHoldsInput ? "Agent has control" : "You have control"
+        let holder = if let external = model.externalHolder { "\(external) has control" }
+            else if model.phase == .running { "Agent has control" } else { "You have control" }
         return "\(vmState) · \(holder)"
     }
 }

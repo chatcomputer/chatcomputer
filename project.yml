@@ -27,7 +27,7 @@ targets:
     sources: [Apps/ChatComputer]
     dependencies:
       - package: ChatComputerKit
-        products: [BridgeProtocol, ChatCore, ModelProxy, Orchestrator, VMKit, GuestBridge, HostControl]
+        products: [BridgeProtocol, ChatCore, ModelProxy, Orchestrator, VMKit, GuestBridge, HostControl, ComputerControl]
       # The guest agent ships inside the host app and is copied into the VM during onboarding.
       - target: ChatComputerAgent
         embed: true

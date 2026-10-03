@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "GuestBridge", targets: ["GuestBridge"]),
         .library(name: "AgentCore", targets: ["AgentCore"]),
         .library(name: "HostControl", targets: ["HostControl"]),
+        .library(name: "ComputerControl", targets: ["ComputerControl"]),
     ],
     targets: [
         // Shared by host and guest: wire format between the app and the guest agent.
@@ -44,6 +45,10 @@ let package = Package(
         // for steps that happen before the guest agent can act, such as granting its permissions.
         .target(name: "HostControl", dependencies: ["BridgeProtocol", "AgentCore"]),
 
+        // Host: the `chatcomputer` command line tool and MCP server that let coding agents outside the
+        // app (Claude Code, Codex, …) operate the virtual Mac, and the control socket they reach the app on.
+        .target(name: "ComputerControl", dependencies: ["BridgeProtocol", "ModelProxy"]),
+
         // Developer harness: live model loop against a simulated desktop, and VM probes (macOS only).
         .executableTarget(
             name: "cc-harness",
@@ -56,5 +61,6 @@ let package = Package(
         .testTarget(name: "OrchestratorTests", dependencies: ["Orchestrator"]),
         .testTarget(name: "AgentCoreTests", dependencies: ["AgentCore"]),
         .testTarget(name: "VMKitTests", dependencies: ["VMKit"]),
+        .testTarget(name: "ComputerControlTests", dependencies: ["ComputerControl"]),
     ]
 )

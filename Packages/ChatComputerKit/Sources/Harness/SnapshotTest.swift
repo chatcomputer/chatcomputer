@@ -19,11 +19,11 @@ import VMKit
 enum SnapshotTest {
     static func run() async throws {
         let bundle = VMProbe.bundle
-        let secrets = FileSecretStore(url: bundle.url.appendingPathComponent("harness-secrets.json"))
+        let secrets = bundle.secretStore()
         let controller = try VirtualMachineController(bundle: bundle)
         let vmID = controller.spec.id
         guard let token = try secrets.read(SecretAccount.pairingToken(vmID: vmID)) else {
-            throw ProbeError("no pairing token in harness-secrets.json")
+            throw ProbeError("no pairing token in secrets.json")
         }
         let bridge = BridgeServer(vmID: vmID, pairingToken: token)
         controller.onSocketDeviceReady = { bridge.attach(to: $0) }

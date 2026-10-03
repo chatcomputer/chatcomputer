@@ -15,7 +15,7 @@ public struct GuestProvisioner: Sendable {
     }
 
     /// Options for the very first boot (macOS 27 `VZMacGuestProvisioningOptions`).
-    /// A random per-VM password goes to the Keychain only; there is no default password.
+    /// A random per-VM password, kept only in the host's secret store; there is no default password.
     /// `password` overrides it for development (a short password you can type into the guest).
     /// Remote login is enabled solely so `installAgent` can run; bootstrap turns it off again.
     public func firstBootOptions(spec: VMSpec, password override: String? = nil) throws -> VZMacGuestProvisioningOptions {
@@ -37,7 +37,7 @@ public struct GuestProvisioner: Sendable {
     /// `subnet` is the VM network's current subnet; stale leases from earlier boots lie outside it.
     public func installAgent(spec: VMSpec, agentApp: URL, subnet: IPv4Subnet?) async throws {
         let password = try secrets.read(SecretAccount.guestPassword(vmID: spec.id))
-        guard let password else { throw VMError.bootstrapFailed("guest password missing from Keychain") }
+        guard let password else { throw VMError.bootstrapFailed("guest password missing from secrets.json") }
 
         let pairingToken = Self.randomSecret()
         try stageBootstrapFiles(spec: spec, agentApp: agentApp, pairingToken: pairingToken)

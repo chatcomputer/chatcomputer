@@ -26,6 +26,7 @@ public final class VirtualMachineController: NSObject {
     public var onSocketDeviceReady: ((VZVirtioSocketDevice) -> Void)?
 
     public let network = NetworkProvider()
+    private var holdsBundleLock = false
 
     /// Snapshots of this machine, oldest first, and the one its current state comes from.
     public private(set) var snapshots: [VMSnapshot] = []
@@ -49,6 +50,13 @@ public final class VirtualMachineController: NSObject {
     /// account is created and logged in without anyone clicking through Setup Assistant (macOS 27).
     public func start(provisioning: VZMacGuestProvisioningOptions? = nil) async {
         guard state == .stopped || isError else { return }
+        if !holdsBundleLock {
+            guard bundle.lock() else {
+                state = .error("This virtual Mac is already running in another copy of Chat Computer or in cc-harness.")
+                return
+            }
+            holdsBundleLock = true
+        }
         state = .starting
         do {
             let configuration = try VMConfigurationFactory(bundle: bundle, network: network).make(spec: spec)

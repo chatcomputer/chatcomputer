@@ -44,10 +44,12 @@ Before claiming a change works, run the layer that exercises it:
 3. **Model history is append-only.** Assistant content goes back unchanged, including thinking blocks and
    vendor fields such as `reasoning_content` and Gemini's `extra_content`. Don't rewrite earlier turns for
    Claude. Screenshot trimming applies only to non-Claude endpoints.
-4. **Secrets stay on the host.** API keys and the guest password live in the login Keychain, under service
-   `app.chatcomputer`. Never log them, print them, put them in a URL, or commit them. Use the
-   data-protection keychain only with a provisioning profile: without one, a Developer ID build gets
-   -34018 on every call.
+4. **Secrets stay on the host, in 0600 files** (`HostSecretStore`): the guest password and pairing token in
+   the VM bundle's `secrets.json`, API keys in `~/Library/Application Support/ChatComputer/credentials.json`.
+   Never log them, print them, put them in a URL, or commit them. Don't go back to the login Keychain: its
+   items are bound to the build that wrote them, so every other build prompts. Items 0.1.x left there move
+   to the files on first read. For a sandboxed release, use the data-protection keychain, which needs a
+   provisioning profile (without one, a Developer ID build gets -34018 on every call).
 5. **The guest agent's signature matters.** Privacy grants in the guest belong to its signing identity.
    Release builds must use the same Developer ID. Replace the agent bundle; never overwrite it in place,
    or code signing kills the running binary.
@@ -68,15 +70,15 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_DEV_MODEL`, `CC_DEV_API_KEY` | Configure the model, e.g. `deepseek:openAI:deepseek-flash` |
 | `CC_DEV_TASK` | Submit this task once the guest is ready |
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |
-| `CC_DEV_HARNESS_SECRETS=1` | Write the VM's secrets to `harness-secrets.json` for `cc-harness` |
 
-To drive the app's own VM from `cc-harness`, quit the app and launch it once with
-`CC_DEV_HARNESS_SECRETS=1`. Then set `CC_VM_BUNDLE="$HOME/Library/Application Support/ChatComputer/ChatComputer.vm"`.
-Don't read the app's Keychain items from scripts: the Keychain prompt blocks unattended runs.
+To drive the app's own VM from `cc-harness`, quit the app and set
+`CC_VM_BUNDLE="$HOME/Library/Application Support/ChatComputer/ChatComputer.vm"`; both read the bundle's `secrets.json`.
+Only one process can run a VM bundle at a time (it is locked). Coding agents can also drive the running app with
+`chatcomputer` (see README).
 
 ## Safety while operating the VM
 
 - The guest is a disposable test machine, but treat its prompts carefully. Decline permission requests
   the task doesn't need.
-- Never type real credentials into the guest. Only use the guest's own test password, from the Keychain.
+- Never type real credentials into the guest. Only use the guest's own test password, from `secrets.json`.
 - Releases are outward-facing. Publish to GitHub Releases only when the user asks.

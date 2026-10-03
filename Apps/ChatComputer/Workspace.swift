@@ -6,6 +6,8 @@ import Virtualization
 /// the guest screen on the left at the guest display's aspect ratio, a fixed-width panel on the right.
 enum WorkspaceMetrics {
     static let panelWidth: CGFloat = 380
+    /// The collapsed panel: a column of controls.
+    static let railWidth: CGFloat = 52
     /// Default guest display: 2560×1600 pixels, 1280×800 points.
     static let guestAspect: CGFloat = 16.0 / 10.0
     static let largestStage = CGSize(width: 1280, height: 800)
@@ -15,7 +17,9 @@ enum WorkspaceMetrics {
     /// Space around the guest screen inside the left pane.
     static let stagePadding: CGFloat = 0
 
-    static var minimumContentSize: CGSize {
+    static var minimumContentSize: CGSize { minimumContentSize(panelWidth: panelWidth) }
+
+    static func minimumContentSize(panelWidth: CGFloat) -> CGSize {
         CGSize(width: smallestStage.width + 2 * stagePadding + 1 + panelWidth, height: smallestStage.height + 2 * stagePadding)
     }
 
@@ -33,6 +37,7 @@ enum WorkspaceMetrics {
 
 /// Guest screen on the left, a fixed-width panel on the right.
 struct Workspace<Stage: View, Panel: View>: View {
+    var panelWidth = WorkspaceMetrics.panelWidth
     @ViewBuilder var stage: Stage
     @ViewBuilder var panel: Panel
 
@@ -42,10 +47,11 @@ struct Workspace<Stage: View, Panel: View>: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             panel
-                .frame(width: WorkspaceMetrics.panelWidth)
+                .frame(width: panelWidth)
                 .frame(maxHeight: .infinity, alignment: .top)
         }
-        .frame(minWidth: WorkspaceMetrics.minimumContentSize.width, minHeight: WorkspaceMetrics.minimumContentSize.height)
+        .frame(minWidth: WorkspaceMetrics.minimumContentSize(panelWidth: panelWidth).width,
+               minHeight: WorkspaceMetrics.minimumContentSize.height)
     }
 }
 

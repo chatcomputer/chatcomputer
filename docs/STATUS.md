@@ -23,7 +23,7 @@
 | 1. 安装 macOS | 下载恢复镜像（约 26 GB）后安装；苹果的镜像目录失败时改用苹果 CDN；也可选本地 `.ipsw` | 安装 173 秒，磁盘约 29 GB |
 | 2. 创建账户 | `VZMacGuestProvisioningOptions` 自动建号、自动登录，不经过设置助理 | 开机即到桌面 |
 | 3. 安装 agent | 通过 SSH 装好 guest 里的 agent，装完关闭 SSH | 开机后约 14 秒 |
-| 4. 授权 | 宿主级控制：读取虚拟机画面、本机文字识别找到开关并打开，自动输入钥匙串里的 guest 密码；用户无需输入 | 两项权限自动完成 |
+| 4. 授权 | 宿主级控制：读取虚拟机画面、本机文字识别找到开关并打开，自动输入本机保存的 guest 密码；用户无需输入 | 两项权限自动完成 |
 | 5. 保存初始状态 | agent 从虚拟机内部干净关机，冻结磁盘为 base + overlay | 关机约 66 秒 |
 | 6. 连接模型 | 选厂商、协议、模型，填 Key，点「Save and test」 | DeepSeek 通过 |
 
@@ -47,7 +47,7 @@
 - **模型**：
   - 支持 OpenAI 兼容（Chat Completions）和 Anthropic 兼容（Messages）两种协议。
   - 内置 10 个厂商：Anthropic、OpenAI、Google Gemini、DeepSeek、xAI、Mistral、通义千问、Kimi、智谱 GLM、豆包，每家至少 3 个模型，于 2026-10-01 对照官方文档核实；另可填自定义地址。
-  - Key 按厂商存入钥匙串。
+  - Key 按厂商存在本机文件 `credentials.json`（0600），不再用钥匙串，避免每个新构建都弹出授权；0.1.x 存在钥匙串里的会在第一次读取时迁移过来。
 - **Agent 循环**：
   - 所有限制在模型之外执行，包括任务阶段、输入租约和预算。
   - 完成必须有证据：`report_result` 列出的文件由宿主逐个校验。
@@ -60,6 +60,13 @@
   - 屏幕文字视为数据而非指令；不可逆操作前必须调用 `ask_user`。
 - **发布**：Developer ID 签名、hardened runtime、Apple 公证、装订；一条命令完成（`scripts/release.sh`）。
 - **更新 agent**：agent 能从共享目录自我更新，但只接受同一团队签名的新版本。
+- **外部 coding agent 接入**：
+  - App 的可执行文件兼作 `chatcomputer` 命令行工具（设置 › Coding agents 可安装到 PATH），`chatcomputer mcp` 以同一套命令提供 MCP 服务。命令：截图、点击、输入、按键、滚动、拖拽、等待、快照、放入文件、列出 outbox、释放控制。
+  - 与内置 agent 同一套规则：第一个输入命令拿到租约；用户点画面即接管，交还前外部 agent 不能操作；闲置 2 分钟自动释放；内置任务优先。
+  - App 通过 0600 的 Unix 套接字接收命令，并校验对端用户。
+  - 实测：Claude Code 经 MCP 截图并正确描述画面（12 秒）；经命令行完成「在 TextEdit 写入一行字、以纯文本存到 outbox、在宿主确认」（77 秒）。
+- **右侧面板可收起**：⌃⌘S 或面板右上角按钮，收起后只留 52 pt 竖栏（展开聊天、谁在控制、暂停、接管/交还、拍快照、快照列表），有新消息时显示角标。收起时窗口变窄，虚拟机画面大小不变。
+- **只运行一个副本**：第二个副本启动时把已运行的调到前台后退出；虚拟机目录加锁，两个进程不会同时启动同一台虚拟机。
 - **快照**：
   - 运行中拍快照会连内存一起保存，恢复后打开的应用和窗口原样回来；关机状态下只保存磁盘。
   - 文件用 APFS 克隆，几乎不占额外空间，任意快照都能单独恢复或删除；快照之间按来源形成分支。
@@ -74,7 +81,7 @@
 
 | 层 | 内容 | 命令 |
 |---|---|---|
-| L0 单元测试 | 57 个：协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
+| L0 单元测试 | 70 个：命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
 | L1 构建 | 两个 App 与 entitlement 检查 | `scripts/test-mac.sh` |
 | L2 宿主 API 自检 | DiskImageKit 分层与重置、vmnet | `scripts/harness.sh vm selftest` |
 | L3 真实模型 + 模拟桌面 | notes / approval / injection 三个场景 | `scripts/harness.sh live-loop --scenario …` |
@@ -88,7 +95,6 @@
 - `CC_DEV_MODEL` / `CC_DEV_API_KEY`：直接配置模型，格式如 `deepseek:openAI:deepseek-flash`
 - `CC_DEV_TASK`：虚拟机就绪后自动提交这条任务
 - `CC_DEV_LOG`：把 agent 循环的每条更新写到文件
-- `CC_DEV_HARNESS_SECRETS=1`：把虚拟机密钥交给 `cc-harness`，不触发钥匙串弹窗
 
 ---
 
@@ -133,7 +139,8 @@
 - **诊断包**：脱敏，导出前可预览。
 - **更丰富的驱动**：辅助功能树和浏览器语义快照，减少只靠截图坐标操作。
 - **CI**：Linux runner 跑 L0；自托管 Apple 芯片 runner 跑 L1–L3。
-- **外部编程 agent 接入**：提供本地 MCP 服务，让 Claude Code、Codex 等通过同一租约操作虚拟机。
+- **在聊天里选择 agent（ACP）**：右侧聊天可以换成 Claude Code、Codex、Gemini CLI 作为"大脑"，复用 `chatcomputer` 的命令（外部 agent 通过命令行和 MCP 操作虚拟机已完成）。
+- **`run_shell`**：在虚拟机里执行命令，默认关闭。
 
 ### 长期（M4）
 
