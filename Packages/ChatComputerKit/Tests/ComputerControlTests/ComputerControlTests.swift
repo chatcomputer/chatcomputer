@@ -23,6 +23,8 @@ import Testing
         #expect(try request(["screenshot", "0", "0", "640", "400"]) == .screenshot(region: ScreenRect(x0: 0, y0: 0, x1: 640, y1: 400)))
         #expect(try request(["snapshot", "restore", "Before", "update", "--no-save"]) == .snapshotRestore(snapshot: "Before update", saveCurrent: false))
         #expect(try request(["snapshot", "take"]) == .snapshotTake(name: nil))
+        #expect(try request(["save", "report.pdf", "--no-open"]) == .saveFile(name: "report.pdf", folder: nil, openDialog: false))
+        #expect(try request(["save", "a.txt", "--folder", "Reports"]) == .saveFile(name: "a.txt", folder: "Reports", openDialog: true))
         #expect(try request(["snapshot", "delete", "Before", "regression"]) == .snapshotDelete(snapshot: "Before regression"))
         #expect(try request(["wait", "1.5"]) == .wait(seconds: 1.5))
 
@@ -86,7 +88,7 @@ import Testing
                 // Required arguments filled with plausible values must parse.
                 var arguments: [String: JSONValue] = [:]
                 for case .string(let key) in tool.inputSchema["required"]?.arrayValue ?? [] {
-                    arguments[key] = ["direction": "down", "text": "a", "combo": "Return", "snapshot": "A", "path": "/tmp/a", "name": "site"][key] ?? 1
+                    arguments[key] = ["direction": "down", "text": "a", "combo": "Return", "snapshot": "A", "path": "/tmp/a", "name": "site.txt"][key] ?? 1
                 }
                 _ = try ControlCommand(name: tool.name, arguments: arguments)
             }

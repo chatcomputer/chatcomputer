@@ -1,6 +1,8 @@
 #if os(macOS)
+import BridgeProtocol
 import CoreGraphics
 import Foundation
+import ImageIO
 import Vision
 
 /// On-device text recognition over a guest screenshot (Vision framework; nothing leaves the Mac).
@@ -42,5 +44,17 @@ public struct ScreenText: Sendable {
     }
 
     public func contains(_ needle: String) -> Bool { first(needle) != nil }
+
+    /// Where `needle` appears in an encoded screenshot, in that screenshot's pixel coordinates (which are the
+    /// guest agent's click coordinates). Runs off the main thread.
+    public static func locate(_ needle: String, inImage data: Data, width: Int, height: Int) async -> ScreenPoint? {
+        await Task.detached {
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil),
+                  let screen = try? recognize(image, guestSize: CGSize(width: width, height: height)),
+                  let item = screen.first(needle) else { return nil }
+            return ScreenPoint(x: Int(item.center.x), y: Int(item.center.y))
+        }.value
+    }
 }
 #endif

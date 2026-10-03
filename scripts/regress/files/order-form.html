@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Pizza order</title>
+<style>body{font:18px -apple-system,sans-serif;margin:40px}label{display:block;margin:14px 0}input,select{font:18px -apple-system;padding:4px}</style></head>
+<body><h1>Pizza order</h1>
+<form id="f">
+<label>Name <input id="name" name="name"></label>
+<label>Size <select id="size"><option>Small</option><option>Medium</option><option>Large</option></select></label>
+<label><input type="checkbox" id="extra"> Extra cheese</label>
+<button type="submit">Place order</button></form>
+<p id="result"></p>
+<script>
+document.getElementById('f').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const size = document.getElementById('size').value;
+  const extra = document.getElementById('extra').checked;
+  const code = 'ORDER-' + name.split(/\s+/)[0].toUpperCase() + '-' + size[0] + (extra ? 'X' : '');
+  document.getElementById('result').textContent = name ? 'Confirmation code: ' + code : 'Please enter a name.';
+});
+</script></body></html>

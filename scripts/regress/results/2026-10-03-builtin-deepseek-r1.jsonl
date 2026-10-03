@@ -1,0 +1,10 @@
+{"outputTokens":6808,"task":"textedit-note","turns":31,"detail":"ok","inputTokens":237829,"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":27,"run":1,"cachedInputTokens":198016,"seconds":112}
+{"outputTokens":14289,"task":"web-heading","turns":34,"detail":"ok","inputTokens":370996,"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":30,"run":1,"cachedInputTokens":318720,"seconds":150}
+{"detail":"ok","turns":29,"actions":26,"inputTokens":169525,"seconds":109,"cachedInputTokens":136192,"passed":true,"run":1,"task":"calculator","agent":"deepseek:openAI:deepseek-flash","outputTokens":3859}
+{"detail":"ok","turns":14,"actions":11,"inputTokens":77773,"seconds":59,"cachedInputTokens":59904,"passed":true,"run":1,"task":"finder-folder","agent":"deepseek:openAI:deepseek-flash","outputTokens":4275}
+{"outputTokens":3571,"task":"csv-sum","turns":23,"detail":"ok","inputTokens":133063,"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":17,"run":1,"cachedInputTokens":108032,"seconds":78}
+{"outputTokens":1951,"task":"macos-version","turns":10,"detail":"ok","inputTokens":43541,"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":8,"run":1,"cachedInputTokens":33408,"seconds":45}
+{"detail":"list.rtf lacks “bread”","turns":49,"actions":43,"inputTokens":521689,"seconds":174,"cachedInputTokens":450048,"passed":false,"run":1,"task":"shopping-list","agent":"deepseek:openAI:deepseek-flash","outputTokens":13740}
+{"detail":"ok","turns":20,"actions":16,"inputTokens":131101,"seconds":76,"cachedInputTokens":103424,"passed":true,"run":1,"task":"wikipedia","agent":"deepseek:openAI:deepseek-flash","outputTokens":6343}
+{"detail":"no poem-upper.txt in the outbox","turns":60,"actions":54,"inputTokens":790486,"seconds":277,"cachedInputTokens":697984,"passed":false,"run":1,"task":"poem-title","agent":"deepseek:openAI:deepseek-flash","outputTokens":23723}
+{"detail":"ok","turns":18,"actions":14,"inputTokens":92561,"seconds":68,"cachedInputTokens":72320,"passed":true,"run":1,"task":"email-approval","agent":"deepseek:openAI:deepseek-flash","outputTokens":3000}

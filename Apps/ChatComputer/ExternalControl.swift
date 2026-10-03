@@ -108,6 +108,8 @@ final class ExternalControl {
                 guard let vm = model.vm else { throw Failure("Chat Computer is not set up yet.") }
                 try vm.deleteSnapshot(snapshot.id)
                 return ControlResponse(text: "Deleted snapshot “\(snapshot.name)”.")
+            case .saveFile(let name, let folder, let openDialog):
+                return ControlResponse(text: try await saveFile(name: name, folder: folder, openDialog: openDialog, client: client))
             case .putFile(let path):
                 return ControlResponse(text: try putFile(path))
             case .outbox:
@@ -379,6 +381,49 @@ final class ExternalControl {
             flags.append(snapshot.includesMemory ? "open apps and windows" : "disk only")
             return "\(snapshot.id.uuidString.prefix(8))  “\(snapshot.name)”  \(snapshot.createdAt.formatted(date: .abbreviated, time: .shortened))  (\(flags.joined(separator: ", ")))"
         }.joined(separator: "\n")
+    }
+
+    /// The same key sequence the built-in agent uses (`SaveDialog`), then a check of the outbox on the host.
+    private func saveFile(name: String, folder: String?, openDialog: Bool, client: String) async throws -> String {
+        guard SaveDialog.isValidName(name) else { throw Failure("The name must be a plain file name, without folders.") }
+        guard let vm = model.vm else { throw Failure("Chat Computer is not set up yet.") }
+        let outbox = "\(SharedFolders.guestMountPoint)/outbox"
+        var path = folder ?? outbox
+        if !path.hasPrefix("/") { path = outbox + "/" + path }
+        while path.count > 1, path.hasSuffix("/") { path.removeLast() }
+        let inOutbox = path == outbox || path.hasPrefix(outbox + "/")
+        let relative = inOutbox ? String(path.dropFirst(outbox.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/")) : ""
+        guard !relative.split(separator: "/").contains("..") else { throw Failure("The folder must stay inside the outbox.") }
+        let hostFolder = SharedFolders(root: vm.bundle.sharedRoot).outbox.appendingPathComponent(relative)
+        // Go to Folder can't open a folder that doesn't exist yet; the outbox is writable from here.
+        if inOutbox { try? FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true) }
+        let bridge = try await readyGuest()
+        let token = try await acquire(for: client, bridge: bridge)
+        model.transcript.append(ChatItem(role: .action, text: "\(client): save \"\(name)\" → \(path)"))
+        let vmID = model.vm?.spec.id ?? UUID()
+        @Sendable func envelope(_ command: GuestCommand) -> CommandEnvelope {
+            CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: token, observationVersion: nil, deadline: Date().addingTimeInterval(30), command: command)
+        }
+        let send: SaveDialog.Send = { action in
+            if case .failure? = try? await bridge.send(envelope(.perform(action))) { return false }
+            return true
+        }
+        let locate: SaveDialog.Locate = { text in
+            guard case .screenshot(let shot)? = try? await bridge.send(envelope(.screenshot(region: nil))) else { return nil }
+            return await ScreenText.locate(text, inImage: shot.imageData, width: shot.width, height: shot.height)
+        }
+        switch await SaveDialog.run(name: name, folder: path, openDialog: openDialog, send: send, locate: locate) {
+        case .pressedSave: break
+        case .refused: throw Failure("The virtual Mac refused an input while saving.")
+        case .noDialog:
+            throw Failure("No save dialog appeared, so nothing was typed. Take a screenshot; for a read-only document use File › Duplicate or Save As…, then `save NAME --no-open`.")
+        }
+        lastActivity = Date()
+        guard inOutbox else { return "Pressed Save for \(name) in \(path). Take a screenshot to check." }
+        guard let file = SaveDialog.savedFiles(named: name, in: hostFolder).first else {
+            throw Failure("The file did not appear in the outbox. Take a screenshot: a dialog may still be open, or no save dialog opened (then open it and use --no-open).")
+        }
+        return "Saved. On this Mac: \(file.path)" + (SaveDialog.extensionWarning(requested: name, saved: file)?.replacingOccurrences(of: "call save_file", with: "run save") ?? "")
     }
 
     private func shareList() -> String {

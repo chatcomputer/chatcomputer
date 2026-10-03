@@ -1,0 +1,6 @@
+{"run":1,"task":"finder-folder","cachedInputTokens":78208,"agent":"deepseek:openAI:deepseek-flash","seconds":71,"outputTokens":2678,"actions":23,"passed":true,"turns":19,"detail":"ok","inputTokens":99830}
+{"passed":true,"turns":47,"outputTokens":8007,"run":1,"inputTokens":378044,"cachedInputTokens":317568,"task":"trip-folder","actions":62,"agent":"deepseek:openAI:deepseek-flash","seconds":189,"detail":"ok"}
+{"passed":true,"seconds":107,"actions":36,"inputTokens":180817,"outputTokens":5000,"cachedInputTokens":148352,"task":"finder-folder","turns":27,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","run":2}
+{"passed":true,"seconds":100,"actions":35,"inputTokens":141766,"outputTokens":2720,"cachedInputTokens":112128,"task":"trip-folder","turns":25,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","run":2}
+{"task":"finder-folder","run":3,"cachedInputTokens":263936,"agent":"deepseek:openAI:deepseek-flash","seconds":154,"outputTokens":6630,"actions":51,"passed":true,"turns":40,"detail":"ok","inputTokens":313441}
+{"seconds":95,"task":"trip-folder","run":3,"passed":true,"actions":33,"agent":"deepseek:openAI:deepseek-flash","inputTokens":127363,"outputTokens":3324,"detail":"ok","turns":22,"cachedInputTokens":100864}

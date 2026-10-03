@@ -1,0 +1,10 @@
+{"passed":false,"agent":"deepseek:openAI:deepseek-flash","actions":54,"run":1,"detail":"no note.txt in the outbox","turns":60,"cachedInputTokens":621952,"outputTokens":13076,"seconds":218,"task":"textedit-note","inputTokens":702552}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":46,"run":1,"detail":"ok","turns":51,"cachedInputTokens":435456,"outputTokens":12480,"seconds":179,"task":"web-heading","inputTokens":504129}
+{"turns":33,"inputTokens":258703,"outputTokens":6874,"cachedInputTokens":215552,"agent":"deepseek:openAI:deepseek-flash","detail":"ok","actions":37,"run":1,"seconds":122,"passed":true,"task":"calculator"}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":15,"run":1,"detail":"ok","turns":17,"cachedInputTokens":80128,"outputTokens":4331,"seconds":64,"task":"finder-folder","inputTokens":102545}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":11,"run":1,"detail":"ok","turns":14,"cachedInputTokens":46080,"outputTokens":1831,"seconds":42,"task":"csv-sum","inputTokens":60525}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":6,"run":1,"detail":"ok","turns":8,"cachedInputTokens":20096,"outputTokens":751,"seconds":21,"task":"macos-version","inputTokens":27948}
+{"turns":60,"inputTokens":766010,"outputTokens":24726,"cachedInputTokens":675456,"agent":"deepseek:openAI:deepseek-flash","detail":"no list.rtf in the outbox","actions":57,"run":1,"seconds":276,"passed":false,"task":"shopping-list"}
+{"turns":13,"inputTokens":69223,"outputTokens":3252,"cachedInputTokens":54272,"agent":"deepseek:openAI:deepseek-flash","detail":"ok","actions":9,"run":1,"seconds":47,"passed":true,"task":"wikipedia"}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":35,"run":1,"detail":"ok","turns":39,"cachedInputTokens":242944,"outputTokens":6639,"seconds":137,"task":"poem-title","inputTokens":292072}
+{"passed":true,"agent":"deepseek:openAI:deepseek-flash","actions":0,"run":1,"detail":"ok","turns":2,"cachedInputTokens":1408,"outputTokens":361,"seconds":3,"task":"email-approval","inputTokens":3396}

@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-03，对应版本 **0.2.0**（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.2.0)）。
+更新于 2026-10-03，对应版本 **0.2.0** 之后的开发中版本（0.3）（预览版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.2.0)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -12,7 +12,7 @@
 
 Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行或 MCP 操作这台虚拟机，和内置 agent 共用一套控制权规则。虚拟机可以拍快照、共享文件夹，退出 App 时自动保存、下次打开原样恢复。
 
-有一组 10 个固定任务做回归：内置 agent（deepseek-flash）三轮分别 8、9、8 个通过，Claude Code 经命令行 10/10。App 已签名、公证，并以 GitHub Release 发布。
+有一组 20 个固定任务做回归（网页表单、跨应用、格式转换、多步、提示注入等）：加了 `save_file` 之后，内置 agent（deepseek-flash）三轮 60/60 全部通过（0.2.0 时前 10 个任务三轮 25/30）；Claude Code 经命令行跑过前 10 个，10/10。App 已签名、公证，并以 GitHub Release 发布。
 
 ---
 
@@ -120,12 +120,12 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 层 | 内容 | 命令 |
 |---|---|---|
-| L0 单元测试 | 90 个：任务持久化与断点恢复（含退出瞬间的竞态）、截图分批裁剪与缓存稳定、系统授权弹窗识别、共享文件夹规则、任务文件夹与附件、文件密钥、命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
+| L0 单元测试 | 96 个：保存对话框流程（`SaveDialog`、`save_file`）、任务持久化与断点恢复（含退出瞬间的竞态）、截图分批裁剪与缓存稳定、系统授权弹窗识别、共享文件夹规则、任务文件夹与附件、文件密钥、命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
 | L1 构建 | 两个 App 与 entitlement 检查 | `scripts/test-mac.sh` |
 | L2 宿主 API 自检 | DiskImageKit 分层与重置、vmnet | `scripts/harness.sh vm selftest` |
 | L3 真实模型 + 模拟桌面 | notes / approval / injection 三个场景 | `scripts/harness.sh live-loop --scenario …` |
 | L4 真实虚拟机 | 安装、启动、vsock、截图、挂起恢复、关机；快照（`vm snapshot-test`）；运行中改共享（`vm share-test`）；输入可靠性（`--input-test`，13/13）；经 agent 手动操作（`--agent-console`） | `scripts/harness.sh vm up …` |
-| L4+ 回归集 | 10 个固定任务，从同一快照开始，程序检查结果；内置 agent 与 Claude Code 各一套 | `scripts/harness.sh vm regress`、`scripts/regress/external.py` |
+| L4+ 回归集 | 20 个固定任务，从同一快照开始，程序检查结果；内置 agent 与 Claude Code 各一套；`--runs 3` 多轮，`report.py` 汇总通过率与中位数并与基线对比；结果存在 `scripts/regress/results/` | `scripts/harness.sh vm regress`、`scripts/regress/external.py`、`scripts/regress/report.py` |
 | L5 发布 | 签名、公证、Gatekeeper | `scripts/release.sh` |
 
 开发用环境变量（正常使用时都不设置）：
@@ -143,20 +143,21 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 ## 4. 已知问题与限制
 
-1. **deepseek-flash 不稳定**：回归集三轮 8–9/10，失败集中在 TextEdit 保存对话框改文件名；同一任务轮数可相差 1.5 倍以上，单轮数字只能看趋势。
-2. **内置 agent 只用 DeepSeek 跑过真实任务**：Claude 等只测到协议层，Claude 的 `computer_toolset_20260801` 请求还未真正发出过。外部 agent 已用 Claude Code 跑过回归集。
-3. **没有真正的流式输出**：聊天里有实时进度，但模型的文字要等一轮结束才出现。
-4. **剪贴板不共享**：宿主和虚拟机之间还不能复制粘贴。
-5. **一次无法复现的接管**：曾有一次任务进行中切换成「你在控制」，原因未查明。之后改为只认点击和按键，并在聊天里写明原因，此后没有再出现。
-6. **尚未验证**：
+1. **deepseek-flash 轮数波动大**：同一任务三轮的轮数可相差 2 倍（如 finder-folder 19–40 轮），要看多轮中位数。
+2. **跨进程面板的输入怪癖**：保存对话框、Spotlight、查找栏在按过 Cmd/Ctrl 组合键后会丢掉普通打字，直到在面板里点一下。`save_file` 和提示词已绕开，驱动层的根因（可能是按键 flags 被整个覆盖）还没验证，见 ROADMAP §5.1。
+3. **内置 agent 只用 DeepSeek 跑过真实任务**：Claude 等只测到协议层，Claude 的 `computer_toolset_20260801` 请求还未真正发出过。外部 agent 已用 Claude Code 跑过回归集。
+4. **没有真正的流式输出**：聊天里有实时进度，但模型的文字要等一轮结束才出现。
+5. **剪贴板不共享**：宿主和虚拟机之间还不能复制粘贴。
+6. **一次无法复现的接管**：曾有一次任务进行中切换成「你在控制」，原因未查明。之后改为只认点击和按键，并在聊天里写明原因，此后没有再出现。
+7. **尚未验证**：
    - 中文输入法与系统快捷键（P2）
    - 带 overlay 的磁盘 IO 性能（P4；带 overlay 启动已在日常使用和快照测试中验证）
    - guest 能否访问宿主上的本地服务（P5）
    - guest 侧的只读与符号链接逃逸（P7）
-7. **新电脑没装过**：在开发机上把虚拟机挪开、从头走完了引导（2026-10-03），但还没在另一台 Mac 上从下载 Release 开始装过。
-8. **不再兼容 0.1.x 的钥匙串**：0.2 起完全不读钥匙串。0.1.x 装的虚拟机，如果 guest 密码还没迁移到 secrets.json，重新授权或重装 agent 时需要手动处理。
-9. **设置页「Coding agents」**：编译通过，界面还没截图核对。
-10. **许可**：macOS 软件许可协议对虚拟机用途有限制，确认前只面向个人非商业与开发测试。
+8. **新电脑没装过**：在开发机上把虚拟机挪开、从头走完了引导（2026-10-03），但还没在另一台 Mac 上从下载 Release 开始装过。
+9. **不再兼容 0.1.x 的钥匙串**：0.2 起完全不读钥匙串。0.1.x 装的虚拟机，如果 guest 密码还没迁移到 secrets.json，重新授权或重装 agent 时需要手动处理。
+10. **设置页「Coding agents」**：编译通过，界面还没截图核对。
+11. **许可**：macOS 软件许可协议对虚拟机用途有限制，确认前只面向个人非商业与开发测试。
 
 ---
 
@@ -166,8 +167,8 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 ### 近期（0.3）：让结果更稳
 
-1. **回归集多跑几轮取中位数**，并加入 Claude 作为内置 agent 的模型，三方对比完成率、用时和成本。
-2. **保存对话框**：内置 agent 失败集中在这里。给驱动加一个"在保存对话框里设定路径和文件名"的高层动作，或改进提示，再用回归集验证。
+1. ~~**回归集扩到 20 个任务、多跑几轮取中位数**~~：已完成。三轮 60/60；`report.py` 输出每个任务的通过数和轮数、用时、token 的中位数，可与基线对比。还差：加入 Claude 作为内置 agent 的模型，三方对比完成率、用时和成本。
+2. ~~**保存对话框**~~：已完成。新工具 `save_file`（命令行 `chatcomputer save`）：先点名称框再输入，用 ↓、Shift+↑ 全选，读屏核对，再经 Go to Folder 设定文件夹；outbox 里缺的子文件夹由宿主先建好；没出现对话框就不打字。宿主确认文件已在 outbox 才算成功，TextEdit 擅自加扩展名时会提醒。结果：三个保存任务的中位轮数 48/60/51 → 13/11/26（合计 −69%），失败 5 次 → 0 次。
 3. **新电脑实测**：从下载 Release 开始装一遍。
 4. **真正的流式输出**：等能用多家模型验证"原样回传"时再做。
 

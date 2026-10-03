@@ -87,6 +87,15 @@ public enum ControlCLI {
         case "wait":
             guard rest.count == 1, let seconds = Double(rest.removeFirst()) else { throw ControlError.usage("Usage: chatcomputer wait SECONDS") }
             return try done("wait", ["seconds": .number(seconds)])
+        case "save":
+            let noOpen = flag("--no-open")
+            let folder = try option("--folder")
+            guard !rest.isEmpty else { throw ControlError.usage("Usage: chatcomputer save NAME [--folder PATH] [--no-open]") }
+            let name = rest.joined(separator: " ")
+            rest = []
+            var arguments: [String: JSONValue] = ["name": .string(name), "open_dialog": .bool(!noOpen)]
+            if let folder { arguments["folder"] = .string(folder) }
+            return try done("save_file", arguments)
         case "put":
             guard rest.count == 1 else { throw ControlError.usage("Usage: chatcomputer put FILE") }
             let path = URL(fileURLWithPath: rest.removeFirst()).standardizedFileURL.path
@@ -151,7 +160,7 @@ public enum ControlCLI {
         "status": ["status"], "screenshot": ["screenshot"], "click": ["click"], "move": ["move"], "drag": ["drag"],
         "scroll": ["scroll"], "type": ["type"], "key": ["key"], "wait": ["wait"], "release": ["release"],
         "snapshot": ["snapshot_list", "snapshot_take", "snapshot_restore", "snapshot_delete"],
-        "put": ["put_file"], "outbox": ["outbox"],
+        "put": ["put_file"], "outbox": ["outbox"], "save": ["save_file"],
         "share": ["share_list", "share_add", "share_remove"],
     ]
 

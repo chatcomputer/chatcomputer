@@ -87,6 +87,10 @@ def run_task(task, run, binary):
             # Case-insensitive: macOS capitalizes the first word of a line as it is typed.
             content = path.read_bytes().decode("utf-8", "replace").lower()
             failures += [f"{check['name']} lacks “{n}”" for n in check["contains"] if n.lower() not in content]
+            failures += [f"{check['name']} still has “{n}”" for n in check.get("absent", []) if n.lower() in content]
+        elif check["type"] == "answerAny":
+            if not any(normalize(n) in normalize(answer) for n in check["contains"]):
+                failures.append("answer mentions none of " + ", ".join(check["contains"]))
         elif check["type"] == "asksUser":
             if "?" not in answer and "confirm" not in answer.lower():
                 failures.append("did not ask before acting")

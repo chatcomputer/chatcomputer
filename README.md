@@ -45,7 +45,8 @@ as the `chatcomputer` command line tool (Settings › Coding agents installs it 
 chatcomputer help                      # usage and guidance for agents
 chatcomputer screenshot                # saves a PNG and prints its path
 chatcomputer click 640 400
-chatcomputer type "hello"; chatcomputer key cmd+s
+chatcomputer type "hello"
+chatcomputer save notes.txt              # fills in the save dialog; the file lands in the outbox
 chatcomputer snapshot take "Before update"
 chatcomputer share add ~/Projects/site   # read-only in the guest unless --writable
 chatcomputer mcp                       # the same commands as an MCP server on stdio
@@ -98,8 +99,9 @@ cd Packages/ChatComputerKit && swift test            # unit tests only
 scripts/harness.sh live-loop --scenario notes        # real model against a simulated desktop
 scripts/harness.sh vm up --input-test 3              # typing and save-dialog check through the guest agent
 scripts/test-linux.sh                                # portable modules in Docker, without a Mac
-scripts/harness.sh vm regress                        # the fixed task set with the built-in agent (scripts/regress)
+scripts/harness.sh vm regress --runs 3 --out new.jsonl  # the fixed task set with the built-in agent (scripts/regress)
 scripts/regress/external.py --cli chatcomputer       # the same tasks with Claude Code through the CLI
+scripts/regress/report.py new.jsonl --baseline scripts/regress/results/<old>.jsonl   # pass rate and medians vs a baseline
 ```
 
 `docs/STATUS.md` §3 lists the test layers and the development environment variables.

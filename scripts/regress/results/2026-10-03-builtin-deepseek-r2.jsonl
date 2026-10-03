@@ -1,0 +1,10 @@
+{"passed":true,"cachedInputTokens":460160,"outputTokens":11486,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","run":1,"seconds":176,"actions":43,"inputTokens":526799,"turns":48,"task":"textedit-note"}
+{"passed":true,"cachedInputTokens":541056,"outputTokens":15678,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","seconds":218,"run":1,"actions":50,"inputTokens":619707,"turns":56,"task":"web-heading"}
+{"passed":true,"cachedInputTokens":155904,"outputTokens":10117,"detail":"ok","seconds":109,"run":1,"agent":"deepseek:openAI:deepseek-flash","actions":43,"inputTokens":189377,"turns":24,"task":"calculator"}
+{"passed":true,"cachedInputTokens":252672,"outputTokens":10217,"detail":"ok","run":1,"agent":"deepseek:openAI:deepseek-flash","seconds":139,"actions":31,"inputTokens":298292,"turns":35,"task":"finder-folder"}
+{"passed":true,"cachedInputTokens":360192,"outputTokens":7716,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","seconds":190,"run":1,"actions":48,"inputTokens":426070,"turns":52,"task":"csv-sum"}
+{"passed":true,"cachedInputTokens":18688,"outputTokens":1110,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","run":1,"seconds":18,"actions":3,"inputTokens":23269,"turns":7,"task":"macos-version"}
+{"inputTokens":841979,"outputTokens":23235,"turns":60,"task":"shopping-list","detail":"no list.rtf in the outbox","run":1,"actions":52,"seconds":269,"agent":"deepseek:openAI:deepseek-flash","cachedInputTokens":749568,"passed":false}
+{"passed":true,"cachedInputTokens":74752,"outputTokens":2172,"detail":"ok","seconds":60,"run":1,"agent":"deepseek:openAI:deepseek-flash","actions":15,"inputTokens":94935,"turns":20,"task":"wikipedia"}
+{"passed":true,"cachedInputTokens":468736,"outputTokens":12185,"detail":"ok","seconds":192,"run":1,"agent":"deepseek:openAI:deepseek-flash","actions":46,"inputTokens":540332,"turns":51,"task":"poem-title"}
+{"passed":true,"cachedInputTokens":126976,"outputTokens":3728,"detail":"ok","run":1,"agent":"deepseek:openAI:deepseek-flash","seconds":92,"actions":22,"inputTokens":157971,"turns":27,"task":"email-approval"}

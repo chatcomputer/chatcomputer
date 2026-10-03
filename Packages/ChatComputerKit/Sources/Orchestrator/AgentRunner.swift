@@ -32,6 +32,9 @@ public actor AgentRunner {
         /// After a turn of input actions, attach a fresh screenshot so the model sees the result without
         /// spending a turn on asking for one.
         public var screenshotAfterActions: Bool
+        /// Finds text in a screenshot (PNG or JPEG) and returns where it is, in the screenshot's coordinates.
+        /// Supplied on macOS (Vision); without it, steps that click on text are skipped.
+        public var locateText: (@Sendable (Data, String) async -> ScreenPoint?)?
 
         public init(model: any ModelClient, guest: any GuestChannel, store: any TaskStore, lease: ControlLease, folders: SharedFolders, budget: TaskBudget = .init(), exportValidator: ExportValidator = .init(), screenshotAfterActions: Bool = true) {
             self.screenshotAfterActions = screenshotAfterActions
@@ -300,6 +303,16 @@ public actor AgentRunner {
                     pendingQuestionID = id
                     continuation.yield(.needsUser(ask))
                     if !interrupted { try? await transition(.needUser(ask.question)) }
+                } else if name == HostTools.saveFile, let request = HostTools.parseSaveFile(input) {
+                    if batchFailed || interrupted {
+                        results.append(HostTools.result(toolUseID: id, "Not executed: an earlier action in this turn failed or the task was paused.", isError: true))
+                        continue
+                    }
+                    let result = await saveFile(toolUseID: id, request)
+                    results.append(result.json)
+                    batchFailed = !result.succeeded
+                    changedScreen = true
+                    lastWasScreenshot = false
                 } else if name == HostTools.reportResult, let report = HostTools.parseReport(input) {
                     results.append(await finish(toolUseID: id, report: report))
                 } else {
@@ -388,6 +401,73 @@ public actor AgentRunner {
     }
 
     /// Completion requires evidence: every reported output must exist in the outbox.
+    /// Fills in the save dialog with a fixed key sequence (`SaveDialog`), then checks on the host that the file
+    /// arrived when it was saved into the outbox, so the model needn't look for it.
+    private func saveFile(toolUseID: String, _ request: HostTools.SaveFile) async -> (json: JSONValue, succeeded: Bool) {
+        guard SaveDialog.isValidName(request.name) else {
+            return (HostTools.result(toolUseID: toolUseID, "The name must be a plain file name, without folders.", isError: true), false)
+        }
+        let outbox = SharedFolders.guestOutboxPath(for: task)
+        var folder = request.folder ?? outbox
+        if !folder.hasPrefix("/") { folder = outbox + "/" + folder }
+        while folder.count > 1, folder.hasSuffix("/") { folder.removeLast() }
+        continuation.yield(.action("save_file \"\(request.name)\" → \(folder)"))
+        // A folder inside the outbox is created on the host first: Go to Folder can't open one that doesn't exist.
+        let inOutbox = folder == outbox || folder.hasPrefix(outbox + "/")
+        let relative = inOutbox ? String(folder.dropFirst(outbox.count)).trimmingCharacters(in: CharacterSet(charactersIn: "/")) : ""
+        guard !relative.split(separator: "/").contains("..") else {
+            return (HostTools.result(toolUseID: toolUseID, "The folder must stay inside the outbox.", isError: true), false)
+        }
+        let hostFolder = relative.isEmpty ? deps.folders.outbox(for: task) : deps.folders.outbox(for: task).appendingPathComponent(relative)
+        if inOutbox { try? FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true) }
+
+        guard let token = leaseToken, await deps.lease.isValid(token) else {
+            return (HostTools.result(toolUseID: toolUseID, "Stopped: the agent no longer holds input control.", isError: true), false)
+        }
+        let guest = deps.guest
+        let lease = deps.lease
+        let vmID = deps.guest.vmID
+        let jobID = task.id
+        @Sendable func envelope(_ command: GuestCommand) -> CommandEnvelope {
+            CommandEnvelope(vmID: vmID, jobID: jobID, leaseToken: token, observationVersion: nil, deadline: Date().addingTimeInterval(30), command: command)
+        }
+        let send: SaveDialog.Send = { action in
+            guard await lease.isValid(token) else { return false }
+            if case .failure? = try? await guest.send(envelope(.perform(action))) { return false }
+            return true
+        }
+        var locate: SaveDialog.Locate?
+        if let find = deps.locateText {
+            locate = { (text: String) async -> ScreenPoint? in
+                guard case .screenshot(let shot)? = try? await guest.send(envelope(.screenshot(region: nil))) else { return nil }
+                return await find(shot.imageData, text)
+            }
+        }
+        usage.actions += 8
+        switch await SaveDialog.run(name: request.name, folder: folder, openDialog: request.openDialog, send: send, locate: locate) {
+        case .pressedSave: break
+        case .refused:
+            return (HostTools.result(toolUseID: toolUseID, "Stopped: the virtual Mac refused an input, or the agent lost input control.", isError: true), false)
+        case .noDialog:
+            return (HostTools.result(toolUseID: toolUseID, """
+                No save dialog appeared, so nothing was typed. Take a screenshot. A document opened from the inbox                 is read-only: use File › Duplicate (or Save As…) to get a save dialog, then call save_file with open_dialog: false.
+                """, isError: true), false)
+        }
+
+        guard inOutbox else {
+            return (HostTools.result(toolUseID: toolUseID, "Pressed Save for \(request.name) in \(folder). Take a screenshot to check it worked."), true)
+        }
+        if let file = SaveDialog.savedFiles(named: request.name, in: hostFolder).first {
+            let path = (relative.isEmpty ? "" : relative + "/") + file.lastPathComponent
+            let warning = SaveDialog.extensionWarning(requested: request.name, saved: file) ?? ""
+            return (HostTools.result(toolUseID: toolUseID, "Saved: \(path) is in the outbox. List it as \"\(path)\" in report_result." + warning), true)
+        }
+        return (HostTools.result(toolUseID: toolUseID, """
+            The file did not appear in the outbox. Look at the screenshot: a dialog may still be open (asking to replace \
+            a file, or about the format), or no save dialog opened (then open it and call save_file with open_dialog: false).
+            """, isError: true), false)
+    }
+
     private func finish(toolUseID: String, report: HostTools.ReportResult) async -> JSONValue {
         let outbox = deps.folders.outbox(for: task)
         var delivered: [URL] = []

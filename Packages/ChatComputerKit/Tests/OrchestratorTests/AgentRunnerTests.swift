@@ -288,3 +288,169 @@ actor SlowGuest: GuestChannel {
         return .ok
     }
 }
+
+/// Plays a save dialog: the name is typed first, then the folder; the second Return saves.
+actor SaveDialogGuest: GuestChannel {
+    nonisolated let vmID = UUID()
+    private(set) var inputs: [ComputerAction] = []
+    var hostFolder: URL?
+    var appendExtension: String?
+    private var typed: [String] = []
+    private var returns = 0
+
+    func setHostFolder(_ url: URL, appending ext: String? = nil) {
+        hostFolder = url
+        appendExtension = ext
+    }
+
+    func send(_ envelope: CommandEnvelope) async throws -> CommandResult {
+        switch envelope.command {
+        case .perform(let action):
+            inputs.append(action)
+            if case .type(let text) = action { typed.append(text) }
+            if case .key("return", _) = action {
+                returns += 1
+                if returns == 2, let hostFolder, let name = typed.first {
+                    try FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true)
+                    try Data("saved".utf8).write(to: hostFolder.appendingPathComponent(name + (appendExtension ?? "")))
+                }
+            }
+            return .ok
+        case .screenshot:
+            return .screenshot(Screenshot(imageData: Data([0x89]), mediaType: "image/png", width: 1, height: 1, capturedAt: Date(), observationVersion: 1))
+        default:
+            return .ok
+        }
+    }
+}
+
+@Suite struct SaveDialogTests {
+    /// With screen reading: clicks each field before typing (the panel drops typing after a shortcut until a
+    /// click), selects with Down and Shift+Up rather than Cmd+A, waits for the sheet, and retypes lost text.
+    @Test func clicksEachFieldAndRetypesLostText() async {
+        let log = InputLog()
+        let lookups = InputLog()
+        let outcome = await SaveDialog.run(name: "a.txt", folder: "/Volumes/My Shared Files/outbox/job", openDialog: true,
+            send: { await log.add("\($0)"); return true },
+            locate: { text in
+                await lookups.add(text)
+                let count = await lookups.count(text)
+                switch text {
+                case "Go to Folder": return count >= 3 ? ScreenPoint(x: 400, y: 200) : nil   // ready on the third look
+                case "Save As": return ScreenPoint(x: 300, y: 150)
+                case "Export As": return nil
+                default: return count >= 2 ? ScreenPoint(x: 400, y: 200) : nil             // name and path lost the first time
+                }
+            },
+            sleep: { _ in })
+        #expect(outcome == .pressedSave)
+        let inputs = await log.items
+        #expect(inputs.filter { $0.contains("outbox/job") }.count == 2)
+        #expect(inputs.filter { $0.contains("a.txt") }.count == 2)
+        #expect(await lookups.count("Go to Folder") == 3)
+        #expect(!inputs.contains { $0.contains("cmd+a") })
+        // The name field, right of its label, is clicked before the name is typed.
+        let nameClick = inputs.firstIndex { $0.contains("click") && $0.contains("450") }
+        #expect(nameClick != nil && nameClick! < inputs.firstIndex { $0.contains("a.txt") }!)
+        #expect(inputs.firstIndex { $0.contains("a.txt") }! < inputs.firstIndex { $0.contains("outbox/job") }!)
+    }
+
+    /// No dialog on screen: nothing is typed, so the document is not overwritten.
+    @Test func typesNothingWithoutADialog() async {
+        let log = InputLog()
+        let outcome = await SaveDialog.run(name: "a.txt", folder: "/tmp", openDialog: true,
+            send: { await log.add("\($0)"); return true }, locate: { _ in nil }, sleep: { _ in })
+        #expect(outcome == .noDialog)
+        #expect(await log.items.count == 1)   // just Cmd+S
+    }
+
+    actor InputLog {
+        private(set) var items: [String] = []
+        func add(_ item: String) { items.append(item) }
+        func count(_ item: String) -> Int { items.filter { $0 == item }.count }
+    }
+}
+
+@Suite struct SaveFileTests {
+    private func run(_ turns: [[JSONValue]], ext: String? = nil) async throws -> (AgentRunner, ScriptedModel, SaveDialogGuest) {
+        let model = ScriptedModel(turns: turns)
+        let guest = SaveDialogGuest()
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        let runner = AgentRunner(goal: "Save", dependencies: .init(model: model, guest: guest, store: InMemoryTaskStore(), lease: ControlLease(), folders: folders))
+        await guest.setHostFolder(folders.outbox(for: await runner.task), appending: ext)
+        try await runner.start()
+        return (runner, model, guest)
+    }
+
+    @Test func savesWithTheFixedSequenceAndTheHostConfirms() async throws {
+        let (runner, model, guest) = try await run([
+            [toolUse("s1", "save_file", ["name": "note.txt"], computer: false)],
+            [toolUse("r1", "report_result", ["status": "complete", "summary": "Saved", "outputs": ["note.txt"]], computer: false)],
+        ])
+        #expect(await runner.task.phase == .completed)
+        let outbox = SharedFolders.guestOutboxPath(for: await runner.task)
+        let expected: [ComputerAction] = [
+            .key(combo: "cmd+s", repeat: 1),
+            .key(combo: "down", repeat: 1), .key(combo: "shift+up", repeat: 1), .type(text: "note.txt"),
+            .key(combo: "cmd+shift+g", repeat: 1),
+            .key(combo: "down", repeat: 1), .key(combo: "shift+up", repeat: 1), .type(text: outbox), .key(combo: "return", repeat: 1),
+            .key(combo: "return", repeat: 1),
+        ]
+        #expect(await guest.inputs == expected)
+        let result = await model.requests[1].last?["content"]?.arrayValue?.first { $0["tool_use_id"] == "s1" }
+        #expect(result?["content"]?.stringValue?.hasPrefix("Saved: note.txt is in the outbox") == true)
+    }
+
+    @Test func fileSavedElsewhereIsAnError() async throws {
+        let (_, model, _) = try await run([
+            [toolUse("s1", "save_file", ["name": "list", "folder": "Reports"], computer: false)],
+            [.object(["type": "text", "text": "done"])],
+        ], ext: ".rtf")
+        let result = await model.requests[1].last?["content"]?.arrayValue?.first { $0["tool_use_id"] == "s1" }
+        // The guest saved into the outbox root, not Reports, so the host does not find it there.
+        #expect(result?["is_error"] == true)
+    }
+
+    @Test func createsAMissingOutboxSubfolderAndRefusesEscapes() async throws {
+        let model = ScriptedModel(turns: [
+            [toolUse("s1", "save_file", ["name": "summary.txt", "folder": "Reports/Q3"], computer: false)],
+            [toolUse("s2", "save_file", ["name": "x.txt", "folder": "../elsewhere"], computer: false)],
+            [.object(["type": "text", "text": "done"])],
+        ])
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        let runner = AgentRunner(goal: "Save", dependencies: .init(model: model, guest: SaveDialogGuest(), store: InMemoryTaskStore(), lease: ControlLease(), folders: folders))
+        try await runner.start()
+        var isDirectory: ObjCBool = false
+        let created = folders.outbox(for: await runner.task).appendingPathComponent("Reports/Q3")
+        #expect(FileManager.default.fileExists(atPath: created.path, isDirectory: &isDirectory) && isDirectory.boolValue)
+        let second = await model.requests[2].last?["content"]?.arrayValue?.first { $0["tool_use_id"] == "s2" }
+        #expect(second?["content"]?.stringValue?.contains("inside the outbox") == true)
+    }
+
+    @Test func missingFileIsAnErrorTheModelSees() async throws {
+        let model = ScriptedModel(turns: [
+            [toolUse("s1", "save_file", ["name": "a/b.txt"], computer: false)],
+            [.object(["type": "text", "text": "ok"])],
+        ])
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        let guest = SaveDialogGuest()
+        let runner = AgentRunner(goal: "Save", dependencies: .init(model: model, guest: guest, store: InMemoryTaskStore(), lease: ControlLease(), folders: folders))
+        try await runner.start()
+        let result = await model.requests[1].last?["content"]?.arrayValue?.first { $0["tool_use_id"] == "s1" }
+        #expect(result?["is_error"] == true)
+        #expect(await guest.inputs.isEmpty)   // an invalid name types nothing
+    }
+
+    @Test func extensionAddedByTheAppStillCounts() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try Data().write(to: folder.appendingPathComponent("list.rtf"))
+        #expect(SaveDialog.savedFiles(named: "list", in: folder).map(\.lastPathComponent) == ["list.rtf"])
+        #expect(SaveDialog.savedFiles(named: "list.rtf", in: folder).map(\.lastPathComponent) == ["list.rtf"])
+        #expect(SaveDialog.savedFiles(named: "other", in: folder).isEmpty)
+        #expect(SaveDialog.extensionWarning(requested: "list", saved: folder.appendingPathComponent("list.rtf")) == nil)
+        #expect(SaveDialog.extensionWarning(requested: "a.txt", saved: folder.appendingPathComponent("a.txt.rtf"))?.contains("Make Plain Text") == true)
+        #expect(!SaveDialog.isValidName("a/b.txt"))
+        #expect(SaveDialog.isValidName("report 2.pdf"))
+    }
+}

@@ -21,6 +21,7 @@ public enum ControlCommand: Sendable, Equatable {
     case snapshotTake(name: String?)
     case snapshotRestore(snapshot: String, saveCurrent: Bool)
     case snapshotDelete(snapshot: String)
+    case saveFile(name: String, folder: String?, openDialog: Bool)
     case putFile(path: String)
     case outbox
     case shareList
@@ -103,6 +104,9 @@ public enum ControlCommand: Sendable, Equatable {
             let save: Bool = if case .bool(let value)? = arguments["save_current"] { value } else { true }
             self = .snapshotRestore(snapshot: try string("snapshot"), saveCurrent: save)
         case "snapshot_delete": self = .snapshotDelete(snapshot: try string("snapshot"))
+        case "save_file":
+            let open: Bool = if case .bool(let value)? = arguments["open_dialog"] { value } else { true }
+            self = .saveFile(name: try string("name"), folder: arguments["folder"]?.stringValue, openDialog: open)
         case "put_file": self = .putFile(path: try string("path"))
         case "outbox": self = .outbox
         case "share_list": self = .shareList
@@ -172,6 +176,9 @@ public struct ControlTool: Sendable {
                         inputSchema: object(["snapshot": text("Snapshot name or id"), "save_current": ["type": "boolean"]], required: ["snapshot"])),
             ControlTool(name: "snapshot_delete", description: "Delete a snapshot (by name or id). Protected snapshots can't be deleted.",
                         inputSchema: object(["snapshot": text("Snapshot name or id")], required: ["snapshot"])),
+            ControlTool(name: "save_file", description: "Save the frontmost document under a file name by filling in the app's save dialog (Cmd+S, name, folder, Save), then check it arrived. The folder defaults to the outbox. If a save or export dialog is already open, pass open_dialog: false.",
+                        inputSchema: object(["name": text("File name with extension"), "folder": text("Folder path in the virtual Mac, or a subfolder of the outbox"),
+                                             "open_dialog": ["type": "boolean"]], required: ["name"])),
             ControlTool(name: "put_file", description: "Copy a file from this Mac into the virtual Mac. Returns its path inside the virtual Mac (read-only there).",
                         inputSchema: object(["path": text("Absolute path of a file on this Mac")], required: ["path"])),
             ControlTool(name: "outbox", description: "List files the virtual Mac saved to its outbox (/Volumes/My Shared Files/outbox), with their paths on this Mac.",
@@ -233,6 +240,8 @@ public enum ControlGuide {
           snapshot delete NAME|ID
 
         Files
+          save NAME [--folder PATH] [--no-open]
+                                              save the frontmost document via its save dialog (default: outbox)
           put FILE                            copy a file into the virtual Mac (read-only there)
           outbox                              list files saved to /Volumes/My Shared Files/outbox
           share list                          folders from this Mac shared into the virtual Mac

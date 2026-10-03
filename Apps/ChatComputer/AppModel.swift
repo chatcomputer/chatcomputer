@@ -2,6 +2,7 @@ import AppKit
 import BridgeProtocol
 import ChatCore
 import HostControl
+import ImageIO
 import GuestBridge
 import ModelProxy
 import Observation
@@ -336,9 +337,9 @@ final class AppModel {
         }
         let attachments = pendingAttachments
         pendingAttachments = []
-        let runner = AgentRunner(goal: goal, attachments: attachments, dependencies: .init(
+        let runner = AgentRunner(goal: goal, attachments: attachments, dependencies: Self.withScreenReading(.init(
             model: model, guest: bridge, store: store, lease: lease,
-            folders: SharedFolders(root: vm.bundle.sharedRoot)))
+            folders: SharedFolders(root: vm.bundle.sharedRoot))))
         follow(runner)
         tokens = (0, 0)
         Task {
@@ -346,6 +347,18 @@ final class AppModel {
             await unlockGuestIfLocked()
             do { try await runner.start() } catch { errorMessage = error.localizedDescription }
         }
+    }
+
+    /// Lets the runner find text on the guest's screenshots (on-device Vision), for steps such as `save_file`.
+    nonisolated static func withScreenReading(_ dependencies: AgentRunner.Dependencies) -> AgentRunner.Dependencies {
+        var dependencies = dependencies
+        dependencies.locateText = { data, text in
+            // Screenshots arrive in the guest's point space; Vision boxes are scaled to the decoded image.
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+            return await ScreenText.locate(text, inImage: data, width: image.width, height: image.height)
+        }
+        return dependencies
     }
 
     /// Shows a runner's updates in the chat.
@@ -411,8 +424,8 @@ final class AppModel {
         tokens = (saved.inputTokens, saved.outputTokens)
         guard let checkpoint = saved.task, !checkpoint.task.phase.isTerminal, let vm, let bridge,
               let model = try? makeModelClient(for: modelSettings) else { return }
-        let runner = AgentRunner(restoring: checkpoint, dependencies: .init(
-            model: model, guest: bridge, store: store, lease: lease, folders: SharedFolders(root: vm.bundle.sharedRoot)))
+        let runner = AgentRunner(restoring: checkpoint, dependencies: Self.withScreenReading(.init(
+            model: model, guest: bridge, store: store, lease: lease, folders: SharedFolders(root: vm.bundle.sharedRoot))))
         follow(runner)
         phase = runner.initialPhase
         let note = if case .waitingForUser = phase {

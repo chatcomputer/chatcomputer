@@ -128,7 +128,7 @@ import BridgeProtocol
         #expect(messages.first == ["role": "system", "content": "sys"])
         #expect(messages.last == ["role": "user", "content": "hi"])
         let names = body["tools"]?.arrayValue?.compactMap { $0["function"]?["name"]?.stringValue }
-        #expect(names == ["computer", "report_result", "ask_user"])
+        #expect(names == ["computer", "report_result", "save_file", "ask_user"])
         #expect(body["max_tokens"] != nil)
     }
 

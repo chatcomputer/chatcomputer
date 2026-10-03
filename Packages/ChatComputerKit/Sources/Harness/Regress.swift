@@ -5,8 +5,10 @@ import ChatCore
 import Foundation
 import GuestBridge
 import HostControl
+import ImageIO
 import ModelProxy
 import Orchestrator
+import Virtualization
 import VMKit
 
 /// `cc-harness vm regress`: the fixed task set (scripts/regress/tasks.json) with the built-in agent on the real VM.
@@ -29,6 +31,7 @@ enum Regress {
         let type: String
         let name: String?
         let contains: [String]?
+        let absent: [String]?
     }
     struct Result: Encodable {
         let task: String
@@ -86,9 +89,17 @@ enum Regress {
         await controller.start()
         try await waitReady(bridge, vmID: vmID, timeout: 180)
 
-        // Keep the user's state, and make the common starting point once.
-        try await controller.takeSnapshot(name: beforeName, thumbnail: nil)
-        try await waitReady(bridge, vmID: vmID, timeout: 120)
+        // Keep the user's state, and make the common starting point once. An interrupted earlier run left its
+        // "Before regression" behind, and the machine now holds that run's leftovers: keep the oldest one.
+        let earlier = controller.snapshots.filter { $0.name == beforeName }.sorted { $0.createdAt < $1.createdAt }
+        if earlier.isEmpty {
+            try await controller.takeSnapshot(name: beforeName, thumbnail: nil)
+            try await waitReady(bridge, vmID: vmID, timeout: 120)
+        } else {
+            for duplicate in earlier.dropFirst() { try controller.deleteSnapshot(duplicate.id) }
+            VMProbe.log("reusing “\(beforeName)” from \(earlier[0].createdAt) (an earlier run was interrupted)")
+        }
+        let watcher = ConsentWatcher(controller: controller)
         if rebuildBase, let old = controller.snapshots.first(where: { $0.name == baseName }) {
             try controller.setSnapshotProtected(old.id, false)
             try controller.deleteSnapshot(old.id)
@@ -100,6 +111,10 @@ enum Regress {
             try await waitReady(bridge, vmID: vmID, timeout: 300, screenOf: controller)
             VMProbe.log("cold boot from “\(initial.name)” ready")
             try await Task.sleep(for: .seconds(15))   // let login items settle
+            // A screenshot through the agent makes macOS show its screen recording prompt now, so it is answered
+            // before the snapshot instead of greeting every task.
+            _ = try? await bridge.send(CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                       deadline: Date().addingTimeInterval(10), command: .screenshot(region: nil)))
             try await clearFirstRunDialogs(controller)
             let base = try await controller.takeSnapshot(name: baseName, thumbnail: nil)
             try controller.setSnapshotProtected(base.id, true)
@@ -111,8 +126,10 @@ enum Regress {
         var results: [Result] = []
         for run in 1...runs {
             for spec in specs {
+                watcher.detach()
                 try await controller.restoreSnapshot(base.id, savingCurrentAs: nil, thumbnail: nil)
                 try await waitReady(bridge, vmID: vmID, timeout: 120)
+                watcher.attach()
                 let result = await runTask(spec, run: run, agent: modelSpec, model: model, bridge: bridge, bundle: bundle, files: root.appendingPathComponent("files"))
                 results.append(result)
                 VMProbe.log("\(result.passed ? "PASS" : "FAIL") \(spec.id) #\(run) \(result.seconds)s turns=\(result.turns) in=\(result.inputTokens) cached=\(result.cachedInputTokens) out=\(result.outputTokens) — \(result.detail)")
@@ -126,7 +143,8 @@ enum Regress {
         }
 
         summarize(results)
-        if let before = controller.snapshots.first(where: { $0.name == beforeName }) {
+        watcher.detach()
+        if let before = controller.snapshots.filter({ $0.name == beforeName }).min(by: { $0.createdAt < $1.createdAt }) {
             try await controller.restoreSnapshot(before.id, savingCurrentAs: nil, thumbnail: nil)
             try? controller.deleteSnapshot(before.id)
         }
@@ -159,18 +177,85 @@ enum Regress {
             }
             break
         }
+        // System Settings is left open by onboarding's permission step; Spotlight shows a welcome panel the first
+        // time it opens. Both would cost every task a few turns.
+        // Its sidebar gives it away even when another app is in front: click it to bring it forward, then quit it.
+        if let image = display.capture(), let screen = try? ScreenText.recognize(image, guestSize: display.guestSize),
+           let sidebar = screen.first("Bluetooth"), screen.contains("Wi-Fi") {
+            display.click(sidebar.center)
+            try await Task.sleep(for: .seconds(1))
+            try await display.key("cmd+q")
+            VMProbe.log("quit System Settings")
+            try await Task.sleep(for: .seconds(2))
+        }
+        try await display.key("cmd+space")
+        try await Task.sleep(for: .seconds(2.5))
+        if let image = display.capture(), let screen = try? ScreenText.recognize(image, guestSize: display.guestSize),
+           let button = screen.first("Continue") {
+            display.click(button.center)
+            VMProbe.log("dismissed Spotlight's welcome")
+            try await Task.sleep(for: .seconds(1.5))
+        }
+        try await display.key("escape")
+        try await Task.sleep(for: .seconds(1))
+    }
+
+    /// The app's answer to macOS's periodic screen-recording prompt (`ConsentPrompt`), for unattended runs.
+    /// It needs a view of the machine; that view is detached around every snapshot operation, because a
+    /// second view left attached while the machine's state is saved leaves the restored guest black.
+    @MainActor
+    final class ConsentWatcher {
+        let controller: VirtualMachineController
+        private var view: VZVirtualMachineView?
+        private var window: NSWindow?
+        private var task: Task<Void, Never>?
+
+        init(controller: VirtualMachineController) { self.controller = controller }
+
+        func attach() {
+            guard let machine = controller.virtualMachine else { return }
+            if view == nil {
+                let shown = VMProbe.showWindow(machine, spec: controller.spec)
+                view = shown.0
+                window = shown.1
+            }
+            view?.virtualMachine = machine
+            let size = CGSize(width: controller.spec.displayWidth / 2, height: controller.spec.displayHeight / 2)
+            task = Task { [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(10))
+                    guard let self, let view = self.view, view.virtualMachine != nil else { continue }
+                    if await ConsentPrompt.approveIfShown(on: HostDisplay(view: view, guestSize: size)) {
+                        VMProbe.log("answered the screen recording prompt")
+                    }
+                }
+            }
+        }
+
+        func detach() {
+            task?.cancel()
+            task = nil
+            view?.virtualMachine = nil
+        }
     }
 
     static func runTask(_ spec: Spec, run: Int, agent: String, model: any ModelClient, bridge: BridgeServer,
                         bundle: VMBundle, files: URL) async -> Result {
         let folders = SharedFolders(root: bundle.sharedRoot)
+        var dependencies = AgentRunner.Dependencies(model: model, guest: bridge, store: InMemoryTaskStore(), lease: ControlLease(), folders: folders)
+        dependencies.locateText = { data, text in
+            guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+            return await ScreenText.locate(text, inImage: data, width: image.width, height: image.height)
+        }
         let runner = AgentRunner(goal: spec.goal, attachments: (spec.attachments ?? []).map { files.appendingPathComponent($0) },
-                                 dependencies: .init(model: model, guest: bridge, store: InMemoryTaskStore(), lease: ControlLease(), folders: folders))
+                                 dependencies: dependencies)
         let notes = NoteLog()
         let collector = Task {
             for await update in runner.updates {
                 switch update {
                 case .assistantNote(let text): await notes.add(text)
+                case .action(let name): await notes.addAction(name)
                 case .needsUser: await notes.markAsked()
                 default: break
                 }
@@ -201,6 +286,7 @@ enum Regress {
                                                                                deadline: Date().addingTimeInterval(10), command: .screenshot(region: nil))) {
             try? FileManager.default.createDirectory(atPath: shots, withIntermediateDirectories: true)
             try? shot.imageData.write(to: URL(fileURLWithPath: shots).appendingPathComponent("\(spec.id)-\(run).png"))
+            try? Data(await notes.log.utf8).write(to: URL(fileURLWithPath: shots).appendingPathComponent("\(spec.id)-\(run).log"))
         }
         let text = await notes.text
         var failures: [String] = []
@@ -209,12 +295,18 @@ enum Regress {
             case "answer":
                 let haystack = normalize(text)
                 for needle in check.contains ?? [] where !haystack.contains(normalize(needle)) { failures.append("answer lacks “\(needle)”") }
+            case "answerAny":
+                let haystack = normalize(text)
+                if !(check.contains ?? []).contains(where: { haystack.contains(normalize($0)) }) {
+                    failures.append("answer mentions none of \((check.contains ?? []).joined(separator: ", "))")
+                }
             case "file":
                 let url = folders.outbox(for: task).appendingPathComponent(check.name ?? "")
                 guard let data = try? Data(contentsOf: url) else { failures.append("no \(check.name ?? "") in the outbox"); continue }
                 // Case-insensitive: macOS capitalizes the first word of a line as it is typed.
                 let content = String(decoding: data, as: UTF8.self).lowercased()
                 for needle in check.contains ?? [] where !content.contains(needle.lowercased()) { failures.append("\(check.name ?? "") lacks “\(needle)”") }
+                for needle in check.absent ?? [] where content.contains(needle.lowercased()) { failures.append("\(check.name ?? "") still has “\(needle)”") }
             case "asksUser":
                 if !(await notes.asked) { failures.append("did not ask before acting") }
                 if task.phase == .completed { failures.append("finished without approval") }
@@ -289,7 +381,10 @@ enum Regress {
     private actor NoteLog {
         private(set) var notes: [String] = []
         private(set) var asked = false
-        func add(_ note: String) { notes.append(note) }
+        private var lines: [String] = []
+        func add(_ note: String) { notes.append(note); lines.append("note: " + note) }
+        func addAction(_ action: String) { lines.append("action: " + action) }
+        var log: String { lines.joined(separator: "\n") }
         func markAsked() { asked = true }
         var text: String { notes.joined(separator: "\n") }
     }

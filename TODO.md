@@ -79,7 +79,11 @@
 - [ ] ACP：在聊天里选择 Claude Code / Codex 等作为 agent
 - [x] 固定任务回归集：`cc-harness vm regress`（内置 agent）与 `scripts/regress/external.py`（Claude Code），10 个任务，从同一张快照开始，自动检查
 - [x] 宿主自动回应 macOS 定期弹出的录屏授权对话框（`ConsentPrompt`）
-- [ ] 每个任务多跑几轮取中位数（deepseek-flash 同一任务轮数波动可达 1.5 倍）
+- [x] 每个任务多跑几轮取中位数：`vm regress --runs 3`，`scripts/regress/report.py` 汇总并与基线对比
+- [x] 回归集扩到 20 个任务（网页表单、跨应用、格式转换、多步、提示注入），本地网页代替外网
+- [x] `save_file` 高层动作（命令行 `chatcomputer save`）：三轮 60/60，保存任务中位轮数 −69%
+- [ ] 驱动层查清跨进程面板在 Cmd/Ctrl 组合键后丢字的根因（怀疑按键 flags 被整个覆盖），修好后需要更新 guest agent 并重建「Regression base」
+- [ ] 回归集加入 Claude 作为内置 agent 的模型
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [x] 宿主 App 退出时挂起虚拟机，下次启动时恢复（含 SIGTERM；保存失败时改为正常关机）
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
