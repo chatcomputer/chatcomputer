@@ -77,7 +77,7 @@
 - [ ] 把文件夹拖到虚拟机画面上即共享（目前可拖到面板或聊天）
 - [ ] ACP：在聊天里选择 Claude Code / Codex 等作为 agent
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
-- [ ] 宿主 App 退出时调用 `suspend()` 挂起虚拟机，下次启动时恢复
+- [x] 宿主 App 退出时挂起虚拟机，下次启动时恢复（含 SIGTERM；保存失败时改为正常关机）
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
 - [ ] 给 VMKit / GuestBridge / AgentCore 补测试：`KeyMap`（AgentCore）和 DHCP 租约解析（VMKit）已有；还缺 GuestBridge 的协议握手
 - [ ] 加 CI：`scripts/test-linux.sh` 可以直接在 Linux runner 上跑

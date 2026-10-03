@@ -89,7 +89,7 @@ extension AppModel {
         do { try vm?.deleteSnapshot(snapshot.id) } catch { errorMessage = error.localizedDescription }
     }
 
-    private func captureGuestScreen() -> CGImage? {
+    func captureGuestScreen() -> CGImage? {
         guard let guestView, let spec = vm?.spec else { return nil }
         return HostDisplay(view: guestView, guestSize: CGSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2)).capture()
     }

@@ -21,6 +21,8 @@ public final class VirtualMachineController: NSObject {
     public private(set) var spec: VMSpec
     public private(set) var state: State = .stopped
     public private(set) var virtualMachine: VZVirtualMachine?
+    /// Whether the last start resumed a suspended machine rather than booting it.
+    public private(set) var resumedFromSavedState = false
 
     /// Called with the vsock device once the VM starts, so the bridge can listen on it.
     public var onSocketDeviceReady: ((VZVirtioSocketDevice) -> Void)?
@@ -79,6 +81,7 @@ public final class VirtualMachineController: NSObject {
                     try await machine.restoreMachineStateFrom(url: bundle.savedStateURL)
                     try await machine.resume()
                     try? FileManager.default.removeItem(at: bundle.savedStateURL)
+                    resumedFromSavedState = true
                     state = .running
                     return
                 } catch {
@@ -87,6 +90,7 @@ public final class VirtualMachineController: NSObject {
                 }
             }
 
+            resumedFromSavedState = false
             let options = VZMacOSVirtualMachineStartOptions()
             if let provisioning {
                 try options.setGuestProvisioning(provisioning)

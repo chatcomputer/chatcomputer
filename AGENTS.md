@@ -57,7 +57,8 @@ Before claiming a change works, run the layer that exercises it:
    bits. Text is typed as real key presses where the US layout has the character. Out-of-process panels
    such as the save dialog drop anything else.
 7. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
-   agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`.
+   agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
+   (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.
 
 ## Development switches
 

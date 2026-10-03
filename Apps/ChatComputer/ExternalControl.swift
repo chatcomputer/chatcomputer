@@ -41,6 +41,12 @@ final class ExternalControl {
         }
     }
 
+    /// Stops accepting commands (the app is quitting) and removes the socket.
+    func stop() {
+        server?.stop()
+        server = nil
+    }
+
     private func enqueue(_ request: ControlRequest) async -> ControlResponse {
         let previous = tail
         let task = Task { @MainActor in

@@ -204,7 +204,42 @@ final class AppModel {
     }
 
     func bootVM() async {
-        await vm?.start()
+        guard let vm else { return }
+        await vm.start()
+        if vm.resumedFromSavedState {
+            transcript.append(ChatItem(role: .system, text: "Your virtual Mac picked up where you left off."))
+        }
+    }
+
+    /// Before the app quits: stop work in progress and save the virtual Mac (memory included), so the next
+    /// launch resumes it. If saving fails it shuts down cleanly instead, and only as a last resort is it cut off.
+    func prepareToQuit() async {
+        external?.stop()
+        guard let vm else { return }
+        for _ in 0..<240 where snapshotActivity != nil || vm.isWorkingOnSnapshots {
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        if isRunningTask, let runner { await runner.cancel() }
+        if externalHolder != nil { await external?.release(note: nil) }
+        guard vm.state == .running else { return }
+
+        snapshotActivity = SnapshotActivity(title: "Saving your virtual Mac…", frozenScreen: captureGuestScreen())
+        do {
+            let available = SnapshotStore.availableCapacity(for: vm.bundle.url)
+            guard available >= vm.spaceNeededForMemorySnapshot else {
+                throw VMError.notEnoughSpace(needed: vm.spaceNeededForMemorySnapshot, available: available)
+            }
+            try await vm.suspend()
+        } catch {
+            snapshotActivity = SnapshotActivity(title: "Shutting down your virtual Mac…", frozenScreen: snapshotActivity?.frozenScreen)
+            let bridge = self.bridge
+            let vmID = vm.spec.id
+            try? await vm.shutDown(viaGuest: bridge.map { bridge in
+                { _ = try await bridge.send(.init(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                  deadline: Date().addingTimeInterval(15), command: .shutdown)) }
+            }, timeout: .seconds(90))
+            if vm.state != .stopped { try? await vm.forceStop() }
+        }
     }
 
     /// The bridge exists once the agent has been installed and a pairing token stored.

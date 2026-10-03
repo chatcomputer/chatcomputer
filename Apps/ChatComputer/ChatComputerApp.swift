@@ -28,7 +28,8 @@ enum Entry {
 }
 
 struct ChatComputerApp: App {
-    @State private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    private var model: AppModel { delegate.model }
 
     var body: some Scene {
         WindowGroup("Chat Computer") {
@@ -70,6 +71,38 @@ struct ChatComputerApp: App {
         Settings {
             SettingsView().environment(model)
         }
+    }
+}
+
+/// Quitting saves the virtual Mac instead of cutting its power: the next launch resumes it as it was.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let model = AppModel()
+    private var isQuitting = false
+    private var terminationSignal: DispatchSourceSignal?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // `kill` (and launchd at shutdown) sends SIGTERM; quit the normal way so the VM is saved too.
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        // Not `NSApp.terminate` right here: this handler is a block on the main queue, and quitting waits for
+        // main-actor work (saving the VM) that can't run until the block returns. Start it from the run loop.
+        source.setEventHandler { RunLoop.main.perform { NSApp.terminate(nil) } }
+        source.resume()
+        terminationSignal = source
+    }
+
+    /// One window, one virtual Mac: closing the window quits (and so saves the VM).
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !isQuitting else { return .terminateLater }
+        isQuitting = true
+        Task {
+            await model.prepareToQuit()
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 
