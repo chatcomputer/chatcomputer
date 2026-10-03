@@ -31,6 +31,23 @@ import Testing
         #expect(try ControlCommand(name: "snapshot_restore", arguments: ["snapshot": "A"]) == .snapshotRestore(snapshot: "A", saveCurrent: true))
     }
 
+    @Test func commandLineAndMCPListTheSameCommands() throws {
+        let reached = Set(ControlCLI.toolsByCommand.values.flatMap { $0 })
+        #expect(reached == Set(ControlTool.all.map(\.name)))
+        // Every command line command appears in the usage text.
+        for command in ControlCLI.toolsByCommand.keys {
+            #expect(ControlGuide.commandLineUsage.contains("  \(command)"), "\(command) is missing from the usage text")
+        }
+    }
+
+    @Test func shareCommands() throws {
+        #expect(try request(["share", "list"]) == .shareList)
+        #expect(try request(["share", "add", "/tmp/site", "--writable"]) == .shareAdd(path: "/tmp/site", writable: true))
+        #expect(try request(["share", "add", "/tmp/site"]) == .shareAdd(path: "/tmp/site", writable: false))
+        #expect(try request(["share", "remove", "site", "2"]) == .shareRemove(name: "site 2"))
+        #expect(throws: ControlError.self) { try ControlCLI.parse(["share", "delete", "x"]) }
+    }
+
     @Test func screenshotKeepsItsOutputPath() throws {
         #expect(try ControlCLI.parse(["screenshot", "--out", "/tmp/a.png"]) == .request(command: "screenshot", arguments: [:], screenshotPath: "/tmp/a.png"))
         #expect(try ControlCLI.parse([]) == .help)
@@ -68,7 +85,7 @@ import Testing
                 // Required arguments filled with plausible values must parse.
                 var arguments: [String: JSONValue] = [:]
                 for case .string(let key) in tool.inputSchema["required"]?.arrayValue ?? [] {
-                    arguments[key] = ["direction": "down", "text": "a", "combo": "Return", "snapshot": "A", "path": "/tmp/a"][key] ?? 1
+                    arguments[key] = ["direction": "down", "text": "a", "combo": "Return", "snapshot": "A", "path": "/tmp/a", "name": "site"][key] ?? 1
                 }
                 _ = try ControlCommand(name: tool.name, arguments: arguments)
             }

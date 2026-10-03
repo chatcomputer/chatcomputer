@@ -5,6 +5,7 @@ struct ChatPanel: View {
     @Environment(AppModel.self) private var model
     @State private var draft = ""
     @State private var showActions = false
+    @State private var isDropTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +26,12 @@ struct ChatPanel: View {
             }
             Divider()
             footer
+            if !model.pendingAttachments.isEmpty { attachments }
             HStack(alignment: .bottom) {
+                Button("Attach Files", systemImage: "paperclip") { model.chooseAttachments() }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("Attach files to the next task; they go into its inbox, read-only in the virtual Mac")
                 // Chat input always stays on the host; it never reaches the guest.
                 TextField(placeholder, text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -37,6 +43,40 @@ struct ChatPanel: View {
             }
             .padding(12)
         }
+        // Files dropped on the chat are attached to the next task; folders are shared.
+        .dropDestination(for: URL.self) { urls, _ in
+            model.attach(urls)
+            return true
+        } isTargeted: { isDropTargeted = $0 }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 8).strokeBorder(Color.accentColor, lineWidth: 3).padding(4)
+                    .overlay(Text("Drop files to attach them, or folders to share them").font(.callout.weight(.medium))
+                        .padding(8).background(.regularMaterial, in: .capsule))
+            }
+        }
+    }
+
+    private var attachments: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(model.pendingAttachments, id: \.self) { url in
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc")
+                        Text(url.lastPathComponent).lineLimit(1)
+                        Button("Remove", systemImage: "xmark.circle.fill") { model.pendingAttachments.removeAll { $0 == url } }
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.primary.opacity(0.07), in: .capsule)
+                }
+            }
+            .padding(.horizontal, 12)
+        }
+        .padding(.top, 8)
     }
 
     private var visibleItems: [ChatItem] {
@@ -52,6 +92,10 @@ struct ChatPanel: View {
         HStack {
             Text(phaseText).font(.caption)
             Spacer()
+            Button("Shared Folders", systemImage: "folder") { model.showingSharedFolders = true }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Shared folders: folders from this Mac, the inbox and the outbox (⌥⌘F)")
             Button("Snapshots", systemImage: "clock.arrow.circlepath") { model.showingSnapshots = true }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)

@@ -71,6 +71,7 @@ struct ControlRail: View {
             }
             .disabled(!model.canManageSnapshots)
             RailButton(title: "Snapshots (⇧⌘S)", symbol: "clock.arrow.circlepath") { model.showingSnapshots = true }
+            RailButton(title: "Shared Folders (⌥⌘F)", symbol: "folder") { model.showingSharedFolders = true }
         }
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

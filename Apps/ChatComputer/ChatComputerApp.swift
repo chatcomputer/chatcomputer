@@ -52,6 +52,9 @@ struct ChatComputerApp: App {
                 Button("Snapshots…") { model.showingSnapshots = true }
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                     .disabled(!model.isReady)
+                Button("Shared Folders…") { model.showingSharedFolders = true }
+                    .keyboardShortcut("f", modifiers: [.command, .option])
+                    .disabled(!model.isReady)
             }
             CommandMenu("Agent") {
                 // Emergency stop is handled by the host, independent of guest or model (proposal §04).

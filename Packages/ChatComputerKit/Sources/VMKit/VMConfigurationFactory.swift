@@ -13,7 +13,9 @@ public struct VMConfigurationFactory {
         self.network = network
     }
 
-    public func make(spec: VMSpec) throws -> VZVirtualMachineConfiguration {
+    /// `shares` are the user's folders; `includeBootstrap` adds the agent installer, which is only needed
+    /// while the agent is installed or updated.
+    public func make(spec: VMSpec, shares: [UserShare] = [], includeBootstrap: Bool = true) throws -> VZVirtualMachineConfiguration {
         let configuration = VZVirtualMachineConfiguration()
         configuration.bootLoader = VZMacOSBootLoader()
         configuration.platform = try platform()
@@ -33,14 +35,11 @@ public struct VMConfigurationFactory {
         // Control channel to the guest agent (BridgeProtocol over vsock).
         configuration.socketDevices = [VZVirtioSocketDeviceConfiguration()]
 
-        // Task folders and the agent installer. Mounted by macOS under "/Volumes/My Shared Files".
-        let shares = VZVirtioFileSystemDeviceConfiguration(tag: VZVirtioFileSystemDeviceConfiguration.macOSGuestAutomountTag)
-        shares.share = VZMultipleDirectoryShare(directories: [
-            "inbox": VZSharedDirectory(url: bundle.sharedRoot.appendingPathComponent("inbox"), readOnly: true),
-            "outbox": VZSharedDirectory(url: bundle.sharedRoot.appendingPathComponent("outbox"), readOnly: false),
-            "bootstrap": VZSharedDirectory(url: bundle.bootstrapDirectory, readOnly: true),
-        ])
-        configuration.directorySharingDevices = [shares]
+        // One device with a fixed tag; macOS mounts it as "/Volumes/My Shared Files". Its folders can be
+        // changed while the VM runs (`VirtualMachineController.applyShares`).
+        let device = VZVirtioFileSystemDeviceConfiguration(tag: VZVirtioFileSystemDeviceConfiguration.macOSGuestAutomountTag)
+        device.share = directoryShare(shares: shares, includeBootstrap: includeBootstrap)
+        configuration.directorySharingDevices = [device]
 
         configuration.entropyDevices = [VZVirtioEntropyDeviceConfiguration()]
         configuration.memoryBalloonDevices = [VZVirtioTraditionalMemoryBalloonDeviceConfiguration()]
@@ -50,6 +49,21 @@ public struct VMConfigurationFactory {
             try configuration.validateSaveRestoreSupport()
         }
         return configuration
+    }
+
+    /// Task folders, the user's folders that still exist, and optionally the agent installer.
+    public func directoryShare(shares: [UserShare], includeBootstrap: Bool) -> VZMultipleDirectoryShare {
+        var directories: [String: VZSharedDirectory] = [
+            "inbox": VZSharedDirectory(url: bundle.sharedRoot.appendingPathComponent("inbox"), readOnly: true),
+            "outbox": VZSharedDirectory(url: bundle.sharedRoot.appendingPathComponent("outbox"), readOnly: false),
+        ]
+        if includeBootstrap {
+            directories["bootstrap"] = VZSharedDirectory(url: bundle.bootstrapDirectory, readOnly: true)
+        }
+        for share in shares where share.exists && !SharePolicy.reservedNames.contains(share.name.lowercased()) {
+            directories[share.name] = VZSharedDirectory(url: share.url, readOnly: share.readOnly)
+        }
+        return VZMultipleDirectoryShare(directories: directories)
     }
 
     private func platform() throws -> VZMacPlatformConfiguration {

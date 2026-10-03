@@ -78,3 +78,48 @@ import Testing
         #expect(usage.exceeded(TaskBudget(maxConsecutiveFailures: 3)) != nil)
     }
 }
+
+
+@Suite struct TaskFolderTests {
+    @Test func folderNamesAreReadableAsciiAndStable() {
+        var components = DateComponents(calendar: Calendar(identifier: .gregorian), timeZone: .current,
+                                        year: 2026, month: 10, day: 2, hour: 14, minute: 5)
+        components.second = 30
+        let task = TaskRecord(id: UUID(uuidString: "3F2A0000-0000-0000-0000-000000000000")!, goal: "写一份报告",
+                              createdAt: components.date!, modelID: "m")
+        #expect(SharedFolders.folderName(for: task) == "2026-10-02_14-05_3f2a")
+        #expect(SharedFolders.guestOutboxPath(for: task) == "/Volumes/My Shared Files/outbox/2026-10-02_14-05_3f2a")
+    }
+
+    @Test func attachmentsAreCopiedWithUniqueNames() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("TaskFolderTests-\(UUID().uuidString)")
+        let source = root.appendingPathComponent("source")
+        try FileManager.default.createDirectory(at: source.appendingPathComponent("a"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: source.appendingPathComponent("b"), withIntermediateDirectories: true)
+        try Data("1".utf8).write(to: source.appendingPathComponent("a/report.pdf"))
+        try Data("2".utf8).write(to: source.appendingPathComponent("b/report.pdf"))
+        let folders = SharedFolders(root: root.appendingPathComponent("Shared"))
+        let task = TaskRecord(goal: "x", modelID: "m")
+        let names = try folders.attach([source.appendingPathComponent("a/report.pdf"), source.appendingPathComponent("b/report.pdf")], to: task)
+        #expect(names == ["report.pdf", "report 2.pdf"])
+        #expect(try Data(contentsOf: folders.inbox(for: task).appendingPathComponent("report 2.pdf")) == Data("2".utf8))
+    }
+
+    @Test func cleanupKeepsRecentAndRunningTaskFolders() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("Cleanup-\(UUID().uuidString)")
+        let old = Date().addingTimeInterval(-10 * 86400)
+        for name in ["old", "running", "fresh", "old-with-new-file"] {
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(name), withIntermediateDirectories: true)
+            let file = root.appendingPathComponent("\(name)/a.txt")
+            try Data("abc".utf8).write(to: file)
+            if name != "fresh" { try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: file.path) }
+            if name != "fresh" { try FileManager.default.setAttributes([.modificationDate: old], ofItemAtPath: root.appendingPathComponent(name).path) }
+        }
+        try Data("new".utf8).write(to: root.appendingPathComponent("old-with-new-file/b.txt"))
+        #expect(SharedFolders.usage(of: root).files == 5)
+
+        let removed = try SharedFolders.removeItems(in: root, olderThan: Date().addingTimeInterval(-7 * 86400), keeping: ["running"])
+        #expect(removed == 1)
+        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: root.path)) == ["running", "fresh", "old-with-new-file"])
+    }
+}

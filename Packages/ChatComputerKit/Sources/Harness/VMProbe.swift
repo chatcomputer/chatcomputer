@@ -24,6 +24,7 @@ import VMKit
 ///         --hold SECONDS                          keep running before shutdown (default 0)
 ///         --suspend                               save state instead of shutting down; next `up` restores
 ///     cc-harness vm snapshot-test                 take, restore and reset snapshots on a paired VM (SnapshotTest)
+///     cc-harness vm share-test                    change shared folders while the VM runs and watch the agent (ShareTest)
 ///     cc-harness vm status                        bundle stage and files
 ///
 /// The bundle lives at $CC_VM_BUNDLE or ~/Library/Application Support/ChatComputer/Harness.vm.
@@ -44,8 +45,9 @@ enum VMProbe {
             case "status": try status()
             case "selftest": try selftest()
             case "snapshot-test": try await SnapshotTest.run()
+            case "share-test": try await ShareTest.run()
             default:
-                print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | snapshot-test | status")
+                print("usage: cc-harness vm install | up [--provision] [--agent PATH] [--bridge] [--screenshot] [--hold N] [--suspend] | snapshot-test | share-test | status")
                 return 2
             }
             return 0
@@ -170,6 +172,10 @@ enum VMProbe {
             try await probeBridge(bridge, vmID: spec.id, bootStarted: bootStarted)
             try await console?.serve()
             if options.updateAgent {
+                // The installer is only shared while an update needs it; give the guest a moment to see it.
+                controller.setBootstrapAttached(true)
+                try await Task.sleep(for: .seconds(3))
+                defer { controller.setBootstrapAttached(false) }
                 let result = try await bridge.send(envelope(spec.id, .updateAgent))
                 log("update agent: \(result)")
                 if result == .ok {

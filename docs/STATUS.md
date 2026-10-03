@@ -65,6 +65,13 @@
   - 与内置 agent 同一套规则：第一个输入命令拿到租约；用户点画面即接管，交还前外部 agent 不能操作；闲置 2 分钟自动释放；内置任务优先。
   - App 通过 0600 的 Unix 套接字接收命令，并校验对端用户。
   - 实测：Claude Code 经 MCP 截图并正确描述画面（12 秒）；经命令行完成「在 TextEdit 写入一行字、以纯文本存到 outbox、在宿主确认」（77 秒）。
+- **共享文件夹**：
+  - 虚拟机里 `/Volumes/My Shared Files` 下是 `inbox`（只读）、`outbox`（可写）和你共享的文件夹（默认只读，可单独允许修改）。`bootstrap` 只在安装或更新 agent 时出现。
+  - 运行中增删、切换只读都立即生效，不用重启（实测：共享后 Finder 里马上能看到文件，agent 全程保持就绪，`vm share-test`）。
+  - 拒绝共享系统目录、整个主目录、`~/Library`、主目录下的隐藏文件夹和 App 自己的数据；先解析符号链接再检查。
+  - 「共享文件夹」面板（⌥⌘F、竖栏、聊天底部）：Inbox/Outbox 的占用、在 Finder 中显示、清理 7 天前或全部（保留进行中的任务）；添加（选择或拖入）、只读开关（改为可写需确认）、停止共享。
+  - 聊天可附加文件（回形针或拖入），复制进该任务的 inbox 并告诉模型路径；拖入文件夹则共享。任务文件夹改为 `2026-10-02_14-05_3f2a` 这样的可读名称（纯 ASCII，便于在保存对话框里输入）。
+  - 命令行和 MCP 增加 `share list|add|remove`；两边命令由同一张表对应，测试保证不会漏。
 - **右侧面板可收起**：⌃⌘S 或面板右上角按钮，收起后只留 52 pt 竖栏（展开聊天、谁在控制、暂停、接管/交还、拍快照、快照列表），有新消息时显示角标。收起时窗口变窄，虚拟机画面大小不变。
 - **只运行一个副本**：第二个副本启动时把已运行的调到前台后退出；虚拟机目录加锁，两个进程不会同时启动同一台虚拟机。
 - **快照**：
@@ -81,11 +88,11 @@
 
 | 层 | 内容 | 命令 |
 |---|---|---|
-| L0 单元测试 | 70 个：命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
+| L0 单元测试 | 83 个：共享文件夹规则、任务文件夹与附件、文件密钥、命令行解析、MCP 会话、控制套接字、目录锁、协议、状态机、租约、预算、导出校验、两种协议的转换、厂商目录、KeyMap、DHCP 租约、agent 循环、快照（含恢复中断的回滚） | `swift test` |
 | L1 构建 | 两个 App 与 entitlement 检查 | `scripts/test-mac.sh` |
 | L2 宿主 API 自检 | DiskImageKit 分层与重置、vmnet | `scripts/harness.sh vm selftest` |
 | L3 真实模型 + 模拟桌面 | notes / approval / injection 三个场景 | `scripts/harness.sh live-loop --scenario …` |
-| L4 真实虚拟机 | 安装、启动、vsock、截图、挂起恢复、关机；快照（`vm snapshot-test`）；输入可靠性（`--input-test`，13/13）；经 agent 手动操作（`--agent-console`） | `scripts/harness.sh vm up …` |
+| L4 真实虚拟机 | 安装、启动、vsock、截图、挂起恢复、关机；快照（`vm snapshot-test`）；运行中改共享（`vm share-test`）；输入可靠性（`--input-test`，13/13）；经 agent 手动操作（`--agent-console`） | `scripts/harness.sh vm up …` |
 | L5 发布 | 签名、公证、Gatekeeper | `scripts/release.sh` |
 
 开发用环境变量（正常使用时都不设置）：

@@ -46,6 +46,9 @@ final class AppModel {
     /// A snapshot being taken or restored, shown over the guest screen (see Snapshots.swift).
     var snapshotActivity: SnapshotActivity?
     var showingSnapshots = false
+    var showingSharedFolders = false
+    /// Files to attach to the next task; copied into its inbox when it starts.
+    var pendingAttachments: [URL] = []
 
     /// A coding agent outside the app (via `chatcomputer` or MCP) that holds the input lease now.
     var externalHolder: String?
@@ -220,7 +223,11 @@ final class AppModel {
     func submit(_ text: String) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        transcript.append(ChatItem(role: .user, text: text))
+        // Attachments go with a new task, not with an answer to the agent's question.
+        let startsTask = !(runner != nil && { if case .waitingForUser = phase { true } else { false } }())
+        let attached = startsTask && !pendingAttachments.isEmpty
+            ? "\n📎 " + pendingAttachments.map(\.lastPathComponent).joined(separator: ", ") : ""
+        transcript.append(ChatItem(role: .user, text: text + attached))
 
         if let runner, case .waitingForUser = phase {
             Task { await runner.answer(text) }
@@ -249,7 +256,9 @@ final class AppModel {
             errorMessage = "The model is not set up: \(error). Choose a model in Settings."
             return
         }
-        let runner = AgentRunner(goal: goal, dependencies: .init(
+        let attachments = pendingAttachments
+        pendingAttachments = []
+        let runner = AgentRunner(goal: goal, attachments: attachments, dependencies: .init(
             model: model, guest: bridge, store: store, lease: lease,
             folders: SharedFolders(root: vm.bundle.sharedRoot)))
         self.runner = runner

@@ -85,13 +85,13 @@ enum LiveLoop {
         let jobBox = JobBox()
         let desktop = FakeDesktop(
             initialText: scenario.initialText,
-            outbox: { jobBox.id.map(folders.outbox(for:)) },
-            guestOutboxPath: { jobBox.id.map(SharedFolders.guestOutboxPath(for:)) ?? "" },
+            outbox: { jobBox.task.map(folders.outbox(for:)) },
+            guestOutboxPath: { jobBox.task.map(SharedFolders.guestOutboxPath(for:)) ?? "" },
             screenshotDirectory: shots)
         let runner = AgentRunner(goal: goal, dependencies: .init(
             model: model, guest: desktop, store: InMemoryTaskStore(), lease: ControlLease(), folders: folders,
             budget: TaskBudget(maxModelTurns: 25)))
-        jobBox.id = await runner.task.id
+        jobBox.task = await runner.task
 
         print("model: \(model.modelID) @ \(endpointDescription)")
         print("work:  \(workDirectory.path)")
@@ -139,8 +139,8 @@ enum LiveLoop {
 /// Lets the desktop find the job's outbox once the runner has assigned an ID.
 final class JobBox: @unchecked Sendable {
     private let lock = NSLock()
-    private var value: UUID?
-    var id: UUID? {
+    private var value: TaskRecord?
+    var task: TaskRecord? {
         get { lock.withLock { value } }
         set { lock.withLock { value = newValue } }
     }

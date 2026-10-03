@@ -72,7 +72,7 @@ func makeRunner(model: ScriptedModel, guest: FakeGuest) -> (AgentRunner, SharedF
         ])
         let guest = FakeGuest()
         let (runner, folders) = makeRunner(model: model, guest: guest)
-        await guest.setOutbox(folders.outbox(for: await runner.task.id))
+        await guest.setOutbox(folders.outbox(for: await runner.task))
 
         try await runner.start()
 

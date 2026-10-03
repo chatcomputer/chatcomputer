@@ -64,8 +64,12 @@ public actor AgentRunner {
     /// Turns left when that reminder is sent.
     static let turnReminderThreshold = 10
 
-    public init(goal: String, dependencies: Dependencies) {
+    /// Files the user attached; copied into the task's inbox when it starts.
+    private let attachments: [URL]
+
+    public init(goal: String, attachments: [URL] = [], dependencies: Dependencies) {
         self.deps = dependencies
+        self.attachments = attachments
         self.task = TaskRecord(goal: goal, modelID: dependencies.model.modelID)
         (updates, continuation) = AsyncStream.makeStream()
     }
@@ -73,10 +77,16 @@ public actor AgentRunner {
     // MARK: - Control (called from the UI)
 
     public func start() async throws {
-        try deps.folders.prepare(jobID: task.id)
+        try deps.folders.prepare(task: task)
+        let attached = try deps.folders.attach(attachments, to: task)
         try await deps.store.create(task)
         try await deps.store.append(TaskEvent(taskID: task.id, kind: .userMessage(task.goal)))
-        messages.append(["role": "user", "content": .string(task.goal)])
+        var request = task.goal
+        if !attached.isEmpty {
+            let inbox = SharedFolders.guestInboxPath(for: task)
+            request += "\n\nAttached files (read-only, in the virtual Mac):\n" + attached.map { "- \(inbox)/\($0)" }.joined(separator: "\n")
+        }
+        messages.append(["role": "user", "content": .string(request)])
         try await transition(.start)
         await run()
     }
@@ -174,8 +184,8 @@ public actor AgentRunner {
             do {
                 response = try await deps.model.respond(
                     system: SystemPrompt.make(
-                        outboxPath: SharedFolders.guestOutboxPath(for: task.id),
-                        inboxPath: SharedFolders.guestInboxPath(for: task.id)
+                        outboxPath: SharedFolders.guestOutboxPath(for: task),
+                        inboxPath: SharedFolders.guestInboxPath(for: task)
                     ),
                     tools: [ComputerToolset.definition] + HostTools.definitions,
                     messages: messages
@@ -321,7 +331,7 @@ public actor AgentRunner {
 
     /// Completion requires evidence: every reported output must exist in the outbox.
     private func finish(toolUseID: String, report: HostTools.ReportResult) async -> JSONValue {
-        let outbox = deps.folders.outbox(for: task.id)
+        let outbox = deps.folders.outbox(for: task)
         var delivered: [URL] = []
         var problems: [String] = []
         for path in report.outputs {

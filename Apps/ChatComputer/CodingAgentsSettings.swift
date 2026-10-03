@@ -41,6 +41,10 @@ struct CodingAgentsSettings: View {
                 browsers, UI tests), run `\(command) help` first, then use its commands: take a screenshot, act, \
                 and take another screenshot to check. Release control when done.
                 """)
+            Text("Give each agent either the command or the MCP server, not both: the same tools twice waste its context. Agents that can run shell commands work best with the command.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Snippet(title: "Claude Code (MCP)", text: "claude mcp add chatcomputer -- \(command) mcp")
             Snippet(title: "Codex (~/.codex/config.toml)", text: """
                 [mcp_servers.chatcomputer]

@@ -47,6 +47,7 @@ chatcomputer screenshot                # saves a PNG and prints its path
 chatcomputer click 640 400
 chatcomputer type "hello"; chatcomputer key cmd+s
 chatcomputer snapshot take "Before update"
+chatcomputer share add ~/Projects/site   # read-only in the guest unless --writable
 chatcomputer mcp                       # the same commands as an MCP server on stdio
 ```
 

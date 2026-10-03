@@ -73,6 +73,8 @@
 - [x] 外部 coding agent 接入：`chatcomputer` 命令行 + `chatcomputer mcp`，同一租约，用户接管/交还，闲置释放；Claude Code 经 MCP 和命令行实测通过
 - [x] 右侧面板可收起为竖栏（⌃⌘S）；单实例与虚拟机目录锁
 - [ ] 设置 › Coding agents 页面的界面截图核对（编译通过，未截到图）
+- [x] 共享文件夹：运行中热更新、用户文件夹（默认只读、敏感目录拦截）、bootstrap 按需挂载、管理面板与清理、聊天附件、可读任务文件夹名、`share` 命令
+- [ ] 把文件夹拖到虚拟机画面上即共享（目前可拖到面板或聊天）
 - [ ] ACP：在聊天里选择 Claude Code / Codex 等作为 agent
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [ ] 宿主 App 退出时调用 `suspend()` 挂起虚拟机，下次启动时恢复

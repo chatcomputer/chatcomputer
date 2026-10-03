@@ -33,6 +33,10 @@ public final class VirtualMachineController: NSObject {
     public private(set) var currentSnapshotID: UUID?
     /// True while a snapshot is being taken or restored; the VM stops and starts again during it.
     public private(set) var isWorkingOnSnapshots = false
+    /// Folders on this Mac shared into the guest (besides inbox and outbox).
+    public private(set) var shares: [UserShare] = []
+    /// Whether the agent installer is shared now; set around an agent update.
+    public private(set) var bootstrapAttached = false
     public var snapshotStore: SnapshotStore { SnapshotStore(bundle: bundle) }
 
     /// Throws `VMError.restoreJournalUnreadable` if an interrupted restore can't be finished; the VM can't
@@ -43,6 +47,7 @@ public final class VirtualMachineController: NSObject {
         try SnapshotStore(bundle: bundle).recoverInterruptedRestore()
         self.spec = try bundle.loadSpec()
         super.init()
+        shares = bundle.loadShares()
         refreshSnapshots()
     }
 
@@ -59,7 +64,9 @@ public final class VirtualMachineController: NSObject {
         }
         state = .starting
         do {
-            let configuration = try VMConfigurationFactory(bundle: bundle, network: network).make(spec: spec)
+            shares = bundle.loadShares()
+            let configuration = try VMConfigurationFactory(bundle: bundle, network: network)
+                .make(spec: spec, shares: shares, includeBootstrap: includesBootstrap)
             let machine = VZVirtualMachine(configuration: configuration)
             machine.delegate = self
             virtualMachine = machine
@@ -144,6 +151,52 @@ public final class VirtualMachineController: NSObject {
         try await machine.stop()
         virtualMachine = nil
         state = .stopped
+    }
+
+    // MARK: Shared folders
+
+    /// Until setup finishes, the installer is always shared; afterwards only when an update needs it.
+    private var includesBootstrap: Bool { spec.stage != .ready || bootstrapAttached }
+
+    /// Shares a folder from this Mac, read-only unless asked. Takes effect at once, also while the VM runs.
+    @discardableResult
+    public func addShare(_ url: URL, readOnly: Bool = true) throws -> UserShare {
+        let appData = bundle.url.deletingLastPathComponent().path
+        let checked = try SharePolicy.check(url, existing: shares, appData: appData)
+        let share = UserShare(name: checked.name, path: checked.path, readOnly: readOnly)
+        try saveShares(shares + [share])
+        return share
+    }
+
+    public func removeShare(_ id: UUID) throws {
+        guard shares.contains(where: { $0.id == id }) else { throw ShareError.notFound }
+        try saveShares(shares.filter { $0.id != id })
+    }
+
+    public func setShareReadOnly(_ id: UUID, _ readOnly: Bool) throws {
+        guard let index = shares.firstIndex(where: { $0.id == id }) else { throw ShareError.notFound }
+        var updated = shares
+        updated[index].readOnly = readOnly
+        try saveShares(updated)
+    }
+
+    /// Shares the agent installer for an update (`GuestCommand.updateAgent`), then hides it again.
+    public func setBootstrapAttached(_ attached: Bool) {
+        bootstrapAttached = attached
+        applyShares()
+    }
+
+    private func saveShares(_ updated: [UserShare]) throws {
+        try bundle.saveShares(updated)
+        shares = updated
+        applyShares()
+    }
+
+    /// Replaces the running guest's shared folders; macOS updates "/Volumes/My Shared Files" in place.
+    private func applyShares() {
+        guard let device = virtualMachine?.directorySharingDevices.first as? VZVirtioFileSystemDevice else { return }
+        device.share = VMConfigurationFactory(bundle: bundle, network: network)
+            .directoryShare(shares: shares, includeBootstrap: includesBootstrap)
     }
 
     // MARK: Snapshots

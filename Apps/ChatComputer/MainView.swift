@@ -68,6 +68,9 @@ struct MainView: View {
         .sheet(isPresented: Bindable(model).showingSnapshots) {
             SnapshotsSheet().environment(model)
         }
+        .sheet(isPresented: Bindable(model).showingSharedFolders) {
+            SharedFoldersSheet().environment(model)
+        }
         .task {
             if model.vm?.state == .stopped { await model.bootVM() }
             await model.startDevelopmentTaskIfRequested()

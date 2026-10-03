@@ -91,6 +91,23 @@ public enum ControlCLI {
             guard rest.count == 1 else { throw ControlError.usage("Usage: chatcomputer put FILE") }
             let path = URL(fileURLWithPath: rest.removeFirst()).standardizedFileURL.path
             return try done("put_file", ["path": .string(path)])
+        case "share":
+            guard !rest.isEmpty else { throw ControlError.usage("Usage: chatcomputer share list | add FOLDER [--writable] | remove NAME") }
+            switch rest.removeFirst() {
+            case "list": return try done("share_list")
+            case "add":
+                let writable = flag("--writable")
+                guard rest.count == 1 else { throw ControlError.usage("Usage: chatcomputer share add FOLDER [--writable]") }
+                let path = URL(fileURLWithPath: rest.removeFirst()).standardizedFileURL.path
+                return try done("share_add", ["path": .string(path), "writable": .bool(writable)])
+            case "remove":
+                guard !rest.isEmpty else { throw ControlError.usage("Usage: chatcomputer share remove NAME") }
+                let name = rest.joined(separator: " ")
+                rest = []
+                return try done("share_remove", ["name": .string(name)])
+            case let other:
+                throw ControlError.usage("Unknown share command `\(other)`. Use list, add or remove.")
+            }
         case "snapshot":
             guard !rest.isEmpty else { throw ControlError.usage("Usage: chatcomputer snapshot list | take [NAME] | restore NAME|ID [--no-save]") }
             switch rest.removeFirst() {
@@ -123,7 +140,16 @@ public enum ControlCLI {
         return "Command line"
     }
 
+    /// Which control commands (MCP tool names) each command-line command reaches. Tests check that together
+    /// they cover `ControlTool.all` exactly, so the two entry points can't drift apart.
+    public static let toolsByCommand: [String: [String]] = [
+        "status": ["status"], "screenshot": ["screenshot"], "click": ["click"], "move": ["move"], "drag": ["drag"],
+        "scroll": ["scroll"], "type": ["type"], "key": ["key"], "wait": ["wait"], "release": ["release"],
+        "snapshot": ["snapshot_list", "snapshot_take", "snapshot_restore"],
+        "put": ["put_file"], "outbox": ["outbox"],
+        "share": ["share_list", "share_add", "share_remove"],
+    ]
+
     /// Names that switch the app's executable into command-line mode.
-    public static let commands: Set<String> = ["help", "--help", "-h", "mcp", "status", "screenshot", "click", "move", "drag", "scroll",
-                                               "type", "key", "wait", "put", "outbox", "snapshot", "release"]
+    public static let commands: Set<String> = Set(toolsByCommand.keys).union(["help", "--help", "-h", "mcp"])
 }

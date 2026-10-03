@@ -1,6 +1,7 @@
 import BridgeProtocol
 import ChatCore
 import ComputerControl
+import GuestBridge
 import Foundation
 import ModelProxy
 import VMKit
@@ -95,6 +96,22 @@ final class ExternalControl {
                 return ControlResponse(text: try putFile(path))
             case .outbox:
                 return ControlResponse(text: try outboxList())
+            case .shareList:
+                return ControlResponse(text: shareList())
+            case .shareAdd(let path, let writable):
+                guard let vm = model.vm else { throw Failure("Chat Computer is not set up yet.") }
+                let share = try vm.addShare(URL(fileURLWithPath: path), readOnly: !writable)
+                let mode = writable ? "read & write" : "read-only"
+                model.transcript.append(ChatItem(role: .system, text: "\(client) shared “\(share.name)” with the virtual Mac (\(mode))."))
+                return ControlResponse(text: "Shared \(share.path) as \(share.guestPath) (\(mode)).")
+            case .shareRemove(let name):
+                guard let vm = model.vm else { throw Failure("Chat Computer is not set up yet.") }
+                guard let share = vm.shares.first(where: { $0.name.lowercased() == name.lowercased() }) else {
+                    throw Failure("No shared folder named “\(name)”. Run `share list`.")
+                }
+                try vm.removeShare(share.id)
+                model.transcript.append(ChatItem(role: .system, text: "\(client) stopped sharing “\(share.name)”."))
+                return ControlResponse(text: "Stopped sharing “\(share.name)”; the folder stays on this Mac.")
             default:
                 throw Failure("Unsupported command.")
             }
@@ -203,25 +220,45 @@ final class ExternalControl {
         guard model.isReady, let vm = model.vm, let bridge = model.bridge else {
             throw Failure("Chat Computer is not set up yet. Finish the setup in its window first.")
         }
-        let deadline = Date().addingTimeInterval(150)
+        // A starting Mac gets time to boot; a running one that isn't ready gets a short wait, so one stuck
+        // command doesn't hold up every command queued behind it.
+        var deadline = Date().addingTimeInterval(vm.state == .running ? 20 : 150)
         var started = false
+        var reason = "it is \(vm.state)"
         while Date() < deadline {
-            if model.snapshotActivity == nil, !vm.isWorkingOnSnapshots {
+            if model.snapshotActivity != nil || vm.isWorkingOnSnapshots {
+                reason = "a snapshot is in progress"
+            } else {
                 switch vm.state {
                 case .stopped, .error:
-                    if !started { started = true; await model.bootVM() }
-                case .running:
-                    if await bridge.isConnected,
-                       case .health(let report)? = try? await bridge.send(envelope(.health, deadline: 5)), report.isDesktopReady {
-                        return bridge
+                    if !started {
+                        started = true
+                        deadline = Date().addingTimeInterval(150)
+                        await model.bootVM()
                     }
+                case .running:
+                    let readiness = await guestReadiness(bridge)
+                    if readiness == nil { return bridge }
+                    reason = readiness ?? reason
                 default:
-                    break
+                    reason = "it is \(vm.state)"
                 }
             }
             try await Task.sleep(for: .milliseconds(500))
         }
-        throw Failure("The virtual Mac did not become ready (\(vm.state)). Check the Chat Computer window.")
+        throw Failure("The virtual Mac is not ready: \(reason). Check the Chat Computer window.")
+    }
+
+    /// nil when the guest agent answers and the desktop is usable; otherwise what's missing.
+    private func guestReadiness(_ bridge: BridgeServer) async -> String? {
+        guard await bridge.isConnected else { return "the agent in the virtual Mac is not connected (it may be restarting)" }
+        guard case .health(let report)? = try? await bridge.send(envelope(.health, deadline: 5)) else {
+            return "the agent in the virtual Mac is connected but not answering"
+        }
+        if report.isDesktopReady { return nil }
+        if !report.hasAquaSession { return "nobody is logged in to the virtual Mac's desktop" }
+        if report.screenLocked { return "the virtual Mac's screen is locked" }
+        return "the agent in the virtual Mac lacks Accessibility or Screen Recording permission"
     }
 
     private func envelope(_ command: GuestCommand, lease: UUID? = nil, deadline: TimeInterval = 10) -> CommandEnvelope {
@@ -234,11 +271,8 @@ final class ExternalControl {
     private func status(for client: String) async -> String {
         guard model.isReady, let vm = model.vm else { return "Chat Computer is not set up yet. Finish the setup in its window first." }
         var desktop = ""
-        if vm.state == .running, let bridge = model.bridge, await bridge.isConnected,
-           case .health(let report)? = try? await bridge.send(envelope(.health, deadline: 5)) {
-            desktop = report.isDesktopReady ? ", desktop ready" : ", desktop not ready (locked or missing permissions)"
-        } else if vm.state == .running {
-            desktop = ", agent in the virtual Mac not connected yet"
+        if vm.state == .running, let bridge = model.bridge {
+            desktop = await guestReadiness(bridge).map { ", not ready: \($0)" } ?? ", desktop ready"
         }
         let state = switch vm.state {
         case .running: "running"
@@ -276,6 +310,19 @@ final class ExternalControl {
             flags.append(snapshot.includesMemory ? "open apps and windows" : "disk only")
             return "\(snapshot.id.uuidString.prefix(8))  “\(snapshot.name)”  \(snapshot.createdAt.formatted(date: .abbreviated, time: .shortened))  (\(flags.joined(separator: ", ")))"
         }.joined(separator: "\n")
+    }
+
+    private func shareList() -> String {
+        guard let vm = model.vm else { return "Chat Computer is not set up yet." }
+        let builtIn = """
+            inbox   \(SharedFolders.guestMountPoint)/inbox   (read-only; files from `put` are in inbox/external)
+            outbox  \(SharedFolders.guestMountPoint)/outbox  (writable; results for this Mac)
+            """
+        guard !vm.shares.isEmpty else { return builtIn + "\nNo folders from this Mac are shared. Add one with `share add`." }
+        let lines = vm.shares.map { share in
+            "\(share.name)  \(share.guestPath)  ← \(share.path)  (\(share.readOnly ? "read-only" : "read & write")\(share.exists ? "" : ", missing on this Mac"))"
+        }
+        return builtIn + "\n" + lines.joined(separator: "\n")
     }
 
     private func findSnapshot(_ wanted: String) throws -> VMSnapshot {
