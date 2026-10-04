@@ -13,7 +13,7 @@ import VMKit
 
 /// `cc-harness vm regress`: the fixed task set (scripts/regress/tasks.json) with the built-in agent on the real VM.
 ///
-///     cc-harness vm regress [--model provider:protocol:model] [--runs N] [--only id,id] [--out results.jsonl] [--rebuild-base]
+///     cc-harness vm regress [--model provider:protocol:model] [--runs N] [--only id,id] [--out results.jsonl] [--rebuild-base [--agent ChatComputerAgent.app]]
 ///
 /// Every task starts from the snapshot "Regression base" (made once from "Freshly set up"). The VM's state
 /// before the run is saved as "Before regression" and restored at the end. The API key comes from
@@ -56,6 +56,7 @@ enum Regress {
         var only: Set<String>?
         var output: URL?
         var rebuildBase = false
+        var agent: URL?
         var iterator = arguments.makeIterator()
         while let argument = iterator.next() {
             switch argument {
@@ -64,6 +65,7 @@ enum Regress {
             case "--only": only = iterator.next().map { Set($0.split(separator: ",").map(String.init)) }
             case "--out": output = iterator.next().map { URL(fileURLWithPath: $0) }
             case "--rebuild-base": rebuildBase = true
+            case "--agent": agent = iterator.next().map { URL(fileURLWithPath: $0) }
             default: throw ProbeError("unknown option \(argument)")
             }
         }
@@ -116,6 +118,10 @@ enum Regress {
             _ = try? await bridge.send(CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                        deadline: Date().addingTimeInterval(10), command: .screenshot(region: nil)))
             try await clearFirstRunDialogs(controller)
+            if let agent {
+                try await installAgent(agent, controller: controller, bridge: bridge, vmID: vmID)
+                try await clearFirstRunDialogs(controller)   // the new agent may ask about screen recording again
+            }
             let base = try await controller.takeSnapshot(name: baseName, thumbnail: nil)
             try controller.setSnapshotProtected(base.id, true)
             VMProbe.log("took “\(baseName)”")
@@ -124,7 +130,7 @@ enum Regress {
         guard let base = controller.snapshots.first(where: { $0.name == baseName }) else { throw ProbeError("no base snapshot") }
 
         var results: [Result] = []
-        for run in 1...runs {
+        runs: for run in 1...runs {
             for spec in specs {
                 watcher.detach()
                 try await controller.restoreSnapshot(base.id, savingCurrentAs: nil, thumbnail: nil)
@@ -139,6 +145,11 @@ enum Regress {
                     try? handle?.write(contentsOf: line + Data([10]))
                     try? handle?.close()
                 }
+                // An empty model account fails every later task the same way: stop and say so.
+                if result.detail.hasPrefix("model account out of credit") {
+                    VMProbe.log("stopping: the model provider account is out of credit")
+                    break runs
+                }
             }
         }
 
@@ -151,6 +162,79 @@ enum Regress {
         // Leave the VM suspended, so the app resumes exactly where the user was.
         try await waitReady(bridge, vmID: vmID, timeout: 120)
         try await controller.suspend()
+    }
+
+    /// Puts `agent` (a ChatComputerAgent.app signed like the installed one) into the guest before the base is taken,
+    /// as the app does: the agent replaces itself from the bootstrap share. An agent from before 0.1.0 cannot do
+    /// that safely, so if it is still the old version afterwards, the copy is made from the guest's Terminal,
+    /// typed from the host.
+    static func installAgent(_ agent: URL, controller: VirtualMachineController, bridge: BridgeServer, vmID: UUID) async throws {
+        guard let expected = AgentVersion.of(bundle: agent) else { throw ProbeError("\(agent.path) is not an agent bundle") }
+        func health() async -> HealthReport? {
+            guard await bridge.isConnected,
+                  case .health(let report)? = try? await bridge.send(CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                                       deadline: Date().addingTimeInterval(5), command: .health)) else { return nil }
+            return report
+        }
+        func waitForVersion(_ seconds: Int) async -> Bool {
+            for _ in 0..<seconds {
+                if await health()?.agentVersion == expected { return true }
+                try? await Task.sleep(for: .seconds(1))
+            }
+            return false
+        }
+        let running = await health()?.agentVersion ?? "unknown"
+        guard running != expected else { VMProbe.log("agent is already \(expected)"); return }
+
+        let staged = controller.bundle.bootstrapDirectory.appendingPathComponent("ChatComputerAgent.app")
+        try FileManager.default.createDirectory(at: controller.bundle.bootstrapDirectory, withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: staged)
+        try FileManager.default.copyItem(at: agent, to: staged)
+        controller.setBootstrapAttached(true)
+        defer {
+            controller.setBootstrapAttached(false)
+            try? FileManager.default.removeItem(at: staged)
+        }
+        try await Task.sleep(for: .seconds(3))
+        _ = try? await bridge.send(CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                   deadline: Date().addingTimeInterval(30), command: .updateAgent))
+        try await Task.sleep(for: .seconds(3))
+        if await waitForVersion(60) { VMProbe.log("agent updated \(running) → \(expected)"); return }
+
+        VMProbe.log("agent \(running) did not update itself; installing from the guest's Terminal")
+        guard let machine = controller.virtualMachine else { throw ProbeError("no machine") }
+        let (view, window) = VMProbe.showWindow(machine, spec: controller.spec)
+        defer {
+            view.virtualMachine = nil
+            window.close()
+        }
+        let display = HostDisplay(view: view, guestSize: CGSize(width: controller.spec.displayWidth / 2, height: controller.spec.displayHeight / 2))
+        try await Task.sleep(for: .seconds(2))
+        try await display.key("cmd+space")
+        try await Task.sleep(for: .seconds(1.5))
+        try await display.type("Terminal")
+        try await Task.sleep(for: .seconds(1.5))
+        try await display.key("return")
+        try await Task.sleep(for: .seconds(4))
+        // Another window can keep the focus; click into Terminal's window first.
+        if let image = display.capture(), let screen = try? ScreenText.recognize(image, guestSize: display.guestSize),
+           let prompt = screen.first("Last login") ?? screen.first("agent@") {
+            display.click(prompt.center)
+            try await Task.sleep(for: .seconds(0.5))
+        }
+        try await display.type(#"ditto "/Volumes/My Shared Files/bootstrap/ChatComputerAgent.app" ~/Applications/.cc-new.app && rm -rf /tmp/cc-old.app && mv ~/Applications/ChatComputerAgent.app /tmp/cc-old.app && mv ~/Applications/.cc-new.app ~/Applications/ChatComputerAgent.app && launchctl kickstart -k gui/$(id -u)/app.chatcomputer.agent; exit"#)
+        try await display.key("return")
+        let updated = await waitForVersion(60)
+        if !updated, let image = display.capture(),
+           let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {
+            let url = controller.bundle.url.appendingPathComponent("regress-agent-install.png")
+            try? data.write(to: url)
+            VMProbe.log("guest screen → \(url.path)")
+        }
+        try await display.key("cmd+q")   // Terminal
+        try await Task.sleep(for: .seconds(1.5))
+        guard updated else { throw ProbeError("the agent is still \(await health()?.agentVersion ?? "unknown"), not \(expected)") }
+        VMProbe.log("agent installed \(running) → \(expected)")
     }
 
     /// A freshly booted guest shows prompts that every task would otherwise start by dismissing: macOS asking
@@ -257,6 +341,7 @@ enum Regress {
                 case .assistantNote(let text): await notes.add(text)
                 case .action(let name): await notes.addAction(name)
                 case .needsUser: await notes.markAsked()
+                case .notice(let text): await notes.add("notice: \(text)")
                 default: break
                 }
             }
@@ -315,6 +400,7 @@ enum Regress {
             }
         }
         if !expectsQuestion, task.phase != .completed, failures.isEmpty { failures.append("ended \(task.phase)") }
+        if await notes.notes.contains(where: { $0.contains("out of credit") }) { failures.insert("model account out of credit", at: 0) }
         let detail = failures.isEmpty ? "ok" : failures.joined(separator: "; ")
         return Result(task: spec.id, run: run, agent: agent, passed: failures.isEmpty, detail: detail,
                       seconds: Int(Date().timeIntervalSince(started)), turns: usage.modelTurns, actions: usage.actions,

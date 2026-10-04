@@ -42,7 +42,7 @@ public final class MacOSInstaller {
                 // The catalog can fail while Apple's CDN works; use the known image for this macOS release.
                 remote = Self.fallbackRestoreImage
             }
-            try await download(remote, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
+            try await Self.download(remote, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
         }
 
         onProgress(.preparing)
@@ -119,17 +119,32 @@ public final class MacOSInstaller {
         try await VZMacOSRestoreImage.image(from: url)
     }
 
-    private func download(_ remote: URL, to local: URL, onProgress: @escaping @MainActor (Double) -> Void) async throws {
-        let delegate = DownloadProgressDelegate(onProgress: onProgress)
-        let (temporary, _) = try await URLSession.shared.download(from: remote, delegate: delegate)
-        try FileManager.default.moveItem(at: temporary, to: local)
+    /// Downloads with a session-level delegate: the async `download(from:delegate:)` never reported progress,
+    /// so setup showed "Checking this Mac…" for the whole ~26 GB download.
+    static func download(_ remote: URL, to local: URL, onProgress: @escaping @MainActor (Double) -> Void) async throws {
+        let delegate = DownloadDelegate(destination: local, onProgress: onProgress)
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                delegate.continuation = continuation
+                session.downloadTask(with: remote).resume()
+            }
+        } onCancel: {
+            session.invalidateAndCancel()
+        }
     }
 }
 
-private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, Sendable {
+private final class DownloadDelegate: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    let destination: URL
     let onProgress: @MainActor (Double) -> Void
+    var continuation: CheckedContinuation<Void, Error>?
+    private var moveError: Error?
+    private var lastReported = -1.0
 
-    init(onProgress: @escaping @MainActor (Double) -> Void) {
+    init(destination: URL, onProgress: @escaping @MainActor (Double) -> Void) {
+        self.destination = destination
         self.onProgress = onProgress
     }
 
@@ -137,10 +152,30 @@ private final class DownloadProgressDelegate: NSObject, URLSessionDownloadDelega
                     totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard totalBytesExpectedToWrite > 0 else { return }
         let fraction = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+        // Every tenth of a percent is plenty for the progress bar.
+        guard fraction - lastReported >= 0.001 || fraction >= 1 else { return }
+        lastReported = fraction
         Task { @MainActor in self.onProgress(fraction) }
     }
 
-    // The async `download(from:delegate:)` call delivers the file; nothing to do here.
-    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {}
+    // The temporary file is deleted when this returns, so it is moved here.
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            moveError = URLError(.badServerResponse)
+            return
+        }
+        do {
+            try? FileManager.default.removeItem(at: destination)
+            try FileManager.default.moveItem(at: location, to: destination)
+        } catch {
+            moveError = error
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        let result = error ?? moveError
+        if let result { continuation?.resume(throwing: result) } else { continuation?.resume() }
+        continuation = nil
+    }
 }
 #endif

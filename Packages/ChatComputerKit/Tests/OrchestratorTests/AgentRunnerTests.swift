@@ -454,3 +454,115 @@ actor SaveDialogGuest: GuestChannel {
         #expect(SaveDialog.isValidName("report 2.pdf"))
     }
 }
+
+/// Fails with the given errors first, then plays the scripted turns.
+actor FlakyModel: ModelClient {
+    nonisolated let modelID = "flaky"
+    private var errors: [ModelError]
+    private var turns: [[JSONValue]]
+    private(set) var calls = 0
+
+    init(errors: [ModelError], turns: [[JSONValue]]) {
+        self.errors = errors
+        self.turns = turns
+    }
+
+    func respond(system: String, tools: [JSONValue], messages: [JSONValue]) async throws -> ModelResponse {
+        calls += 1
+        if !errors.isEmpty { throw errors.removeFirst() }
+        guard !turns.isEmpty else { throw ModelError.malformedResponse }
+        return ModelResponse(content: turns.removeFirst(), stopReason: "tool_use", inputTokens: 100, outputTokens: 10, servedModel: modelID)
+    }
+}
+
+@Suite struct ModelErrorTests {
+    private func runner(_ model: FlakyModel) -> AgentRunner {
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        var deps = AgentRunner.Dependencies(model: model, guest: FakeGuest(), store: InMemoryTaskStore(), lease: ControlLease(), folders: folders)
+        deps.modelRetryDelays = [0, 0, 0]
+        return AgentRunner(goal: "Look", dependencies: deps)
+    }
+
+    private static let done: [JSONValue] = [toolUse("r1", "report_result", ["status": "complete", "summary": "ok", "outputs": []], computer: false)]
+
+    @Test func transientErrorsAreRetried() async throws {
+        let model = FlakyModel(errors: [.overloaded, .network("offline"), .server(status: 502, message: "bad gateway")], turns: [Self.done])
+        let runner = runner(model)
+        try await runner.start()
+        #expect(await runner.task.phase == .completed)
+        #expect(await model.calls == 4)
+    }
+
+    @Test func aRejectedKeyPausesTheTaskAndContinueRetries() async throws {
+        let model = FlakyModel(errors: [.authentication("invalid x-api-key")], turns: [Self.done])
+        let runner = runner(model)
+        try await runner.start()
+        #expect(await runner.task.phase == .paused)
+        await runner.resume()
+        #expect(await runner.task.phase == .completed)
+    }
+
+    @Test func persistentOutagePausesAfterTheRetries() async throws {
+        let model = FlakyModel(errors: Array(repeating: .rateLimited(retryAfter: nil), count: 4), turns: [Self.done])
+        let runner = runner(model)
+        try await runner.start()
+        #expect(await runner.task.phase == .paused)
+        #expect(await model.calls == 4)
+    }
+
+    @Test func aBadRequestFails() async throws {
+        let runner = runner(FlakyModel(errors: [.badRequest("prompt is too long")], turns: []))
+        try await runner.start()
+        guard case .failed(let reason) = await runner.task.phase else { Issue.record("not failed"); return }
+        #expect(reason.contains("prompt is too long"))
+    }
+}
+
+@Suite struct BillingErrorTests {
+    @Test func emptyAccountsAreRecognisedAcrossProviders() {
+        #expect(ModelError.isBilling(status: 400, message: "Your credit balance is too low to access the Anthropic API.", code: nil))
+        #expect(ModelError.isBilling(status: 402, message: "Insufficient Balance", code: nil))
+        #expect(ModelError.isBilling(status: 429, message: "You exceeded your current quota", code: "insufficient_quota"))
+        #expect(!ModelError.isBilling(status: 400, message: "prompt is too long", code: nil))
+        #expect(!ModelError.isBilling(status: 429, message: "Rate limit reached", code: "rate_limit_exceeded"))
+    }
+
+    @Test func anEmptyAccountPausesTheTask() async throws {
+        let folders = SharedFolders(root: FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)"))
+        var deps = AgentRunner.Dependencies(model: FlakyModel(errors: [.billing("credit balance is too low")], turns: []),
+                                            guest: FakeGuest(), store: InMemoryTaskStore(), lease: ControlLease(), folders: folders)
+        deps.modelRetryDelays = [0, 0, 0]
+        let runner = AgentRunner(goal: "Look", dependencies: deps)
+        try await runner.start()
+        #expect(await runner.task.phase == .paused)
+    }
+}
+
+@Suite struct SaveFingerprintTests {
+    @Test func anUntouchedOldFileIsNotASave() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("cc-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let old = folder.appendingPathComponent("list.rtf")
+        try Data("old".utf8).write(to: old)
+        let before = SaveDialog.fingerprints(named: "list.rtf", in: folder)
+        #expect(SaveDialog.changedFiles(named: "list.rtf", in: folder, before: before).isEmpty)
+
+        // Overwritten (new size) or newly created: both count.
+        try Data("new contents".utf8).write(to: old)
+        #expect(SaveDialog.changedFiles(named: "list.rtf", in: folder, before: before) == [old])
+        let fresh = SaveDialog.fingerprints(named: "note", in: folder)
+        try Data("x".utf8).write(to: folder.appendingPathComponent("note.txt"))
+        #expect(SaveDialog.changedFiles(named: "note", in: folder, before: fresh).map(\.lastPathComponent) == ["note.txt"])
+    }
+
+    @Test func aReplaceQuestionIsCancelled() async {
+        actor Keys { var items: [String] = []; func add(_ s: String) { items.append(s) } }
+        let keys = Keys()
+        let outcome = await SaveDialog.run(name: "a.txt", folder: "/tmp", openDialog: false,
+            send: { action in if case .key(let combo, _) = action { await keys.add(combo) }; return true },
+            locate: { text in ["Save As", "Go to Folder", "Replace", "already exists", "a.txt", "tmp"].contains(text) ? ScreenPoint(x: 10, y: 10) : nil },
+            sleep: { _ in })
+        #expect(outcome == .alreadyExists)
+        #expect(await keys.items.last == "escape")
+    }
+}

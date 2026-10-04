@@ -216,6 +216,9 @@ public struct OpenAICompatibleClient: ModelClient {
     static func parse(status: Int, retryAfter: String?, body: Data) throws -> ModelResponse {
         let json = (try? JSONDecoder().decode(JSONValue.self, from: body)) ?? .null
         let message = json["error"]?["message"]?.stringValue ?? String(decoding: body.prefix(500), as: UTF8.self)
+        if status != 200, ModelError.isBilling(status: status, message: message, code: json["error"]?["code"]?.stringValue) {
+            throw ModelError.billing(message)
+        }
         switch status {
         case 200: break
         case 401, 403: throw ModelError.authentication(message)

@@ -240,3 +240,8 @@ public enum GuestMessage: Codable, Sendable, Equatable {
     case hello(GuestHello)
     case response(ResponseEnvelope)
 }
+
+extension BridgeError: LocalizedError {
+    /// The guest's own message, so "error 1" never reaches the user.
+    public var errorDescription: String? { message }
+}

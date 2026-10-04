@@ -23,6 +23,11 @@ struct ChatPanel: View {
                     }
                     .padding()
                 }
+                // A restored chat opens at its latest message, not its first.
+                .defaultScrollAnchor(.bottom)
+                .onAppear {
+                    if let last = visibleItems.last { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
                 .onChange(of: model.transcript.count) {
                     if let last = model.transcript.last { proxy.scrollTo(last.id, anchor: .bottom) }
                 }

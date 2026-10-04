@@ -82,10 +82,29 @@
 - [x] 每个任务多跑几轮取中位数：`vm regress --runs 3`，`scripts/regress/report.py` 汇总并与基线对比
 - [x] 回归集扩到 20 个任务（网页表单、跨应用、格式转换、多步、提示注入），本地网页代替外网
 - [x] `save_file` 高层动作（命令行 `chatcomputer save`）：三轮 60/60，保存任务中位轮数 −69%
-- [ ] 驱动层查清跨进程面板在 Cmd/Ctrl 组合键后丢字的根因（怀疑按键 flags 被整个覆盖），修好后需要更新 guest agent 并重建「Regression base」
-- [ ] 回归集加入 Claude 作为内置 agent 的模型
+- [x] 驱动层查清跨进程面板在 Cmd/Ctrl 组合键后丢字的根因：按键 flags 被整个覆盖，丢了 NX_NONCOALESCED 等默认位；保留后 `--input-test` 3/3（Cmd+S、Cmd+A 后直接打字）
+- [x] 回归集加入 Claude 作为内置 agent 的模型（claude-opus-5-5）
 - [ ] 高风险任务前自动拍快照（`AgentRunner` 在 `ask_user` 审批前调用）
 - [x] 宿主 App 退出时挂起虚拟机，下次启动时恢复（含 SIGTERM；保存失败时改为正常关机）
 - [ ] 重新评估 App Sandbox（目前为了 ssh 和读 DHCP 租约关闭了）
 - [ ] 给 VMKit / GuestBridge / AgentCore 补测试：`KeyMap`（AgentCore）和 DHCP 租约解析（VMKit）已有；还缺 GuestBridge 的协议握手
 - [ ] 加 CI：`scripts/test-linux.sh` 可以直接在 Linux runner 上跑
+
+## 5. 1.0 稳定版
+
+- [x] guest agent 版本检查与自动更新：连上时比对版本（`0.9.0 (6)` 带 build 号），空闲时从 bootstrap 自我更新，失败一分钟后重试、最多三次；实测 0.2.0 → 0.2.0 (5) 约 8 秒，权限保留
+- [x] 回归工具重建基准时可指定 agent（`--rebuild-base --agent`）；0.1.0 之前的 agent 无法自我更新时改从 guest 终端安装
+- [x] 就绪探针：每 5 秒检查一次，窗口副标题显示未就绪的原因；`chatcomputer status` 显示 agent 版本
+- [x] 模型请求出错：限流、过载、5xx、网络错误自动退避重试三次；Key 错误或重试用尽时暂停任务（Continue 重发），请求本身有问题时才判失败
+- [x] 宿主休眠前暂停进行中的任务，唤醒后检查并解锁 guest
+- [x] 磁盘不足：可用空间低于 3 GB 不开始任务，低于 5 GB 时提醒
+- [x] Help › Export Diagnostics：版本、配置、agent 健康、最近 5 个任务、App 日志，经 `Redactor` 去除密钥
+- [x] 隐私与许可说明（PRIVACY.md）
+- [x] 新环境安装测试脚本（`scripts/fresh-install.sh`）与长时间运行测试脚本（`scripts/soak.py`）
+- [x] Claude Code 回归支持 MCP（`external.py --via mcp`）
+- [x] 项目网站 chatcomputer.github.io
+- [ ] 新环境完整安装两次
+- [ ] 24 小时长时间运行
+- [ ] Claude Code 跑全部 20 个任务（命令行与 MCP）
+- [ ] 界面逐页截图核对
+- [ ] 发布 0.9 候选版

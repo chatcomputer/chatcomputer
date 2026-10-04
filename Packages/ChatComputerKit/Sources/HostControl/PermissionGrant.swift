@@ -119,8 +119,16 @@ public struct PermissionGrant {
             // The pane is open but the agent is not listed: its request did not register (seen on a
             // fresh guest for screen recording, right after the TCC reset). Ask again.
             idleRounds += 1
-            if idleRounds % 4 == 0, prepares < 3 {
-                log("\(kind): the agent is not listed yet; asking again")
+            if idleRounds % 4 == 0, prepares < 4 {
+                // A request from the same process that was dropped stays dropped (seen on fresh macOS 27.0.1 guests,
+                // twice in a row); a new agent process registers. So after the second ask, restart the agent first.
+                if prepares >= 2, !restarted {
+                    log("\(kind): the agent is still not listed; restarting it and asking again")
+                    try await restartAgent()
+                    restarted = true
+                } else {
+                    log("\(kind): the agent is not listed yet; asking again")
+                }
                 try await prepare(kind)
                 prepares += 1
                 try await Task.sleep(for: .seconds(2.5))

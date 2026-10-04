@@ -6,6 +6,14 @@ import Testing
 @testable import AgentCore
 
 @Suite struct KeyMapTests {
+    /// Modifiers go on top of the bits every real key event carries.
+    @Test func keyFlagsKeepTheRealKeyboardBits() {
+        #expect(NativeDriver.flags([]).rawValue == 0x2000_0100)
+        let command = NativeDriver.flags([.maskCommand])
+        #expect(command.contains(.maskCommand))
+        #expect(command.rawValue & 0x100 != 0)
+    }
+
     @Test func parsesCombosAndNamedKeys() throws {
         let (save, saveFlags) = try KeyMap.parse("cmd+shift+S")
         #expect(save == CGKeyCode(kVK_ANSI_S))

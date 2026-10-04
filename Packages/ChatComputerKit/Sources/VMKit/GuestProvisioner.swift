@@ -35,14 +35,14 @@ public struct GuestProvisioner: Sendable {
     ///
     /// `agentApp` is the signed ChatComputerAgent.app embedded in the host app's resources.
     /// `subnet` is the VM network's current subnet; stale leases from earlier boots lie outside it.
-    public func installAgent(spec: VMSpec, agentApp: URL, subnet: IPv4Subnet?) async throws {
+    public func installAgent(spec: VMSpec, agentApp: URL, subnet: IPv4Subnet?, waitMinutes: Int = 10) async throws {
         let password = try secrets.read(SecretAccount.guestPassword(vmID: spec.id))
         guard let password else { throw VMError.bootstrapFailed("guest password missing from secrets.json") }
 
         let pairingToken = Self.randomSecret()
         try stageBootstrapFiles(spec: spec, agentApp: agentApp, pairingToken: pairingToken)
 
-        let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet)
+        let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet, attempts: waitMinutes * 30)
         try await runSSH(user: spec.guestUsername, host: address, password: password, script: Self.bootstrapScript)
         // Stored only once the guest has it: a failed attempt must not orphan the agent an earlier
         // attempt installed (it would be rejected forever, and SSH is already off by then).
@@ -101,8 +101,10 @@ public struct GuestProvisioner: Sendable {
     /// Finds the guest's DHCP lease by MAC address (vmnet shared mode serves leases through bootpd)
     /// and waits until its SSH port answers. Leases outlive boots, so an address can be known
     /// long before the guest is up; it is re-read on every attempt in case it changes.
-    private func guestAddress(macAddress: String, subnet: IPv4Subnet?) async throws -> String {
-        for _ in 0..<90 {
+    /// The first boot after provisioning can take several minutes before SSH answers (it was 30 s in one fresh
+    /// install and never in another), so the wait is long; the caller restarts the guest if it runs out.
+    private func guestAddress(macAddress: String, subnet: IPv4Subnet?, attempts: Int) async throws -> String {
+        for _ in 0..<attempts {
             if let leases = try? String(contentsOfFile: "/var/db/dhcpd_leases", encoding: .utf8),
                let ip = Self.leaseAddress(in: leases, macAddress: macAddress, subnet: subnet),
                await Self.portIsOpen(host: ip, port: 22) {

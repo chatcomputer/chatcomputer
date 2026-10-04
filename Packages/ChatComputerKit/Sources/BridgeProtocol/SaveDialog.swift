@@ -19,6 +19,8 @@ public enum SaveDialog {
         case noDialog
         /// The guest refused an input (no lease, driver error).
         case refused
+        /// A file of that name already exists there; the dialog asking to replace it was cancelled.
+        case alreadyExists
     }
 
     /// Where the name field sits relative to the centre of its "Save As:" label.
@@ -73,6 +75,12 @@ public enum SaveDialog {
 
         guard await key("return") else { return .refused }
         await sleep(2.0)
+        // Replacing a file is the caller's decision, not this routine's: cancel the question and say so.
+        if let locate, await locate("Replace") != nil, await locate("already exists") != nil {
+            guard await key("escape") else { return .refused }
+            await sleep(1.0)
+            return .alreadyExists
+        }
         return .pressedSave
     }
 
@@ -92,6 +100,30 @@ public enum SaveDialog {
 
     /// Files in `folder` that the save produced: `name` itself, or `name` plus an extension the app added
     /// (TextEdit appends .txt or .rtf when the name has none).
+    /// What identifies one version of a file, without trusting the guest's clock: after a snapshot is restored,
+    /// the guest's time can lag the host's by minutes, and files it writes carry that time.
+    public struct Fingerprint: Equatable, Sendable {
+        let size: Int
+        let modified: Date?
+        let identifier: String
+    }
+
+    /// The candidate files for `name` in `folder` and their fingerprints, taken before the save.
+    public static func fingerprints(named name: String, in folder: URL) -> [URL: Fingerprint] {
+        var result: [URL: Fingerprint] = [:]
+        for url in savedFiles(named: name, in: folder) {
+            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .fileResourceIdentifierKey])
+            result[url] = Fingerprint(size: values?.fileSize ?? -1, modified: values?.contentModificationDate,
+                                      identifier: values?.fileResourceIdentifier.map { "\($0)" } ?? "")
+        }
+        return result
+    }
+
+    /// Files for `name` that the save created or changed: new, or different from their fingerprint `before`.
+    public static func changedFiles(named name: String, in folder: URL, before: [URL: Fingerprint]) -> [URL] {
+        fingerprints(named: name, in: folder).filter { before[$0.key] != $0.value }.map(\.key).sorted { $0.path < $1.path }
+    }
+
     public static func savedFiles(named name: String, in folder: URL) -> [URL] {
         let exact = folder.appendingPathComponent(name)
         if FileManager.default.fileExists(atPath: exact.path) { return [exact] }

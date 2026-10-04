@@ -7,10 +7,13 @@ import Foundation
 public enum GuestUnlock {
     @MainActor
     public static func unlock(on display: HostDisplay, password: String) async throws {
-        // Any pointer movement wakes the display; the lock screen then focuses its password field.
+        // A key press wakes a sleeping display even when pointer events don't reach the view (the app in the
+        // background, or the host just woken). Escape does nothing on the lock screen itself.
+        try await display.key("escape")
         display.move(to: CGPoint(x: display.guestSize.width / 2 - 40, y: display.guestSize.height / 2))
         display.move(to: CGPoint(x: display.guestSize.width / 2, y: display.guestSize.height / 2 + 20))
-        try await Task.sleep(for: .seconds(2))
+        // The lock screen fades in and then focuses its password field.
+        try await Task.sleep(for: .seconds(3))
         try await display.type(password)
         try await display.key("return")
         try await Task.sleep(for: .seconds(3))

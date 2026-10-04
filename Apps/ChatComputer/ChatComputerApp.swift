@@ -70,6 +70,9 @@ struct ChatComputerApp: App {
                     .keyboardShortcut("k", modifiers: [.command])
                     .disabled(model.isRunningTask)
             }
+            CommandGroup(after: .help) {
+                Button("Export Diagnostics…") { Task { await Diagnostics.export(model) } }
+            }
         }
 
         Settings {

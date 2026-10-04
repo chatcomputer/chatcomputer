@@ -74,6 +74,13 @@ extension AppModel {
                 try await Task.sleep(for: .seconds(1))
                 waited += 1
             }
+            // The next part types and clicks into the virtual Mac from this Mac, which only reaches it while this
+            // app is in front: macOS doesn't let a background app take the focus.
+            while !NSApp.isActive {
+                onboarding.detail = "Click this window to continue: the next step operates the virtual Mac's screen, which only works while Chat Computer is in front."
+                devLog("onboarding: waiting for the app to be in front")
+                try await Task.sleep(for: .seconds(1))
+            }
             await unlockGuestIfLocked()
             do {
                 try await grantPermissionsAutomatically()
@@ -129,7 +136,18 @@ extension AppModel {
                 }
                 if vm.state != .running { await vm.start() }
                 onboarding.detail = "Waiting for the guest desktop, then installing…"
-                try await GuestProvisioner(bundle: bundle, secrets: secrets).installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
+                let provisioner = GuestProvisioner(bundle: bundle, secrets: secrets)
+                do {
+                    try await provisioner.installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
+                } catch VMError.guestAddressUnknown {
+                    // The guest never came up on the network: restart it once and wait again.
+                    devLog("onboarding: guest unreachable after 10 minutes; restarting it")
+                    onboarding.detail = "The virtual Mac is not responding; restarting it…"
+                    try? await vm.forceStop()
+                    await vm.start()
+                    onboarding.detail = "Waiting for the guest desktop, then installing…"
+                    try await provisioner.installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
+                }
                 try connectBridgeIfPaired()
                 try vm.updateSpec { $0.stage = .agentInstalled }
                 onboarding.step = .grantPermissions

@@ -74,7 +74,9 @@ extension AppModel {
         if vm.state == .stopped { await vm.start() }
         let who = requester.map { " for \($0)" } ?? ""
         let detail = snapshot.includesMemory ? "" : " The virtual Mac is starting up from that disk."
-        transcript.append(ChatItem(role: .system, text: "Restored “\(snapshot.name)”\(who).\(detail)"))
+        let line = "Restored “\(snapshot.name)”\(who).\(detail)"
+        // A coding agent restoring for itself is routine; the user's own restore stays in the chat.
+        if requester != nil { appendStatus(line) } else { transcript.append(ChatItem(role: .system, text: line)) }
     }
 
     func renameSnapshot(_ snapshot: VMSnapshot, to name: String) {

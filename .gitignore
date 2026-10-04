@@ -6,3 +6,4 @@ xcuserdata/
 DerivedData/
 Packages/ChatComputerKit/Package.resolved
 build/
+__pycache__/

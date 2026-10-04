@@ -13,6 +13,8 @@ public enum RunnerUpdate: Sendable, Equatable {
     case delivered([URL])
     /// A request to the model is about to go out: turn `turn` of at most `of`.
     case thinking(turn: Int, of: Int)
+    /// Something the user should know that isn't from the model: a retry, why the task paused.
+    case notice(String)
 }
 
 /// The agent loop (proposal §06): observe → act → re-observe, with every dispatch gated
@@ -35,6 +37,9 @@ public actor AgentRunner {
         /// Finds text in a screenshot (PNG or JPEG) and returns where it is, in the screenshot's coordinates.
         /// Supplied on macOS (Vision); without it, steps that click on text are skipped.
         public var locateText: (@Sendable (Data, String) async -> ScreenPoint?)?
+        /// Pauses before resending a request that failed for a transient reason (rate limit, overload, 5xx,
+        /// network). A provider's retry-after replaces the pause when longer, up to a minute.
+        public var modelRetryDelays: [TimeInterval] = [2, 8, 20]
 
         public init(model: any ModelClient, guest: any GuestChannel, store: any TaskStore, lease: ControlLease, folders: SharedFolders, budget: TaskBudget = .init(), exportValidator: ExportValidator = .init(), screenshotAfterActions: Bool = true) {
             self.screenshotAfterActions = screenshotAfterActions
@@ -203,6 +208,31 @@ public actor AgentRunner {
 
     // MARK: - Loop
 
+    /// One model request, sent again after a pause when it fails for a transient reason. Gives up early if the
+    /// task was paused or cancelled meanwhile.
+    private func respondRetrying(generation turnGeneration: Int) async throws -> ModelResponse {
+        var attempt = 0
+        while true {
+            do {
+                return try await deps.model.respond(
+                    system: SystemPrompt.make(
+                        outboxPath: SharedFolders.guestOutboxPath(for: task),
+                        inboxPath: SharedFolders.guestInboxPath(for: task)
+                    ),
+                    tools: [ComputerToolset.definition] + HostTools.definitions,
+                    messages: messages
+                )
+            } catch let error as ModelError where error.isTransient && attempt < deps.modelRetryDelays.count {
+                var delay = deps.modelRetryDelays[attempt]
+                if case .rateLimited(let retryAfter?) = error { delay = max(delay, min(retryAfter, 60)) }
+                attempt += 1
+                continuation.yield(.notice("\(error.explanation) Trying again in \(Int(delay.rounded())) s (\(attempt) of \(deps.modelRetryDelays.count))."))
+                try? await Task.sleep(for: .seconds(delay))
+                guard turnGeneration == generation, task.phase == .running else { throw error }
+            }
+        }
+    }
+
     public func run() async {
         guard !isLooping else { return }
         isLooping = true
@@ -242,15 +272,19 @@ public actor AgentRunner {
             let turnGeneration = generation
             let response: ModelResponse
             do {
-                response = try await deps.model.respond(
-                    system: SystemPrompt.make(
-                        outboxPath: SharedFolders.guestOutboxPath(for: task),
-                        inboxPath: SharedFolders.guestInboxPath(for: task)
-                    ),
-                    tools: [ComputerToolset.definition] + HostTools.definitions,
-                    messages: messages
-                )
+                response = try await respondRetrying(generation: turnGeneration)
+            } catch let error as ModelError {
+                guard turnGeneration == generation, task.phase == .running else { break }
+                if error.userCanFix {
+                    // Keep the task: the conversation ends with the request, so Continue sends it again.
+                    continuation.yield(.notice("Paused: \(error.explanation) Press Continue to try again."))
+                    await pause()
+                } else {
+                    try? await transition(.fail("Model error: \(error.explanation)"))
+                }
+                break
             } catch {
+                guard turnGeneration == generation, task.phase == .running else { break }
                 try? await transition(.fail("Model error: \(error)"))
                 break
             }
@@ -420,6 +454,7 @@ public actor AgentRunner {
         }
         let hostFolder = relative.isEmpty ? deps.folders.outbox(for: task) : deps.folders.outbox(for: task).appendingPathComponent(relative)
         if inOutbox { try? FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true) }
+        let before = SaveDialog.fingerprints(named: request.name, in: hostFolder)
 
         guard let token = leaseToken, await deps.lease.isValid(token) else {
             return (HostTools.result(toolUseID: toolUseID, "Stopped: the agent no longer holds input control.", isError: true), false)
@@ -448,6 +483,11 @@ public actor AgentRunner {
         case .pressedSave: break
         case .refused:
             return (HostTools.result(toolUseID: toolUseID, "Stopped: the virtual Mac refused an input, or the agent lost input control.", isError: true), false)
+        case .alreadyExists:
+            return (HostTools.result(toolUseID: toolUseID, """
+                A file named \(request.name) already exists there, and the dialog asked whether to replace it; it was \
+                cancelled and nothing was saved. Call save_file with another name, or replace it yourself only if the user wants that.
+                """, isError: true), false)
         case .noDialog:
             return (HostTools.result(toolUseID: toolUseID, """
                 No save dialog appeared, so nothing was typed. Take a screenshot. A document opened from the inbox                 is read-only: use File › Duplicate (or Save As…) to get a save dialog, then call save_file with open_dialog: false.
@@ -457,7 +497,7 @@ public actor AgentRunner {
         guard inOutbox else {
             return (HostTools.result(toolUseID: toolUseID, "Pressed Save for \(request.name) in \(folder). Take a screenshot to check it worked."), true)
         }
-        if let file = SaveDialog.savedFiles(named: request.name, in: hostFolder).first {
+        if let file = SaveDialog.changedFiles(named: request.name, in: hostFolder, before: before).first {
             let path = (relative.isEmpty ? "" : relative + "/") + file.lastPathComponent
             let warning = SaveDialog.extensionWarning(requested: request.name, saved: file) ?? ""
             return (HostTools.result(toolUseID: toolUseID, "Saved: \(path) is in the outbox. List it as \"\(path)\" in report_result." + warning), true)

@@ -174,13 +174,18 @@ final class ExternalControl {
             case "closeSheets": model.showingSnapshots = false; model.showingSharedFolders = false
             case "collapse": model.setPanelCollapsed(true)
             case "expand": model.setPanelCollapsed(false)
-            case "settings": NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            case "settings": model.settingsRequest += 1
             case "closeSettings": NSApp.windows.first { $0.title.contains("Settings") || $0.identifier?.rawValue.contains("Settings") == true }?.close()
             case "wake":
                 guard let view = model.guestView else { return .error("no guest view") }
                 let display = HostDisplay(view: view, guestSize: CGSize(width: 1280, height: 800))
                 display.move(to: CGPoint(x: 600, y: 400))
                 display.move(to: CGPoint(x: 640, y: 420))
+            case "diagnostics": await Diagnostics.export(model)
+            case "cancel": model.cancel()
+            case "continue": model.resume()
+            case "hostSleep": model.hostWillSleep()
+            case "hostWake": model.hostDidWake()
             case "resumeOnboarding":
                 model.autoOnboardingStarted = false
                 model.startAutoOnboardingIfRequested()
@@ -213,7 +218,7 @@ final class ExternalControl {
 
     /// Takes the input lease for `client`, unless someone else is using the virtual Mac.
     private func acquire(for client: String, bridge: any GuestChannel) async throws -> UUID {
-        if model.isRunningTask {
+        if model.builtInAgentNeedsMac {
             throw Failure("Chat Computer's own agent is working on a task. Wait for it to finish, or ask the user to cancel it.")
         }
         if let blocked = model.externalBlockedBy {
@@ -229,7 +234,7 @@ final class ExternalControl {
         _ = try await bridge.send(envelope(.setLease(token)))
         self.token = token
         model.externalHolder = client
-        model.transcript.append(ChatItem(role: .system, text: "\(client) is controlling the virtual Mac. Click the screen to take over."))
+        model.appendStatus("\(client) is controlling the virtual Mac. Click the screen to take over.")
         watchIdle()
         return token
     }
@@ -242,7 +247,7 @@ final class ExternalControl {
         if case .agent = await model.lease.holder { await model.lease.release() }
         model.externalHolder = nil
         if let bridge = model.bridge { _ = try? await bridge.send(envelope(.setLease(nil))) }
-        if let note { model.transcript.append(ChatItem(role: .system, text: note)) }
+        if let note { model.appendStatus(note) }
     }
 
     /// The user clicked the screen (or chose Take Over) while an external agent had control.
@@ -322,14 +327,11 @@ final class ExternalControl {
 
     /// nil when the guest agent answers and the desktop is usable; otherwise what's missing.
     private func guestReadiness(_ bridge: BridgeServer) async -> String? {
-        guard await bridge.isConnected else { return "the agent in the virtual Mac is not connected (it may be restarting)" }
-        guard case .health(let report)? = try? await bridge.send(envelope(.health, deadline: 5)) else {
-            return "the agent in the virtual Mac is connected but not answering"
-        }
-        if report.isDesktopReady { return nil }
-        if !report.hasAquaSession { return "nobody is logged in to the virtual Mac's desktop" }
-        if report.screenLocked { return "the virtual Mac's screen is locked" }
-        return "the agent in the virtual Mac lacks Accessibility or Screen Recording permission"
+        if model.updatingAgent { return "the agent in the virtual Mac is being updated" }
+        let connected = await bridge.isConnected
+        var report: HealthReport?
+        if connected, case .health(let health)? = try? await bridge.send(envelope(.health, deadline: 5)) { report = health }
+        return GuestReadiness(connected: connected, report: report).problem
     }
 
     private func envelope(_ command: GuestCommand, lease: UUID? = nil, deadline: TimeInterval = 10) -> CommandEnvelope {
@@ -342,8 +344,13 @@ final class ExternalControl {
     private func status(for client: String) async -> String {
         guard model.isReady, let vm = model.vm else { return "Chat Computer is not set up yet. Finish the setup in its window first." }
         var desktop = ""
+        var agent = "not connected"
         if vm.state == .running, let bridge = model.bridge {
             desktop = await guestReadiness(bridge).map { ", not ready: \($0)" } ?? ", desktop ready"
+            if case .health(let report)? = try? await bridge.send(envelope(.health, deadline: 5)) { agent = report.agentVersion }
+        }
+        if let bundled = AppModel.bundledAgentVersion, agent != bundled, agent != "not connected" {
+            agent += " (this app brings \(bundled); it updates when the virtual Mac is idle)"
         }
         let state = switch vm.state {
         case .running: "running"
@@ -353,7 +360,7 @@ final class ExternalControl {
         case .saving: "saving"
         case .error(let message): "error: \(message)"
         }
-        let control: String = if model.isRunningTask {
+        let control: String = if model.builtInAgentNeedsMac {
             "Chat Computer's own agent (working on a task)"
         } else if let blocked = model.externalBlockedBy {
             "the user, who took over from \(blocked); wait until they hand it back"
@@ -368,6 +375,7 @@ final class ExternalControl {
             Screen: \(vm.spec.displayWidth / 2)×\(vm.spec.displayHeight / 2) (full screenshots use these coordinates)
             Control: \(control)
             Snapshots: \(vm.snapshots.count)\(current)
+            Agent in the virtual Mac: \(agent)
             Shared folder in the virtual Mac: \(SharedFolders.guestMountPoint) (inbox read-only, outbox writable)
             """
     }
@@ -397,6 +405,7 @@ final class ExternalControl {
         let hostFolder = SharedFolders(root: vm.bundle.sharedRoot).outbox.appendingPathComponent(relative)
         // Go to Folder can't open a folder that doesn't exist yet; the outbox is writable from here.
         if inOutbox { try? FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true) }
+        let before = SaveDialog.fingerprints(named: name, in: hostFolder)
         let bridge = try await readyGuest()
         let token = try await acquire(for: client, bridge: bridge)
         model.transcript.append(ChatItem(role: .action, text: "\(client): save \"\(name)\" → \(path)"))
@@ -415,12 +424,14 @@ final class ExternalControl {
         switch await SaveDialog.run(name: name, folder: path, openDialog: openDialog, send: send, locate: locate) {
         case .pressedSave: break
         case .refused: throw Failure("The virtual Mac refused an input while saving.")
+        case .alreadyExists:
+            throw Failure("\(name) already exists in that folder; the replace question was cancelled and nothing was saved. Save under another name, or replace it in the dialog yourself if the user wants that.")
         case .noDialog:
             throw Failure("No save dialog appeared, so nothing was typed. Take a screenshot; for a read-only document use File › Duplicate or Save As…, then `save NAME --no-open`.")
         }
         lastActivity = Date()
         guard inOutbox else { return "Pressed Save for \(name) in \(path). Take a screenshot to check." }
-        guard let file = SaveDialog.savedFiles(named: name, in: hostFolder).first else {
+        guard let file = SaveDialog.changedFiles(named: name, in: hostFolder, before: before).first else {
             throw Failure("The file did not appear in the outbox. Take a screenshot: a dialog may still be open, or no save dialog opened (then open it and use --no-open).")
         }
         return "Saved. On this Mac: \(file.path)" + (SaveDialog.extensionWarning(requested: name, saved: file)?.replacingOccurrences(of: "call save_file", with: "run save") ?? "")

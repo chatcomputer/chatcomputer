@@ -25,6 +25,11 @@ for a model provider. The first launch walks through six steps:
 5. Save a clean starting point.
 6. Connect a model.
 
+Later versions update the agent inside the virtual Mac on their own. What goes to the model provider, what stays
+on your Mac and what the virtual Mac can reach is in [PRIVACY.md](PRIVACY.md), together with the macOS licence
+terms for virtual machines (development, testing, personal non-commercial use). If something goes wrong,
+Help › Export Diagnostics saves a report without keys or passwords.
+
 ## Models
 
 The agent works from screenshots, so the model must take images and call tools. Two protocols are supported:
@@ -102,6 +107,9 @@ scripts/test-linux.sh                                # portable modules in Docke
 scripts/harness.sh vm regress --runs 3 --out new.jsonl  # the fixed task set with the built-in agent (scripts/regress)
 scripts/regress/external.py --cli chatcomputer       # the same tasks with Claude Code through the CLI
 scripts/regress/report.py new.jsonl --baseline scripts/regress/results/<old>.jsonl   # pass rate and medians vs a baseline
+scripts/regress/external.py --via mcp                # Claude Code through MCP instead of the CLI
+scripts/fresh-install.sh build/release/ChatComputer.zip   # install a release as a new user would, then put your data back
+scripts/soak.py --app build/release/ChatComputer.app --hours 24   # tasks, quits mid-task, snapshots; memory and crashes
 ```
 
 `docs/STATUS.md` §3 lists the test layers and the development environment variables.

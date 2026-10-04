@@ -1,4 +1,5 @@
 import AgentCore
+import BridgeProtocol
 import ApplicationServices
 import CoreGraphics
 import SwiftUI
@@ -37,7 +38,9 @@ final class AgentState {
     private let service: AgentService
 
     init() {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        let version = AgentVersion.string(
+            short: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0")
         service = AgentService(driver: NativeDriver(agentVersion: version), agentVersion: version)
         Task { [service] in
             await service.setStatusHandler { status in

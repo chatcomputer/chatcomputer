@@ -165,6 +165,7 @@ struct ModelSettingsForm: View {
         switch error {
         case .missingAPIKey: "Enter an API key."
         case .authentication(let message): "The provider rejected the key: \(message)"
+        case .billing(let message): "The key works, but the account has no credit left: \(message)"
         case .rateLimited: "Rate limited by the provider. Try again shortly."
         case .overloaded: "The provider is overloaded. Try again shortly."
         case .badRequest(let message): "The provider rejected the request: \(message)"

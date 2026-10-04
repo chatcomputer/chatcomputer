@@ -5,6 +5,7 @@ import ApplicationServices
 import BridgeProtocol
 import CoreGraphics
 import ImageIO
+import IOKit.pwr_mgt
 import ScreenCaptureKit
 import UniformTypeIdentifiers
 
@@ -31,15 +32,25 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
 
     public func health() async -> HealthReport {
         let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        let locked = session?["CGSSessionScreenIsLocked"] as? Bool ?? false
+        // A locked guest usually has its display asleep too, and input from the host doesn't always wake it
+        // (seen after the host itself slept). Declaring user activity turns the display on, so the host can
+        // type the password into the lock screen.
+        if locked || CGDisplayIsAsleep(CGMainDisplayID()) != 0 { Self.wakeDisplay() }
         return HealthReport(
             agentVersion: agentVersion,
             driver: "native",
             hasAquaSession: session?[kCGSessionOnConsoleKey as String] as? Bool ?? false,
-            screenLocked: session?["CGSSessionScreenIsLocked"] as? Bool ?? false,
+            screenLocked: locked,
             accessibilityGranted: AXIsProcessTrusted(),
             screenRecordingGranted: CGPreflightScreenCaptureAccess(),
             sharedFoldersMounted: FileManager.default.fileExists(atPath: "/Volumes/My Shared Files")
         )
+    }
+
+    private static func wakeDisplay() {
+        var assertion: IOPMAssertionID = 0
+        IOPMAssertionDeclareUserActivity("Chat Computer: unlocking for the host" as CFString, kIOPMUserActiveLocal, &assertion)
     }
 
     // MARK: Capture
@@ -232,7 +243,7 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
                 for down in [true, false] {
                     let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: down)
                     event?.keyboardSetUnicodeString(stringLength: units.count, unicodeString: &units)
-                    event?.flags = []
+                    event?.flags = Self.flags([])
                     post(event)
                 }
                 try await Task.sleep(for: .milliseconds(15))
@@ -264,8 +275,18 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
 
     private func keyboard(_ source: CGEventSource?, _ key: CGKeyCode, down: Bool, flags: CGEventFlags) -> CGEvent? {
         let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: down)
-        event?.flags = flags
+        event?.flags = Self.flags(flags)
         return event
+    }
+
+    /// Bits a real keyboard sets on every event, which CGEvent also sets by default for a HID-state source:
+    /// NX_NONCOALESCED (0x100) and 0x20000000. Replacing the flags wholesale dropped them; out-of-process panels such as the save dialog
+    /// then ignored plain typing after any Cmd or Ctrl shortcut until the next click (docs/ROADMAP.md §5.1).
+    static let preservedFlagBits: UInt64 = 0x2000_0100
+
+    /// `modifiers` on top of the bits every real key event carries.
+    static func flags(_ modifiers: CGEventFlags) -> CGEventFlags {
+        CGEventFlags(rawValue: preservedFlagBits | modifiers.rawValue)
     }
 
     private func post(_ event: CGEvent?) {

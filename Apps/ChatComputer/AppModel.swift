@@ -65,6 +65,13 @@ final class AppModel {
     /// Of the input tokens, how many the provider served from its prompt cache.
     private(set) var cachedTokens = 0
     var errorMessage: String?
+    /// The guest's readiness from the last check (every 5 s while running); nil when not known.
+    private(set) var guestReadiness: GuestReadiness?
+    /// Set while the guest agent is being replaced with the one bundled in this app.
+    private(set) var updatingAgent = false
+    private var agentUpdatePolicy = AgentUpdatePolicy()
+    private var pausedForSleep = false
+    private var lastUnlockAttempt = Date.distantPast
 
     var onboarding = OnboardingState()
 
@@ -72,6 +79,23 @@ final class AppModel {
     var snapshotActivity: SnapshotActivity?
     var showingSnapshots = false
     var showingSharedFolders = false
+    /// The last line about who controls the virtual Mac; the next such line replaces it rather than piling up.
+    private var statusItemID: UUID?
+
+    /// A status line (a coding agent took or released control, restored a snapshot for itself). A coding agent
+    /// running many short sessions would otherwise fill the chat with them; only the latest one is kept, as long
+    /// as nothing but steps came after it.
+    func appendStatus(_ text: String) {
+        if let id = statusItemID, let index = transcript.lastIndex(where: { $0.role != .action }), transcript[index].id == id {
+            transcript.remove(at: index)
+        }
+        let item = ChatItem(role: .system, text: text)
+        transcript.append(item)
+        statusItemID = item.id
+    }
+
+    /// Bumped to open the Settings window from code (SwiftUI only opens it from a view).
+    var settingsRequest = 0
     /// Files to attach to the next task; copied into its inbox when it starts.
     var pendingAttachments: [URL] = []
 
@@ -123,6 +147,15 @@ final class AppModel {
 
     /// The built-in agent has a task that isn't finished.
     var isRunningTask: Bool { runner != nil && !(phase.isTerminal || phase == .ready) }
+    /// The built-in agent is using the virtual Mac or waiting on an answer to carry on. A task the user paused
+    /// doesn't count: coding agents may use the Mac meanwhile, and Continue takes it back (`makeWayForBuiltInTask`).
+    var builtInAgentNeedsMac: Bool {
+        guard runner != nil else { return false }
+        switch phase {
+        case .running, .waitingForUser, .waitingExternal: return true
+        default: return false
+        }
+    }
 
     /// Chat messages (not steps) that arrived while the panel was collapsed.
     var unreadMessageCount: Int { isPanelCollapsed ? max(0, messageCount - seenMessageCount) : 0 }
@@ -152,7 +185,8 @@ final class AppModel {
         if bundle.exists { loadVM() }
         applyDevelopmentModel()
         restoreSession()
-        watchConsentPrompts()
+        watchGuest()
+        watchHostSleep()
         let external = ExternalControl(model: self)
         external.start()
         self.external = external
@@ -182,9 +216,12 @@ final class AppModel {
     }
 
     /// CC_DEV_LOG=/path appends every runner update to that file, for unattended runs.
-    private func devLog(_ update: RunnerUpdate) {
+    private func devLog(_ update: RunnerUpdate) { devLog("\(update)") }
+
+    /// CC_DEV_LOG only: one line, timestamped. Never pass secrets.
+    func devLog(_ message: String) {
         guard let path = ProcessInfo.processInfo.environment["CC_DEV_LOG"], !path.isEmpty else { return }
-        let line = "\(ISO8601DateFormatter().string(from: Date())) \(update)\n"
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
         let url = URL(fileURLWithPath: path)
         if let handle = try? FileHandle(forWritingTo: url) {
             handle.seekToEndOfFile()
@@ -328,6 +365,11 @@ final class AppModel {
             errorMessage = "The virtual Mac is not set up yet."
             return
         }
+        let free = SnapshotStore.availableCapacity(for: vm.bundle.url)
+        guard free >= Self.minimumFreeSpaceForTask else {
+            transcript.append(ChatItem(role: .system, text: "Only \(free >> 30) GB is free on this Mac. Free up some space first: the virtual Mac writes to its disk while it works, and fails in odd ways when the space runs out."))
+            return
+        }
         let model: any ModelClient
         do {
             model = try makeModelClient(for: modelSettings)
@@ -381,21 +423,159 @@ final class AppModel {
         }
     }
 
-    /// Answers macOS's periodic "keep bypassing the private window picker?" prompt for the guest agent, which
-    /// would otherwise cover the guest's screen (see `ConsentPrompt`). Checks the guest screen every 20 seconds.
-    private func watchConsentPrompts() {
+    /// Watches the running guest: its readiness every 5 seconds (shown in the window subtitle), the agent's version
+    /// (replaced with the bundled one when they differ, see `updateGuestAgent`), and every 20 seconds macOS's
+    /// periodic "keep bypassing the private window picker?" prompt, which would otherwise cover the guest's screen
+    /// (see `ConsentPrompt`).
+    private func watchGuest() {
         Task { [weak self] in
+            var tick = 0
             while true {
-                try? await Task.sleep(for: .seconds(20))
+                try? await Task.sleep(for: .seconds(5))
+                tick += 1
                 guard let self else { return }
                 guard self.isReady, let vm = self.vm, vm.state == .running, self.snapshotActivity == nil,
-                      let view = self.guestView, view.window != nil else { continue }
+                      !vm.isWorkingOnSnapshots, !self.updatingAgent, let bridge = self.bridge else {
+                    if self.vm?.state != .running { self.guestReadiness = nil }
+                    continue
+                }
+                let connected = await bridge.isConnected
+                var report: HealthReport?
+                if connected, case .health(let health)? = try? await bridge.send(.init(
+                    vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                    deadline: Date().addingTimeInterval(5), command: .health)) {
+                    report = health
+                }
+                self.guestReadiness = GuestReadiness(connected: connected, report: report)
+                // A locked screen (after the guest slept, or this Mac did) is unlocked from the host, at most once a minute.
+                if self.guestReadiness == .screenLocked, !self.guestIsBusy,
+                   Date().timeIntervalSince(self.lastUnlockAttempt) > 60 {
+                    self.lastUnlockAttempt = Date()
+                    await self.unlockGuestIfLocked()
+                    continue
+                }
+
+                if let report, let bundled = Self.bundledAgentVersion,
+                   self.agentUpdatePolicy.shouldUpdate(running: report.agentVersion, bundled: bundled, busy: self.guestIsBusy) {
+                    await self.updateGuestAgent(from: report.agentVersion, to: bundled)
+                    continue
+                }
+
+                if tick % 12 == 0 { self.warnIfLowOnSpace(vm) }
+                guard tick % 4 == 0, let view = self.guestView, view.window != nil else { continue }
                 let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
                 if await ConsentPrompt.approveIfShown(on: display) {
                     self.transcript.append(ChatItem(role: .system, text: "macOS asked again whether the agent in the virtual Mac may keep recording its screen; Chat Computer answered Allow."))
                 }
             }
         }
+    }
+
+    /// The Mac going to sleep freezes the virtual Mac mid-step: requests to the model time out and guest commands
+    /// pass their deadlines. A running task is paused first, as on quit, and the chat says why; on wake the guest
+    /// is checked (and unlocked if needed) and the user continues the task.
+    private func watchHostSleep() {
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.hostWillSleep() }
+        }
+        center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.hostDidWake() }
+        }
+    }
+
+    func hostWillSleep() {
+        if phase == .running, let runner {
+            Task { await runner.pause() }
+            transcript.append(ChatItem(role: .system, text: "Your Mac is going to sleep, so the task paused. Press Continue when you are back."))
+            pausedForSleep = true
+        }
+        if let holder = externalHolder {
+            Task { await external?.release(note: "\(holder) lost control of the virtual Mac: this Mac went to sleep.") }
+        }
+        saveSession()
+    }
+
+    func hostDidWake() {
+        guestReadiness = nil
+        Task {
+            // The guest needs a moment after the host wakes before it answers.
+            try? await Task.sleep(for: .seconds(5))
+            await unlockGuestIfLocked()
+            if pausedForSleep, phase == .paused {
+                transcript.append(ChatItem(role: .system, text: "Your Mac is awake again. Press Continue to carry on with the task."))
+            }
+            pausedForSleep = false
+        }
+    }
+
+    static let minimumFreeSpaceForTask: Int64 = 3 << 30
+    static let lowSpaceWarning: Int64 = 5 << 30
+    private var warnedAboutSpace = false
+
+    /// Once per launch, when the Mac is nearly full: the guest's writes would start failing.
+    private func warnIfLowOnSpace(_ vm: VirtualMachineController) {
+        let free = SnapshotStore.availableCapacity(for: vm.bundle.url)
+        if free < Self.lowSpaceWarning, !warnedAboutSpace {
+            warnedAboutSpace = true
+            transcript.append(ChatItem(role: .system, text: "This Mac is nearly full (\(free >> 30) GB free). Free up space or delete old snapshots, or the virtual Mac will start failing to save."))
+        } else if free >= Self.lowSpaceWarning * 2 {
+            warnedAboutSpace = false
+        }
+    }
+
+    /// A task or a coding agent is using the guest; the agent is not replaced under it.
+    private var guestIsBusy: Bool {
+        externalHolder != nil || !(phase.isTerminal || phase == .ready || phase == .paused)
+    }
+
+    /// The agent shipped inside this app, as "1.0.0 (7)".
+    static let bundledAgentVersion: String? = bundledAgent.flatMap(AgentVersion.of(bundle:))
+
+    static var bundledAgent: URL? {
+        Bundle.main.url(forResource: "ChatComputerAgent", withExtension: "app", subdirectory: "GuestAgent")
+    }
+
+    /// Replaces the guest agent with the bundled one: the app is staged in the bootstrap share, which is shared
+    /// only for the update; the agent checks its signature (same team), swaps itself and is restarted by launchd.
+    /// Its privacy grants carry over because they belong to the signing identity. Restoring an older snapshot
+    /// brings back an older agent, so this runs again then.
+    private func updateGuestAgent(from running: String, to bundled: String) async {
+        guard let vm, let bridge, let source = Self.bundledAgent else { return }
+        updatingAgent = true
+        agentUpdatePolicy.began()
+        defer { updatingAgent = false }
+        let staged = vm.bundle.bootstrapDirectory.appendingPathComponent("ChatComputerAgent.app")
+        var succeeded = false
+        do {
+            try FileManager.default.createDirectory(at: vm.bundle.bootstrapDirectory, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: staged)
+            try FileManager.default.copyItem(at: source, to: staged)
+            vm.setBootstrapAttached(true)
+            try await Task.sleep(for: .seconds(3))   // the guest sees the share change within a second or two
+            let result = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                     deadline: Date().addingTimeInterval(30), command: .updateAgent))
+            if case .failure(let error) = result { throw error }
+            // The old agent exits; launchd starts the new one, which pairs again.
+            try await Task.sleep(for: .seconds(3))
+            for _ in 0..<60 {
+                if await bridge.isConnected,
+                   case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                            deadline: Date().addingTimeInterval(5), command: .health)) {
+                    succeeded = report.agentVersion == bundled
+                    break
+                }
+                try await Task.sleep(for: .seconds(1))
+            }
+        } catch {
+            transcript.append(ChatItem(role: .system, text: "Could not update the agent in the virtual Mac: \(error.localizedDescription)"))
+        }
+        vm.setBootstrapAttached(false)
+        try? FileManager.default.removeItem(at: staged)
+        agentUpdatePolicy.finished(succeeded: succeeded)
+        transcript.append(ChatItem(role: .system, text: succeeded
+            ? "Updated the agent in the virtual Mac from \(running) to \(bundled)."
+            : "The agent in the virtual Mac is still \(running); Chat Computer will try again in a minute."))
     }
 
     /// If the guest's screen is locked, wakes it and types the guest password from the host.
@@ -408,8 +588,17 @@ final class AppModel {
               report.screenLocked,
               let password = try? secrets.read(SecretAccount.guestPassword(vmID: vm.spec.id)) else { return false }
         let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
-        try? await GuestUnlock.unlock(on: display, password: password)
-        transcript.append(ChatItem(role: .system, text: "The virtual Mac's screen was locked; Chat Computer unlocked it."))
+        // Twice at most: the first key press can go to waking a display that was asleep.
+        for _ in 0..<2 {
+            try? await GuestUnlock.unlock(on: display, password: password)
+            if case .health(let after)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                                      deadline: Date().addingTimeInterval(5), command: .health)),
+               !after.screenLocked {
+                transcript.append(ChatItem(role: .system, text: "The virtual Mac's screen was locked; Chat Computer unlocked it."))
+                return true
+            }
+        }
+        transcript.append(ChatItem(role: .system, text: "The virtual Mac's screen is locked and Chat Computer could not unlock it. Click the screen and type the password from secrets.json, or restart the virtual Mac."))
         return true
     }
 
@@ -488,7 +677,9 @@ final class AppModel {
             tokens = (input, output)
             cachedTokens = cached
         case .delivered(let files):
-            transcript.append(ChatItem(role: .system, text: "Verified results", files: files))
+            if !files.isEmpty { transcript.append(ChatItem(role: .system, text: "Verified results", files: files)) }
+        case .notice(let text):
+            transcript.append(ChatItem(role: .system, text: text))
         }
     }
 
@@ -581,7 +772,10 @@ final class AppModel {
                 }
                 return password
             },
-            log: { [weak self] message in self?.onboarding.detail = message.prefix(1).uppercased() + message.dropFirst() })
+            log: { [weak self] message in
+                self?.onboarding.detail = message.prefix(1).uppercased() + message.dropFirst()
+                self?.devLog("grant: \(message)")
+            })
         try await grant.run()
     }
 }

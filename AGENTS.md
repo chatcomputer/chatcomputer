@@ -35,6 +35,8 @@ Before claiming a change works, run the layer that exercises it:
 | The agent loop or a model client | `scripts/harness.sh live-loop --scenario notes|approval|injection` (needs `CC_API_KEY`) |
 | The guest driver (`AgentCore`) | `scripts/harness.sh vm up --update-agent --input-test 3` |
 | Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code), before and after |
+| The guest agent's version or driver, for regression | `vm regress --rebuild-base --agent <ChatComputerAgent.app>`: the base snapshot keeps the agent it was made with |
+| Lifecycle: quit, sleep, snapshots, long runs | `scripts/soak.py`; a release's install path: `scripts/fresh-install.sh` |
 | Apps, onboarding, signing | `scripts/release.sh`, then launch `build/release/ChatComputer.app` |
 
 ## Rules that are easy to break
@@ -59,7 +61,11 @@ Before claiming a change works, run the layer that exercises it:
 6. **Guest input must look like hardware.** Shortcuts press and release modifier keys with device flag
    bits. Text is typed as real key presses where the US layout has the character. Out-of-process panels
    such as the save dialog drop anything else.
-7. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
+7. **The guest agent updates itself from the app.** On connect the app compares the agent's version
+   ("0.9.0 (6)", with the build number) to the one it bundles and, when the guest is idle, replaces it through
+   the bootstrap share. Snapshots keep the agent they were taken with, so restoring an old one updates it again.
+   Bump `CURRENT_PROJECT_VERSION` for every build you put in a guest.
+8. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
    agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
    (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.
 

@@ -110,6 +110,7 @@ enum LiveLoop {
                 case .usage(let input, let output, let cached): print("[usage] in=\(input) out=\(output) cached=\(cached)")
                 case .delivered(let files): print("[delivered] \(files.map(\.lastPathComponent))")
                 case .thinking(let turn, _): print("[turn] \(turn)")
+                case .notice(let text): print("[notice] \(text)")
                 }
             }
         }

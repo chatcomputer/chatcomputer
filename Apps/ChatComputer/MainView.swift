@@ -25,6 +25,7 @@ struct RootView: View {
 /// Guest desktop on the left at its own aspect ratio, host chat on the right (same geometry as onboarding).
 struct MainView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Workspace(panelWidth: model.isPanelCollapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth) {
@@ -71,6 +72,7 @@ struct MainView: View {
         .sheet(isPresented: Bindable(model).showingSharedFolders) {
             SharedFoldersSheet().environment(model)
         }
+        .onChange(of: model.settingsRequest) { openSettings() }
         .task {
             if model.vm?.state == .stopped { await model.bootVM() }
             await model.startDevelopmentTaskIfRequested()
@@ -87,6 +89,10 @@ struct MainView: View {
         case .saving: "Saving"
         case .error(let message): "Error: \(message)"
         case .stopped, nil: "Stopped"
+        }
+        if model.updatingAgent { return "\(vmState) · Updating the agent in the virtual Mac…" }
+        if model.vm?.state == .running, let problem = model.guestReadiness?.problem {
+            return "\(vmState) · Not ready: \(problem)"
         }
         let holder = if let external = model.externalHolder { "\(external) has control" }
             else if model.phase == .running { "Agent has control" } else { "You have control" }
