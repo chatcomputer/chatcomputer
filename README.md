@@ -7,7 +7,7 @@ has verified. You can pause, take over by clicking the VM screen, or cancel at a
 Host and guest are both **macOS 27 on Apple silicon only**, so the app uses the WWDC26 Virtualization
 features directly: guest provisioning, DiskImageKit layered disks and vmnet networks.
 
-**Status:** 0.2.0 preview. Setup, model connection and real tasks work end to end on a macOS 27 VM.
+**Status:** 0.9.0, the 1.0 candidate. Setup, model connection and real tasks work end to end on a macOS 27 VM.
 See [docs/STATUS.md](docs/STATUS.md) for what works, measured results, known issues and the plan.
 
 ## Install
