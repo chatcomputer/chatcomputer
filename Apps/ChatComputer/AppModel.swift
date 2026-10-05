@@ -11,11 +11,16 @@ import VMKit
 import Virtualization
 
 struct ChatItem: Identifiable, Equatable, Codable {
-    enum Role: String, Codable { case user, agent, action, system }
+    /// `status` lines (who controls the Mac, the VM resumed, the agent updated) replace each other; see `appendStatus`.
+    enum Role: String, Codable { case user, agent, action, system, status }
     var id = UUID()
     let role: Role
     let text: String
     var files: [URL] = []
+    /// The agent's closing words: the task's result, or a question the user has to answer.
+    var emphasis: Emphasis?
+
+    enum Emphasis: String, Codable { case result, question }
 }
 
 /// What the agent is doing right now, for the live progress line in the chat.
@@ -79,19 +84,20 @@ final class AppModel {
     var snapshotActivity: SnapshotActivity?
     var showingSnapshots = false
     var showingSharedFolders = false
-    /// The last line about who controls the virtual Mac; the next such line replaces it rather than piling up.
-    private var statusItemID: UUID?
+    private func emphasizeLastAgentMessage(_ emphasis: ChatItem.Emphasis) {
+        guard let index = transcript.lastIndex(where: { $0.role != .action && $0.role != .status }),
+              transcript[index].role == .agent else { return }
+        transcript[index].emphasis = emphasis
+    }
 
     /// A status line (a coding agent took or released control, restored a snapshot for itself). A coding agent
     /// running many short sessions would otherwise fill the chat with them; only the latest one is kept, as long
     /// as nothing but steps came after it.
     func appendStatus(_ text: String) {
-        if let id = statusItemID, let index = transcript.lastIndex(where: { $0.role != .action }), transcript[index].id == id {
+        if let index = transcript.lastIndex(where: { $0.role != .action }), transcript[index].role == .status {
             transcript.remove(at: index)
         }
-        let item = ChatItem(role: .system, text: text)
-        transcript.append(item)
-        statusItemID = item.id
+        transcript.append(ChatItem(role: .status, text: text))
     }
 
     /// Bumped to open the Settings window from code (SwiftUI only opens it from a view).
@@ -159,7 +165,7 @@ final class AppModel {
 
     /// Chat messages (not steps) that arrived while the panel was collapsed.
     var unreadMessageCount: Int { isPanelCollapsed ? max(0, messageCount - seenMessageCount) : 0 }
-    private var messageCount: Int { transcript.count { $0.role != .action } }
+    private var messageCount: Int { transcript.count { $0.role != .action && $0.role != .status } }
 
     /// Collapses the panel to the rail, or expands it. The window changes width so the guest screen keeps its size.
     func setPanelCollapsed(_ collapsed: Bool) {
@@ -286,7 +292,7 @@ final class AppModel {
         guard let vm else { return }
         await vm.start()
         if vm.resumedFromSavedState {
-            transcript.append(ChatItem(role: .system, text: "Your virtual Mac picked up where you left off."))
+            appendStatus("Your virtual Mac picked up where you left off.")
         }
     }
 
@@ -336,28 +342,40 @@ final class AppModel {
     // MARK: Tasks
 
     /// Chat input: answers a pending question, or starts a new task.
-    func submit(_ text: String) {
+    /// Returns false when the message was not taken (a task is running, a snapshot is in progress).
+    @discardableResult
+    func submit(_ text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
-        // Attachments go with a new task, not with an answer to the agent's question.
-        let startsTask = !(runner != nil && { if case .waitingForUser = phase { true } else { false } }())
-        let attached = startsTask && !pendingAttachments.isEmpty
-            ? "\n📎 " + pendingAttachments.map(\.lastPathComponent).joined(separator: ", ") : ""
-        transcript.append(ChatItem(role: .user, text: text + attached))
-
+        guard !text.isEmpty else { return false }
         if let runner, case .waitingForUser = phase {
+            transcript.append(ChatItem(role: .user, text: text))
             Task { await runner.answer(text) }
-            return
+            return true
         }
-        guard phase.isTerminal || phase == .ready else {
-            transcript.append(ChatItem(role: .system, text: "A task is already active. Pause or cancel it first."))
-            return
+        // A running task keeps going; the message stays in the field rather than vanishing into the chat.
+        guard phase != .running, !{ if case .waitingExternal = phase { true } else { false } }() else {
+            errorMessage = "The agent is working on a task. Pause or cancel it before starting another."
+            return false
         }
         guard snapshotActivity == nil, vm?.isWorkingOnSnapshots != true else {
-            transcript.append(ChatItem(role: .system, text: "Wait until the snapshot is finished, then send the task again."))
-            return
+            errorMessage = "Wait until the snapshot is finished, then send the task again."
+            return false
+        }
+        // Attachments go with a new task, not with an answer to the agent's question.
+        let attached = pendingAttachments.isEmpty ? "" : "\n📎 " + pendingAttachments.map(\.lastPathComponent).joined(separator: ", ")
+        transcript.append(ChatItem(role: .user, text: text + attached))
+        // A paused or taken-over task gives way to the new one.
+        if let runner, !(phase.isTerminal || phase == .ready) {
+            let old = runner
+            appendStatus("The paused task was cancelled to start this one.")
+            Task {
+                await old.cancel()
+                self.startTask(goal: text)
+            }
+            return true
         }
         startTask(goal: text)
+        return true
     }
 
     private func startTask(goal: String) {
@@ -545,14 +563,12 @@ final class AppModel {
         updatingAgent = true
         agentUpdatePolicy.began()
         defer { updatingAgent = false }
-        let staged = vm.bundle.bootstrapDirectory.appendingPathComponent("ChatComputerAgent.app")
+        var stagedFolder: URL?
         var succeeded = false
+        var failure = "the agent did not come back with the new version"
         do {
-            try FileManager.default.createDirectory(at: vm.bundle.bootstrapDirectory, withIntermediateDirectories: true)
-            try? FileManager.default.removeItem(at: staged)
-            try FileManager.default.copyItem(at: source, to: staged)
-            vm.setBootstrapAttached(true)
-            try await Task.sleep(for: .seconds(3))   // the guest sees the share change within a second or two
+            stagedFolder = try AgentStaging.stage(source, in: vm.bundle.bootstrapDirectory)
+            try await Task.sleep(for: .seconds(4))   // the guest sees new files within a second or two
             let result = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                      deadline: Date().addingTimeInterval(30), command: .updateAgent))
             if case .failure(let error) = result { throw error }
@@ -563,19 +579,28 @@ final class AppModel {
                    case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                                             deadline: Date().addingTimeInterval(5), command: .health)) {
                     succeeded = report.agentVersion == bundled
+                    if !succeeded { failure = "the agent came back as \(report.agentVersion)" }
                     break
                 }
                 try await Task.sleep(for: .seconds(1))
             }
         } catch {
-            transcript.append(ChatItem(role: .system, text: "Could not update the agent in the virtual Mac: \(error.localizedDescription)"))
+            failure = error.localizedDescription
         }
-        vm.setBootstrapAttached(false)
-        try? FileManager.default.removeItem(at: staged)
+        devLog("agent update \(running) → \(bundled): \(succeeded ? "ok" : failure)")
+        if let stagedFolder { try? FileManager.default.removeItem(at: stagedFolder) }
         agentUpdatePolicy.finished(succeeded: succeeded)
-        transcript.append(ChatItem(role: .system, text: succeeded
-            ? "Updated the agent in the virtual Mac from \(running) to \(bundled)."
-            : "The agent in the virtual Mac is still \(running); Chat Computer will try again in a minute."))
+        let text: String
+        if succeeded {
+            text = "Updated the agent in the virtual Mac from \(running) to \(bundled)."
+        } else if agentUpdatePolicy.failures >= AgentUpdatePolicy.maxFailures {
+            // A guest that still holds an old view of the installer folder (from an app before 0.9.0 build 12)
+            // sees the new agent only after it restarts.
+            text = "The agent in the virtual Mac is still \(running) (\(failure)). Restart the virtual Mac (shut it down from its Apple menu, then reopen Chat Computer) to finish updating it."
+        } else {
+            text = "The agent in the virtual Mac is still \(running) (\(failure)); Chat Computer will try again in a minute."
+        }
+        appendStatus(text)
     }
 
     /// If the guest's screen is locked, wakes it and types the guest password from the host.
@@ -622,7 +647,7 @@ final class AppModel {
         } else {
             "The task from last time was paused when Chat Computer quit. Choose Continue to pick it up."
         }
-        transcript.append(ChatItem(role: .system, text: note))
+        appendStatus(note)
     }
 
     func saveSession() {
@@ -658,6 +683,7 @@ final class AppModel {
         switch update {
         case .phase(let phase):
             self.phase = phase
+            if case .waitingForUser = phase { emphasizeLastAgentMessage(.question) }
             if case .failed(let reason) = phase { transcript.append(ChatItem(role: .system, text: reason)) }
             if phase != .running { progress = nil }
             if phase.isTerminal { saveSession() }
@@ -677,6 +703,7 @@ final class AppModel {
             tokens = (input, output)
             cachedTokens = cached
         case .delivered(let files):
+            emphasizeLastAgentMessage(.result)
             if !files.isEmpty { transcript.append(ChatItem(role: .system, text: "Verified results", files: files)) }
         case .notice(let text):
             transcript.append(ChatItem(role: .system, text: text))

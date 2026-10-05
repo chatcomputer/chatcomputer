@@ -65,6 +65,13 @@ struct MainView: View {
                     Button("Cancel task", systemImage: "xmark") { model.cancel() }
                 }
             }
+            // Always there, so the title bar keeps one height: a toolbar that appears with a task would shrink the
+            // guest screen and leave bars beside it.
+            ToolbarItem {
+                Button("Take Snapshot", systemImage: "camera") { Task { await model.takeSnapshot() } }
+                    .help("Save the whole virtual Mac now (⌥⌘S)")
+                    .disabled(!model.canManageSnapshots)
+            }
         }
         .sheet(isPresented: Bindable(model).showingSnapshots) {
             SnapshotsSheet().environment(model)

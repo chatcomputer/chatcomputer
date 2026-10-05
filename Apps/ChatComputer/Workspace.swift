@@ -12,8 +12,8 @@ enum WorkspaceMetrics {
     static let guestAspect: CGFloat = 16.0 / 10.0
     static let largestStage = CGSize(width: 1280, height: 800)
     static let smallestStage = CGSize(width: 800, height: 500)
-    /// Title bar (title + subtitle, no toolbar items while idle). The default window size includes it.
-    static let chromeHeight: CGFloat = 28
+    /// Title bar with its toolbar (always shown, so its height never changes). The default window size includes it.
+    static let chromeHeight: CGFloat = 52
     /// Space around the guest screen inside the left pane.
     static let stagePadding: CGFloat = 0
 
@@ -52,6 +52,57 @@ struct Workspace<Stage: View, Panel: View>: View {
         }
         .frame(minWidth: WorkspaceMetrics.minimumContentSize(panelWidth: panelWidth).width,
                minHeight: WorkspaceMetrics.minimumContentSize.height)
+        .background(WindowFitter(panelWidth: panelWidth))
+    }
+}
+
+/// Keeps the window's height matched to the guest screen's aspect ratio, so the guest fills the left pane with
+/// no bars beside or above it: after a resize by the user, when the window first appears, and when the panel
+/// collapses or expands. During a live resize the stage letterboxes briefly; the height snaps when it ends.
+private struct WindowFitter: NSViewRepresentable {
+    var panelWidth: CGFloat
+
+    func makeNSView(context: Context) -> FitterView { FitterView() }
+
+    func updateNSView(_ view: FitterView, context: Context) {
+        view.panelWidth = panelWidth
+        DispatchQueue.main.async { view.fit() }
+    }
+
+    final class FitterView: NSView {
+        var panelWidth: CGFloat = WorkspaceMetrics.panelWidth
+        private var observer: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+            guard let window else { return }
+            observer = NotificationCenter.default.addObserver(forName: NSWindow.didEndLiveResizeNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.fit() }
+            }
+            DispatchQueue.main.async { self.fit() }
+        }
+
+        func fit() {
+            guard let window, !window.styleMask.contains(.fullScreen), !window.inLiveResize else { return }
+            let content = window.contentLayoutRect.size
+            let stageWidth = content.width - panelWidth - 1
+            guard stageWidth > 0 else { return }
+            let delta = (stageWidth / WorkspaceMetrics.guestAspect).rounded() - content.height
+            guard abs(delta) >= 1 else { return }
+            var frame = window.frame
+            frame.size.height += delta
+            frame.origin.y -= delta   // keep the top edge where it is
+            if let screen = window.screen?.visibleFrame, frame.minY < screen.minY {
+                // Too tall for the screen: narrow the window instead.
+                let excess = screen.minY - frame.minY
+                frame.origin.y += excess
+                frame.size.height -= excess
+                frame.size.width -= (excess * WorkspaceMetrics.guestAspect).rounded()
+            }
+            window.setFrame(frame, display: true, animate: false)
+        }
+
     }
 }
 

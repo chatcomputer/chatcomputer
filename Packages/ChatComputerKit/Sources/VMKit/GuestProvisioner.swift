@@ -55,9 +55,9 @@ public struct GuestProvisioner: Sendable {
     private func stageBootstrapFiles(spec: VMSpec, agentApp: URL, pairingToken: String) throws {
         let fm = FileManager.default
         let directory = bundle.bootstrapDirectory
-        let stagedApp = directory.appendingPathComponent("ChatComputerAgent.app")
-        try? fm.removeItem(at: stagedApp)
-        try fm.copyItem(at: agentApp, to: stagedApp)
+        try fm.createDirectory(at: directory, withIntermediateDirectories: true)
+        // In place, never deleted and recreated: see `AgentStaging`.
+        try AgentStaging.refreshInPlace(agentApp, to: directory.appendingPathComponent(AgentStaging.agentName))
 
         let pairing = ["vmID": spec.id.uuidString, "pairingToken": pairingToken]
         try JSONSerialization.data(withJSONObject: pairing).write(to: directory.appendingPathComponent("pairing.json"))

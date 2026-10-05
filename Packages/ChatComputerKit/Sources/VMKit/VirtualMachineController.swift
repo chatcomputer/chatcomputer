@@ -159,8 +159,12 @@ public final class VirtualMachineController: NSObject {
 
     // MARK: Shared folders
 
-    /// Until setup finishes, the installer is always shared; afterwards only when an update needs it.
-    private var includesBootstrap: Bool { spec.stage != .ready || bootstrapAttached }
+    /// The installer folder stays shared (read-only). It used to be shared only during an update, but a macOS
+    /// guest keeps the entries of a folder that was unshared: after re-sharing, it still sees the old files and
+    /// misses the new ones (measured on 27.0.1), so the second agent update in a session failed its signature
+    /// check. Shared all the time, replaced files show up at once. It holds nothing secret once set up: the
+    /// pairing file is deleted as soon as the agent has copied it.
+    private var includesBootstrap: Bool { true }
 
     /// Shares a folder from this Mac, read-only unless asked. Takes effect at once, also while the VM runs.
     @discardableResult
@@ -184,10 +188,9 @@ public final class VirtualMachineController: NSObject {
         try saveShares(updated)
     }
 
-    /// Shares the agent installer for an update (`GuestCommand.updateAgent`), then hides it again.
+    /// Kept for callers from before the installer folder stayed shared; it no longer changes the shares.
     public func setBootstrapAttached(_ attached: Bool) {
         bootstrapAttached = attached
-        applyShares()
     }
 
     private func saveShares(_ updated: [UserShare]) throws {

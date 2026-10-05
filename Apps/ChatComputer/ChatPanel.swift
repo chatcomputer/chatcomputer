@@ -101,8 +101,10 @@ struct ChatPanel: View {
 
     private var footer: some View {
         HStack {
-            Text(phaseText).font(.caption)
-            Spacer()
+            // One short line: the question itself is in the chat above.
+            Text(phaseText).font(.caption).lineLimit(1).truncationMode(.tail)
+                .help(phaseHelp)
+            Spacer(minLength: 8)
             Button("Shared Folders", systemImage: "folder") { model.showingSharedFolders = true }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
@@ -126,8 +128,8 @@ struct ChatPanel: View {
         switch model.phase {
         case .ready: "Ready"
         case .running: "Working"
-        case .waitingForUser(let reason): "Waiting for you: \(reason)"
-        case .waitingExternal(let reason, _): "Waiting: \(reason)"
+        case .waitingForUser: "Waiting for your reply"
+        case .waitingExternal: "Waiting"
         case .paused: "Paused"
         case .takenOver: "You have control"
         case .failed: "Stopped"
@@ -136,9 +138,16 @@ struct ChatPanel: View {
         }
     }
 
+    private var phaseHelp: String {
+        switch model.phase {
+        case .waitingForUser(let reason), .waitingExternal(let reason, _): reason
+        case .failed(let reason): reason
+        default: phaseText
+        }
+    }
+
     private func send() {
-        model.submit(draft)
-        draft = ""
+        if model.submit(draft) { draft = "" }
     }
 }
 
@@ -148,17 +157,60 @@ private struct ChatRow: View {
 
     var body: some View {
         VStack(alignment: item.role == .user ? .trailing : .leading, spacing: 6) {
-            Text(item.text)
-                .textSelection(.enabled)
-                .font(item.role == .action ? .caption.monospaced() : .body)
-                .foregroundStyle(item.role == .action || item.role == .system ? .secondary : .primary)
-                .padding(item.role == .user ? 10 : 0)
-                .background(item.role == .user ? Color.accentColor.opacity(0.15) : .clear, in: .rect(cornerRadius: 10))
+            switch item.role {
+            case .system, .status:
+                // Notes from Chat Computer itself: smaller, marked, so the agent's own words stand out.
+                Label {
+                    Text(Self.rendered(item)).textSelection(.enabled)
+                } icon: {
+                    Image(systemName: item.role == .status ? "circle.fill" : "info.circle")
+                        .imageScale(item.role == .status ? .small : .medium)
+                        .font(item.role == .status ? .system(size: 5) : .callout)
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            case .agent where item.emphasis != nil:
+                // The answer or the question the task ended on, set apart from the steps that led there.
+                VStack(alignment: .leading, spacing: 6) {
+                    if item.emphasis == .result {
+                        Label("Result", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    } else {
+                        Label("Waiting for your reply", systemImage: "questionmark.bubble.fill").foregroundStyle(.orange)
+                    }
+                    Text(Self.rendered(item)).textSelection(.enabled)
+                }
+                .font(.body)
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.quaternary.opacity(0.6), in: .rect(cornerRadius: 10))
+            case .agent:
+                // What the agent says along the way.
+                Text(Self.rendered(item))
+                    .textSelection(.enabled)
+                    .font(.callout)
+                    .foregroundStyle(.primary.opacity(0.85))
+            default:
+                Text(Self.rendered(item))
+                    .textSelection(.enabled)
+                    .font(item.role == .action ? .caption.monospaced() : .body)
+                    .foregroundStyle(item.role == .action ? .secondary : .primary)
+                    .padding(item.role == .user ? 10 : 0)
+                    .background(item.role == .user ? Color.accentColor.opacity(0.15) : .clear, in: .rect(cornerRadius: 10))
+            }
             ForEach(item.files, id: \.self) { file in
                 Button(file.lastPathComponent, systemImage: "square.and.arrow.down") { onExport(file) }
             }
         }
         .frame(maxWidth: .infinity, alignment: item.role == .user ? .trailing : .leading)
+    }
+
+    /// The agent writes Markdown (**bold**, `code`); show its inline formatting rather than the marks.
+    /// Steps and the user's own text stay literal.
+    static func rendered(_ item: ChatItem) -> AttributedString {
+        guard item.role == .agent || item.role == .system || item.role == .status,
+              let markdown = try? AttributedString(markdown: item.text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+        else { return AttributedString(item.text) }
+        return markdown
     }
 }
 

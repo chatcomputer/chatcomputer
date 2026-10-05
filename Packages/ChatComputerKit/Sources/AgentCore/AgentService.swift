@@ -48,6 +48,7 @@ public actor AgentService {
 
     /// Connects and serves forever, reconnecting with backoff (host app restarts, VM restores).
     public func run() async {
+        GuestSettings.applyTypingDefaults()
         var delay: Duration = .seconds(1)
         while !Task.isCancelled {
             guard let pairing = try? JSONDecoder().decode(Pairing.self, from: Data(contentsOf: pairingURL)) else {
@@ -237,29 +238,60 @@ enum PermissionSetup {
 /// Self-update from the bootstrap share. The new copy must pass `codesign --verify --strict` against a
 /// requirement naming this bundle ID and this agent's own team, so the share cannot slip in other code.
 enum AgentUpdate {
-    static let source = URL(fileURLWithPath: "/Volumes/My Shared Files/bootstrap/ChatComputerAgent.app")
+    static let bootstrap = URL(fileURLWithPath: "/Volumes/My Shared Files/bootstrap")
+    static let fixedSource = bootstrap.appendingPathComponent("ChatComputerAgent.app")
+
+    /// The host stages each update in a folder of its own and names it in `next-agent`: a folder that was deleted
+    /// and recreated under the same name stays invisible to the guest (the shared folder keeps its old entry), so
+    /// the fixed path only serves agents from before 0.9.0 build 14.
+    static var source: URL {
+        let fm = FileManager.default
+        if let relative = try? String(contentsOf: bootstrap.appendingPathComponent("next-agent"), encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines), !relative.isEmpty, !relative.contains(".."),
+           fm.fileExists(atPath: bootstrap.appendingPathComponent(relative).path) {
+            return bootstrap.appendingPathComponent(relative)
+        }
+        // The newest update folder by name, if the pointer could not be read.
+        let updates = bootstrap.appendingPathComponent("updates")
+        if let newest = ((try? fm.contentsOfDirectory(atPath: updates.path)) ?? []).sorted().last {
+            let candidate = updates.appendingPathComponent(newest).appendingPathComponent("ChatComputerAgent.app")
+            if fm.fileExists(atPath: candidate.path) { return candidate }
+        }
+        return fixedSource
+    }
 
     static func install() throws {
         let current = Bundle.main.bundleURL
-        guard FileManager.default.fileExists(atPath: source.path) else {
-            throw BridgeError(.invalidCommand, "No agent in the bootstrap share.")
-        }
         guard let team = try teamIdentifier(of: current) else {
             throw BridgeError(.driverFailure, "This agent is not signed with a Developer ID; refusing to self-update.")
         }
         let identifier = Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"
         let requirement = "=identifier \"\(identifier)\" and anchor apple generic and certificate leaf[subject.OU] = \"\(team)\""
-        guard try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", "-R", requirement, source.path]) == 0 else {
-            throw BridgeError(.driverFailure, "The new agent's signature does not match this agent's team; not installed.")
-        }
         let staged = current.deletingLastPathComponent().appendingPathComponent(".ChatComputerAgent-update.app")
-        try? FileManager.default.removeItem(at: staged)
-        guard try run("/usr/bin/ditto", [source.path, staged.path]) == 0 else {
-            throw BridgeError(.driverFailure, "Copying the new agent failed.")
+        // Copied out of the shared folder first, then checked: the check reads every file, and a copy that the
+        // shared folder had not finished showing is caught here and copied again.
+        var problem = "No agent in the bootstrap share."
+        for attempt in 0..<5 {
+            if attempt > 0 { Thread.sleep(forTimeInterval: 2) }
+            let source = Self.source
+            guard FileManager.default.fileExists(atPath: source.path) else { continue }
+            try? FileManager.default.removeItem(at: staged)
+            guard try run("/usr/bin/ditto", [source.path, staged.path]).status == 0 else {
+                problem = "Copying the new agent failed."
+                continue
+            }
+            let check = try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", "-R", requirement, staged.path])
+            guard check.status == 0 else {
+                problem = "The new agent's signature check failed: " + check.output.trimmingCharacters(in: .whitespacesAndNewlines)
+                continue
+            }
+            // Replace rather than overwrite in place: a running binary rewritten in place is killed by
+            // code signing (OS_REASON_CODESIGNING).
+            _ = try FileManager.default.replaceItemAt(current, withItemAt: staged)
+            return
         }
-        // Replace rather than overwrite in place: a running binary rewritten in place is killed by
-        // code signing (OS_REASON_CODESIGNING).
-        _ = try FileManager.default.replaceItemAt(current, withItemAt: staged)
+        try? FileManager.default.removeItem(at: staged)
+        throw BridgeError(.driverFailure, problem)
     }
 
     private static func teamIdentifier(of bundle: URL) throws -> String? {
@@ -277,15 +309,18 @@ enum AgentUpdate {
         return team == "not set" ? nil : team
     }
 
-    private static func run(_ tool: String, _ arguments: [String]) throws -> Int32 {
+    /// Runs a tool; returns its exit status and the end of what it wrote to standard error.
+    private static func run(_ tool: String, _ arguments: [String]) throws -> (status: Int32, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: tool)
         process.arguments = arguments
+        let errors = Pipe()
         process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        process.standardError = errors
         try process.run()
+        let data = errors.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        return process.terminationStatus
+        return (process.terminationStatus, String(decoding: data.suffix(600), as: UTF8.self))
     }
 }
 
@@ -318,6 +353,32 @@ enum VsockSocket {
             throw POSIXError(POSIXErrorCode(rawValue: code) ?? .ECONNREFUSED)
         }
         return FileHandle(fileDescriptor: fd, closeOnDealloc: true)
+    }
+}
+#endif
+
+#if os(macOS)
+/// Settings the agent keeps in the guest for its own sake.
+enum GuestSettings {
+    /// macOS rewrites typed text: it capitalizes the first word of a line, corrects spelling, and turns quotes,
+    /// dashes and double spaces into other characters. The agent types exactly what the task needs (file names,
+    /// codes, lines to save), so these are turned off for the guest user. Apps read them when they start.
+    static let typingSubstitutions = [
+        "NSAutomaticCapitalizationEnabled",
+        "NSAutomaticSpellingCorrectionEnabled",
+        "NSAutomaticPeriodSubstitutionEnabled",
+        "NSAutomaticQuoteSubstitutionEnabled",
+        "NSAutomaticDashSubstitutionEnabled",
+        "NSAutomaticTextCompletionEnabled",
+        "WebAutomaticSpellingCorrectionEnabled",
+    ]
+
+    static func applyTypingDefaults() {
+        for key in typingSubstitutions {
+            CFPreferencesSetValue(key as CFString, kCFBooleanFalse, kCFPreferencesAnyApplication,
+                                  kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+        }
+        CFPreferencesSynchronize(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
     }
 }
 #endif

@@ -186,15 +186,8 @@ enum Regress {
         let running = await health()?.agentVersion ?? "unknown"
         guard running != expected else { VMProbe.log("agent is already \(expected)"); return }
 
-        let staged = controller.bundle.bootstrapDirectory.appendingPathComponent("ChatComputerAgent.app")
-        try FileManager.default.createDirectory(at: controller.bundle.bootstrapDirectory, withIntermediateDirectories: true)
-        try? FileManager.default.removeItem(at: staged)
-        try FileManager.default.copyItem(at: agent, to: staged)
-        controller.setBootstrapAttached(true)
-        defer {
-            controller.setBootstrapAttached(false)
-            try? FileManager.default.removeItem(at: staged)
-        }
+        let staged = try AgentStaging.stage(agent, in: controller.bundle.bootstrapDirectory)
+        defer { try? FileManager.default.removeItem(at: staged) }
         try await Task.sleep(for: .seconds(3))
         _ = try? await bridge.send(CommandEnvelope(vmID: vmID, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                    deadline: Date().addingTimeInterval(30), command: .updateAgent))
@@ -222,7 +215,7 @@ enum Regress {
             display.click(prompt.center)
             try await Task.sleep(for: .seconds(0.5))
         }
-        try await display.type(#"ditto "/Volumes/My Shared Files/bootstrap/ChatComputerAgent.app" ~/Applications/.cc-new.app && rm -rf /tmp/cc-old.app && mv ~/Applications/ChatComputerAgent.app /tmp/cc-old.app && mv ~/Applications/.cc-new.app ~/Applications/ChatComputerAgent.app && launchctl kickstart -k gui/$(id -u)/app.chatcomputer.agent; exit"#)
+        try await display.type(#"ditto "/Volumes/My Shared Files/bootstrap/$(cat "/Volumes/My Shared Files/bootstrap/next-agent")" ~/Applications/.cc-new.app && rm -rf /tmp/cc-old.app && mv ~/Applications/ChatComputerAgent.app /tmp/cc-old.app && mv ~/Applications/.cc-new.app ~/Applications/ChatComputerAgent.app && launchctl kickstart -k gui/$(id -u)/app.chatcomputer.agent; exit"#)
         try await display.key("return")
         let updated = await waitForVersion(60)
         if !updated, let image = display.capture(),
