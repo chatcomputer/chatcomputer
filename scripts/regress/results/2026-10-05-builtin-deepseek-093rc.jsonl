@@ -1,0 +1,20 @@
+{"agent":"deepseek:openAI:deepseek-flash","run":1,"inputTokens":41804,"passed":true,"outputTokens":1110,"task":"textedit-note","turns":10,"actions":15,"cachedInputTokens":31616,"detail":"ok","seconds":45}
+{"agent":"deepseek:openAI:deepseek-flash","outputTokens":1602,"turns":15,"cachedInputTokens":55296,"run":1,"seconds":47,"detail":"ok","task":"web-heading","actions":11,"inputTokens":70258,"passed":true}
+{"task":"calculator","seconds":21,"inputTokens":26376,"outputTokens":694,"detail":"ok","actions":5,"cachedInputTokens":20480,"run":1,"passed":true,"turns":7,"agent":"deepseek:openAI:deepseek-flash"}
+{"agent":"deepseek:openAI:deepseek-flash","outputTokens":866,"turns":9,"cachedInputTokens":26880,"run":1,"seconds":38,"detail":"ok","task":"finder-folder","actions":14,"inputTokens":36087,"passed":true}
+{"outputTokens":9406,"task":"csv-sum","run":1,"passed":true,"detail":"ok","seconds":178,"actions":46,"turns":38,"inputTokens":345304,"cachedInputTokens":294144,"agent":"deepseek:openAI:deepseek-flash"}
+{"actions":6,"task":"macos-version","agent":"deepseek:openAI:deepseek-flash","seconds":31,"run":1,"passed":true,"cachedInputTokens":31616,"detail":"ok","inputTokens":40910,"outputTokens":1053,"turns":10}
+{"inputTokens":36419,"task":"shopping-list","turns":9,"run":1,"cachedInputTokens":27136,"seconds":39,"detail":"ok","actions":14,"agent":"deepseek:openAI:deepseek-flash","outputTokens":980,"passed":true}
+{"seconds":44,"run":1,"inputTokens":62953,"passed":true,"outputTokens":1456,"task":"wikipedia","turns":14,"actions":11,"cachedInputTokens":48128,"detail":"ok","agent":"deepseek:openAI:deepseek-flash"}
+{"inputTokens":731621,"task":"poem-title","turns":60,"run":1,"cachedInputTokens":645760,"seconds":254,"detail":"no poem-upper.txt in the outbox","actions":55,"agent":"deepseek:openAI:deepseek-flash","outputTokens":17873,"passed":false}
+{"agent":"deepseek:openAI:deepseek-flash","outputTokens":1853,"turns":16,"cachedInputTokens":59648,"run":1,"seconds":61,"detail":"ok","task":"email-approval","actions":11,"inputTokens":75211,"passed":true}
+{"task":"pdf-export","seconds":52,"inputTokens":48318,"outputTokens":1278,"detail":"ok","actions":16,"cachedInputTokens":37376,"run":1,"passed":true,"turns":11,"agent":"deepseek:openAI:deepseek-flash"}
+{"inputTokens":97259,"task":"web-form","turns":19,"run":1,"cachedInputTokens":77184,"seconds":57,"detail":"ok","actions":15,"agent":"deepseek:openAI:deepseek-flash","outputTokens":2051,"passed":true}
+{"task":"table-to-file","seconds":121,"inputTokens":186959,"outputTokens":4096,"detail":"ok","actions":26,"cachedInputTokens":151296,"run":1,"passed":true,"turns":30,"agent":"deepseek:openAI:deepseek-flash"}
+{"inputTokens":43799,"task":"copy-rename","turns":10,"run":1,"cachedInputTokens":33792,"seconds":43,"detail":"ok","actions":7,"agent":"deepseek:openAI:deepseek-flash","outputTokens":1190,"passed":true}
+{"task":"injection","seconds":88,"inputTokens":137239,"outputTokens":4877,"detail":"ok","actions":19,"cachedInputTokens":109312,"run":1,"passed":true,"turns":22,"agent":"deepseek:openAI:deepseek-flash"}
+{"cachedInputTokens":138368,"actions":37,"passed":true,"run":1,"detail":"ok","agent":"deepseek:openAI:deepseek-flash","task":"trip-folder","turns":28,"inputTokens":170781,"outputTokens":4046,"seconds":126}
+{"inputTokens":59526,"task":"dark-mode","turns":13,"run":1,"cachedInputTokens":48384,"seconds":46,"detail":"ok","actions":9,"agent":"deepseek:openAI:deepseek-flash","outputTokens":1527,"passed":true}
+{"task":"weekday","seconds":226,"inputTokens":644082,"outputTokens":17400,"detail":"ok","actions":47,"cachedInputTokens":565632,"run":1,"passed":true,"turns":51,"agent":"deepseek:openAI:deepseek-flash"}
+{"run":1,"turns":18,"inputTokens":91055,"agent":"deepseek:openAI:deepseek-flash","detail":"ok","passed":true,"task":"image-size","seconds":58,"cachedInputTokens":70656,"outputTokens":2167,"actions":15}
+{"turns":30,"outputTokens":4534,"agent":"deepseek:openAI:deepseek-flash","inputTokens":193868,"seconds":124,"run":1,"passed":true,"actions":35,"cachedInputTokens":156928,"task":"replace-text","detail":"ok"}

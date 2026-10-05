@@ -211,6 +211,7 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 | P5 网络访问（2026-10-04） | ✅ | guest 能访问宿主上监听所有网卡的服务（经网关 192.168.64.1 或宿主局域网 IP），访问不到只监听 127.0.0.1 的服务；能上外网。已写入 PRIVACY.md |
 | 宿主休眠后 guest 黑屏（2026-10-04） | ✅ 已修复 | 宿主休眠几小时后，guest 显示器处于休眠且锁屏，agent 截图报 "No display to capture"，宿主发来的鼠标移动和按键都唤不醒。agent 在 health 里发现锁屏或显示器休眠时调用 `IOPMAssertionDeclareUserActivity` 唤醒显示器；宿主每 5 秒查一次 health，所以运行中的 guest 不再锁屏（`pmset displaysleepnow` 实测）。锁屏状态下 agent 自我更新会签名校验失败，所以先解锁再更新 |
 | 授权登记被晚到的重置删除（2026-10-05） | ✅ 已修复 | agent 申请权限前用 `tccutil reset` 清理旧签名的残留记录；tccd 在 tccutil 返回约 2.7 秒后才执行重置，期间登记的申请随即被删除（日志里 Modify 之后紧跟 Delete），「设备控制」列表始终为空。改为每个进程只清理一次、清理后等 4 秒再申请。另：新 guest 的 22 端口可连通时 sshd 可能还不响应（banner exchange 超时），连接阶段的失败改为重试 |
+| 首个任务的桌面（2026-10-05） | ✅ 已修复 | 安装后第一个任务开始时，系统设置还开着（授权结束时 Cmd+Q 打到了别的 App，关机后又被「登录时重新打开窗口」恢复），且 agent 第一次截图会弹出录屏确认框。改为授权后先点系统设置的侧边栏再退出并核对；第 5 步关机前主动截一次图并由宿主点掉确认框。同一个计算器任务从 116 秒降到 66 秒 |
 | 关机 | ✅（修复后） | `VZVirtualMachine.requestStop()` 在 macOS guest 里只弹出"确定要关机吗"对话框，**永远不会自己完成**，会让"冻结金镜像"一步卡死。已改为 agent 发送 loginwindow 的 `aevtrsdn` 事件（无需授权，对话框 60 秒后自动关机；有辅助功能权限时立即确认），实测 66 秒干净关机 |
 | 公证 | ✅ | Developer ID + hardened runtime + 时间戳，公证 Accepted，已装订，Gatekeeper：`Notarized Developer ID`（`scripts/release.sh`） |
 

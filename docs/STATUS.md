@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-04，对应 **0.9.2**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
+更新于 2026-10-04，对应 **0.9.3**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -245,6 +245,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.9.3 | 2026-10-05 | 首个任务从干净桌面开始（安装时关掉系统设置、预先处理录屏确认框）；安装中切走时 Dock 图标跳动提醒。发布前完整测试：两次从零安装、0.9.2 升级、输入 3/3、DeepSeek 回归 19/20、Claude Code 20/20、1 小时长跑 0 崩溃 |
 | 0.9.2 | 2026-10-05 | 修复首次安装：授权时 agent 先清理旧记录、系统晚 3 秒才执行，删掉了刚登记的申请，导致「设备控制」列表一直为空；新虚拟机 SSH 握手超时不再中断安装 |
 | 0.9.1 | 2026-10-05 | 设置窗口改为 Xcode 式侧边栏五页（模型、Coding Agents、虚拟机、隐私与数据、关于），已保存的 Key 可逐个删除 |
 | 0.9.0 | 2026-10-04 | 1.0 候选版：驱动修复、agent 自动更新、模型出错重试与暂停、宿主休眠处理、安装流程修复、诊断导出、隐私说明、聊天界面与铺满的虚拟机画面；源码公开，项目网站上线 |

@@ -1,6 +1,7 @@
 import AppKit
 import ChatCore
 import GuestBridge
+import HostControl
 import SwiftUI
 import UniformTypeIdentifiers
 import VMKit
@@ -76,11 +77,15 @@ extension AppModel {
             }
             // The next part types and clicks into the virtual Mac from this Mac, which only reaches it while this
             // app is in front: macOS doesn't let a background app take the focus.
+            var attention: Int?
             while !NSApp.isActive {
                 onboarding.detail = "Click this window to continue: the next step operates the virtual Mac's screen, which only works while Chat Computer is in front."
+                // Someone who switched away during setup gets a bouncing Dock icon rather than a silent wait.
+                if attention == nil { attention = NSApp.requestUserAttention(.criticalRequest) }
                 devLog("onboarding: waiting for the app to be in front")
                 try await Task.sleep(for: .seconds(1))
             }
+            if let attention { NSApp.cancelUserAttentionRequest(attention) }
             await unlockGuestIfLocked()
             do {
                 try await grantPermissionsAutomatically()
@@ -97,6 +102,26 @@ extension AppModel {
             onboarding.isWorking = false
             onboarding.detail = "Automatic setup stopped: \(error)\n\n" + Self.permissionInstructions
         }
+    }
+
+    /// The clean starting point should greet the first task with an empty desktop. The agent's first screenshot
+    /// makes macOS ask whether it may keep recording the screen: take one now and answer it from the host, so the
+    /// answer is part of the saved machine. And System Settings, left open by the permission step, would reopen
+    /// at every login.
+    func tidyGuestBeforeFreezing() async {
+        guard let vm, let bridge, let view = guestView, await bridge.isConnected else { return }
+        let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+        _ = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                         deadline: Date().addingTimeInterval(10), command: .screenshot(region: nil)))
+        for _ in 0..<5 {
+            try? await Task.sleep(for: .seconds(2))
+            if await ConsentPrompt.approveIfShown(on: display) {
+                devLog("onboarding: answered the screen recording prompt")
+                break
+            }
+        }
+        let grant = PermissionGrant(display: display, prepare: { _ in }, isGranted: { _ in true }, restartAgent: {}, password: { "" })
+        try? await grant.quitSystemSettings()
     }
 
     static let permissionInstructions = """
@@ -172,6 +197,8 @@ extension AppModel {
 
             case .freezeImage:
                 guard let vm else { return }
+                onboarding.detail = "Tidying up the virtual Mac…"
+                await tidyGuestBeforeFreezing()
                 onboarding.detail = "Shutting down the virtual Mac…"
                 let bridge = self.bridge
                 try await vm.shutDown(viaGuest: bridge.map { bridge in

@@ -38,9 +38,20 @@ public struct PermissionGrant {
         for kind in [PermissionKind.accessibility, .screenRecording] {
             try await grant(kind)
         }
-        // Leave the guest desktop as we found it.
-        if let screen = try? read(), screen.contains("System Settings") {
+        try await quitSystemSettings()
+    }
+
+    /// Leaves the guest desktop as we found it. System Settings is often not the frontmost app by now (the agent
+    /// relaunched for screen recording), so Cmd+Q alone could miss it; and an app left open reopens at the next
+    /// login, greeting every task. Click its sidebar first to bring it forward, quit it, and check it went.
+    public func quitSystemSettings() async throws {
+        for _ in 0..<3 {
+            guard let screen = try? read(), screen.contains("Wi-Fi"),
+                  let sidebar = screen.first("Bluetooth") ?? screen.first("Network") else { return }
+            display.click(sidebar.center)
+            try await Task.sleep(for: .seconds(1))
             try await display.key("cmd+q")
+            try await Task.sleep(for: .seconds(2))
         }
     }
 
