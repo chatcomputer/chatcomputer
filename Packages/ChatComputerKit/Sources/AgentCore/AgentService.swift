@@ -204,18 +204,26 @@ enum GuestShutdown {
 /// Puts the agent into the privacy list and opens the matching pane, so whoever grants the
 /// permission (the user, or the host via `HostControl`) only has to flip one switch.
 enum PermissionSetup {
+    /// Permissions this agent process has already cleared once.
+    @MainActor private static var cleared: Set<String> = []
+
     @MainActor
     static func prepare(_ kind: PermissionKind) {
         // Only called while the permission is missing. An entry left by a build with a different
         // signature looks granted in the list but does not apply to this binary; clear it so the
         // prompt below registers this one (observed on macOS 27 after replacing an ad hoc build).
-        let reset = Process()
-        reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
-        reset.arguments = ["reset", kind.tccService, Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"]
-        try? reset.run()
-        reset.waitUntilExit()
-        // A request right after the reset can be dropped (observed for screen recording on macOS 27).
-        Thread.sleep(forTimeInterval: 0.5)
+        // tccd applies the reset a few seconds after tccutil returns (2.7 s measured on 27.0.1): a request
+        // made sooner was registered and then deleted by the late reset, so the agent never appeared in the
+        // list, on every retry. So: clear once per process, and wait for the reset to land before asking.
+        if !cleared.contains(kind.tccService) {
+            cleared.insert(kind.tccService)
+            let reset = Process()
+            reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            reset.arguments = ["reset", kind.tccService, Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"]
+            try? reset.run()
+            reset.waitUntilExit()
+            Thread.sleep(forTimeInterval: 4)
+        }
 
         let pane: String
         switch kind {

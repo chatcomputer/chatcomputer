@@ -210,6 +210,7 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 | 跨进程面板的输入（2026-10-03） | ⚠️ 已绕开 | 保存对话框、Go to Folder、Spotlight、查找栏这类跨进程面板：**只要按过 Cmd 或 Ctrl 组合键（包括打开对话框的 Cmd+S），之后的普通打字全部丢失，直到在面板里点一下**；Shift、Option 组合和方向键不受影响，移动鼠标也不能恢复。表现为文件存成 `Untitled.txt`、Spotlight「不接受输入」。`save_file` 已改为：等对话框出现后先点名称框，用 ↓ 加 Shift+↑ 全选（不用 Cmd+A），打字后读屏核对，再同样处理 Go to Folder；没看到对话框就不打字（以前 Cmd+A 和文件名会落进文档）。根因可能是驱动把按键的 flags 整个覆盖、去掉了系统默认的 `0x20000100`（含 NX_NONCOALESCED），尚未验证 |
 | P5 网络访问（2026-10-04） | ✅ | guest 能访问宿主上监听所有网卡的服务（经网关 192.168.64.1 或宿主局域网 IP），访问不到只监听 127.0.0.1 的服务；能上外网。已写入 PRIVACY.md |
 | 宿主休眠后 guest 黑屏（2026-10-04） | ✅ 已修复 | 宿主休眠几小时后，guest 显示器处于休眠且锁屏，agent 截图报 "No display to capture"，宿主发来的鼠标移动和按键都唤不醒。agent 在 health 里发现锁屏或显示器休眠时调用 `IOPMAssertionDeclareUserActivity` 唤醒显示器；宿主每 5 秒查一次 health，所以运行中的 guest 不再锁屏（`pmset displaysleepnow` 实测）。锁屏状态下 agent 自我更新会签名校验失败，所以先解锁再更新 |
+| 授权登记被晚到的重置删除（2026-10-05） | ✅ 已修复 | agent 申请权限前用 `tccutil reset` 清理旧签名的残留记录；tccd 在 tccutil 返回约 2.7 秒后才执行重置，期间登记的申请随即被删除（日志里 Modify 之后紧跟 Delete），「设备控制」列表始终为空。改为每个进程只清理一次、清理后等 4 秒再申请。另：新 guest 的 22 端口可连通时 sshd 可能还不响应（banner exchange 超时），连接阶段的失败改为重试 |
 | 关机 | ✅（修复后） | `VZVirtualMachine.requestStop()` 在 macOS guest 里只弹出"确定要关机吗"对话框，**永远不会自己完成**，会让"冻结金镜像"一步卡死。已改为 agent 发送 loginwindow 的 `aevtrsdn` 事件（无需授权，对话框 60 秒后自动关机；有辅助功能权限时立即确认），实测 66 秒干净关机 |
 | 公证 | ✅ | Developer ID + hardened runtime + 时间戳，公证 Accepted，已装订，Gatekeeper：`Notarized Developer ID`（`scripts/release.sh`） |
 

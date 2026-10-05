@@ -43,7 +43,18 @@ public struct GuestProvisioner: Sendable {
         try stageBootstrapFiles(spec: spec, agentApp: agentApp, pairingToken: pairingToken)
 
         let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet, attempts: waitMinutes * 30)
-        try await runSSH(user: spec.guestUsername, host: address, password: password, script: Self.bootstrapScript)
+        // The port can accept connections before sshd answers: on a fresh guest the first connection timed out
+        // "during banner exchange". Failures before the script starts are retried; nothing has run yet.
+        var attempt = 0
+        while true {
+            do {
+                try await runSSH(user: spec.guestUsername, host: address, password: password, script: Self.bootstrapScript)
+                break
+            } catch VMError.bootstrapFailed(let message) where attempt < 5 && Self.isConnectionFailure(message) {
+                attempt += 1
+                try await Task.sleep(for: .seconds(10))
+            }
+        }
         // Stored only once the guest has it: a failed attempt must not orphan the agent an earlier
         // attempt installed (it would be rejected forever, and SSH is already off by then).
         try secrets.write(pairingToken, for: SecretAccount.pairingToken(vmID: spec.id))
@@ -194,6 +205,13 @@ public struct GuestProvisioner: Sendable {
             let message = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
             throw VMError.bootstrapFailed(message.isEmpty ? "ssh exit \(process.terminationStatus)" : message)
         }
+    }
+
+    /// SSH failed before running anything on the guest: sshd was not ready to talk yet.
+    static func isConnectionFailure(_ message: String) -> Bool {
+        let text = message.lowercased()
+        return ["banner exchange", "connection refused", "connection reset", "connection timed out",
+                "operation timed out", "connection closed by", "no route to host"].contains { text.contains($0) }
     }
 
     static func randomSecret() -> String {

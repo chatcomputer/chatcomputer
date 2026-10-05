@@ -52,3 +52,14 @@ import Testing
     }
 }
 #endif
+
+#if os(macOS)
+@Suite struct SSHRetryTests {
+    @Test func onlyConnectionFailuresAreRetried() {
+        #expect(GuestProvisioner.isConnectionFailure("Connection timed out during banner exchange\nConnection to 192.168.65.12 port 22 timed out"))
+        #expect(GuestProvisioner.isConnectionFailure("ssh: connect to host 192.168.65.2 port 22: Connection refused"))
+        #expect(!GuestProvisioner.isConnectionFailure("Permission denied (keyboard-interactive,password)."))
+        #expect(!GuestProvisioner.isConnectionFailure("launchctl: Bootstrap failed: 5: Input/output error"))
+    }
+}
+#endif
