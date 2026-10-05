@@ -174,7 +174,9 @@ final class ExternalControl {
             case "closeSheets": model.showingSnapshots = false; model.showingSharedFolders = false
             case "collapse": model.setPanelCollapsed(true)
             case "expand": model.setPanelCollapsed(false)
-            case "settings": model.settingsRequest += 1
+            case "settings":
+                if let pane = request.arguments["pane"]?.stringValue.flatMap(SettingsPane.init(rawValue:)) { model.settingsPane = pane }
+                model.settingsRequest += 1
             case "closeSettings": NSApp.windows.first { $0.title.contains("Settings") || $0.identifier?.rawValue.contains("Settings") == true }?.close()
             case "wake":
                 guard let view = model.guestView else { return .error("no guest view") }

@@ -6,6 +6,8 @@ import SwiftUI
 /// Used in the last onboarding step and in Settings.
 struct ModelSettingsForm: View {
     @Environment(AppModel.self) private var model
+    /// Settings lists every saved key with a way to remove it; onboarding doesn't.
+    var showsSavedKeys = false
     /// Called after a successful save.
     var onSaved: () -> Void = {}
 
@@ -14,6 +16,7 @@ struct ModelSettingsForm: View {
     @State private var apiKey = ""
     @State private var savedKeySuffix: String?
     @State private var status: Status = .idle
+    @State private var savedKeys: [(provider: ProviderPreset, suffix: String)] = []
 
     enum Status: Equatable {
         case idle
@@ -25,59 +28,95 @@ struct ModelSettingsForm: View {
     private var provider: ProviderPreset? { ModelCatalog.provider(settings.providerID) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Provider", selection: Binding(get: { settings.providerID }, set: selectProvider)) {
-                ForEach(ModelCatalog.providers) { Text($0.name).tag($0.id) }
-            }
-
-            if let provider, provider.protocols.count > 1 {
-                Picker("Protocol", selection: Binding(get: { settings.protocolKind }, set: selectProtocol)) {
-                    ForEach(provider.protocols) { Text($0.displayName).tag($0) }
+        Form {
+            Section {
+                Picker("Provider", selection: Binding(get: { settings.providerID }, set: selectProvider)) {
+                    ForEach(ModelCatalog.providers) { Text($0.name).tag($0.id) }
                 }
-                .pickerStyle(.segmented)
-            }
-
-            TextField("Endpoint", text: $settings.baseURL)
-                .textFieldStyle(.roundedBorder)
-                .font(.callout.monospaced())
-
-            if let provider, !provider.models.isEmpty, !customModel {
-                Picker("Model", selection: Binding(get: { settings.model }, set: selectModel)) {
-                    ForEach(provider.models) { preset in
-                        Text(preset.note.isEmpty ? preset.name : "\(preset.name) — \(preset.note)").tag(preset.id)
+                if let provider, provider.protocols.count > 1 {
+                    Picker("Protocol", selection: Binding(get: { settings.protocolKind }, set: selectProtocol)) {
+                        ForEach(provider.protocols) { Text($0.displayName).tag($0) }
                     }
-                    Divider()
-                    Text("Other model…").tag(Self.otherTag)
                 }
-            } else {
-                TextField("Model ID", text: $settings.model)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.callout.monospaced())
-                if let provider, !provider.models.isEmpty {
-                    Button("Choose from the list") {
-                        customModel = false
-                        settings.model = provider.models.first?.id ?? ""
+                if let provider, !provider.models.isEmpty, !customModel {
+                    Picker("Model", selection: Binding(get: { settings.model }, set: selectModel)) {
+                        ForEach(provider.models) { preset in
+                            Text(preset.note.isEmpty ? preset.name : "\(preset.name) — \(preset.note)").tag(preset.id)
+                        }
+                        Divider()
+                        Text("Other model…").tag(Self.otherTag)
                     }
-                    .buttonStyle(.link)
+                } else {
+                    LabeledContent("Model") {
+                        HStack {
+                            TextField("Model ID", text: $settings.model, prompt: Text("model-id"))
+                                .labelsHidden()
+                                .font(.body.monospaced())
+                                .multilineTextAlignment(.trailing)
+                            if let provider, !provider.models.isEmpty {
+                                Button("List") {
+                                    customModel = false
+                                    settings.model = provider.models.first?.id ?? ""
+                                }
+                                .help("Choose from the models this provider offers")
+                            }
+                        }
+                    }
+                }
+            } header: {
+                Text("Provider")
+            } footer: {
+                if let notes = provider?.notes, !notes.isEmpty { Text(notes) }
+            }
+
+            Section("Connection") {
+                LabeledContent("Endpoint") {
+                    TextField("Endpoint", text: $settings.baseURL, prompt: Text("https://"))
+                        .labelsHidden()
+                        .font(.body.monospaced())
+                        .multilineTextAlignment(.trailing)
+                }
+                LabeledContent("API key") {
+                    SecureField("API key", text: $apiKey,
+                                prompt: Text(savedKeySuffix.map { "Saved, ends in …\($0)" } ?? "Paste your key"))
+                        .labelsHidden()
+                        .multilineTextAlignment(.trailing)
+                }
+                if let page = provider?.keyPage, !page.isEmpty, let url = URL(string: page) {
+                    LabeledContent("Don't have a key?") { Link("Get one from \(provider?.name ?? "the provider")", destination: url) }
                 }
             }
 
-            SecureField(savedKeySuffix.map { "API key (saved: …\($0))" } ?? "API key", text: $apiKey)
-                .textFieldStyle(.roundedBorder)
-            if let page = provider?.keyPage, !page.isEmpty, let url = URL(string: page) {
-                Link("Get an API key", destination: url).font(.caption)
+            Section {
+                HStack {
+                    statusView
+                    Spacer()
+                    Button(status == .testing ? "Testing…" : "Save and Test") { Task { await saveAndTest() } }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(status == .testing || settings.model.isEmpty || (apiKey.isEmpty && savedKeySuffix == nil))
+                }
+            } footer: {
+                Text(footnote)
             }
 
-            HStack {
-                Button(status == .testing ? "Testing…" : "Save and test") { Task { await saveAndTest() } }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(status == .testing || settings.model.isEmpty || (apiKey.isEmpty && savedKeySuffix == nil))
-                Spacer()
+            if showsSavedKeys, !savedKeys.isEmpty {
+                Section {
+                    ForEach(savedKeys, id: \.provider.id) { entry in
+                        LabeledContent {
+                            Button("Remove", role: .destructive) { removeKey(for: entry.provider) }
+                        } label: {
+                            Text(entry.provider.name)
+                            Text("Ends in …\(entry.suffix)" + (entry.provider.id == model.modelSettings.providerID ? " · in use" : ""))
+                        }
+                    }
+                } header: {
+                    Text("Saved Keys")
+                } footer: {
+                    Text("Each provider's key is kept separately, in a file only your account can read. Removing one doesn't revoke it; do that on the provider's site.")
+                }
             }
-            statusView
-
-            Text(footnote).font(.caption).foregroundStyle(.secondary)
         }
+        .formStyle(.grouped)
         .onAppear(perform: load)
     }
 
@@ -85,18 +124,21 @@ struct ModelSettingsForm: View {
 
     @ViewBuilder private var statusView: some View {
         switch status {
-        case .idle, .testing: EmptyView()
+        case .testing: ProgressView().controlSize(.small)
+        case .idle:
+            if model.modelSettings == settings, savedKeySuffix != nil {
+                Label("In use", systemImage: "checkmark.circle").foregroundStyle(.secondary).font(.callout)
+            }
         case .ok(let message): Label(message, systemImage: "checkmark.circle.fill").foregroundStyle(.green).font(.callout)
         case .failed(let message): Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.callout)
         }
     }
 
     private var footnote: String {
-        var parts = ["The key stays on this Mac, in a file only your account can read. While a task runs, screenshots and text from the virtual Mac are sent to the provider you choose."]
+        var parts = ["Save and Test sends a short request to check the key and the model. While a task runs, screenshots and text from the virtual Mac go to this provider."]
         if provider?.isClaude == false {
             parts.append("The model must accept images and call tools.")
         }
-        if let notes = provider?.notes, !notes.isEmpty { parts.append(notes) }
         return parts.joined(separator: " ")
     }
 
@@ -110,6 +152,16 @@ struct ModelSettingsForm: View {
 
     private func refreshSavedKey() {
         savedKeySuffix = (try? model.secrets.read(settings.secretAccount))?.suffix(4).description
+        savedKeys = ModelCatalog.providers.compactMap { preset in
+            guard let key = try? model.secrets.read(ModelSettings.preset(preset).secretAccount), !key.isEmpty else { return nil }
+            return (preset, String(key.suffix(4)))
+        }
+    }
+
+    private func removeKey(for preset: ProviderPreset) {
+        try? model.secrets.delete(ModelSettings.preset(preset).secretAccount)
+        if preset.id == settings.providerID { status = .idle }
+        refreshSavedKey()
     }
 
     private func selectProvider(_ id: String) {

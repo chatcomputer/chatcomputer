@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-04，对应 **0.9.0**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
+更新于 2026-10-04，对应 **0.9.1**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -245,6 +245,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.9.1 | 2026-10-05 | 设置窗口改为 Xcode 式侧边栏五页（模型、Coding Agents、虚拟机、隐私与数据、关于），已保存的 Key 可逐个删除 |
 | 0.9.0 | 2026-10-04 | 1.0 候选版：驱动修复、agent 自动更新、模型出错重试与暂停、宿主休眠处理、安装流程修复、诊断导出、隐私说明、聊天界面与铺满的虚拟机画面；源码公开，项目网站上线 |
 | 0.2.0 | 2026-10-03 | 任务退出后可继续、实时进度、缓存命中约 85%、10 个任务的回归集（内置 agent 与 Claude Code）、自动处理录屏授权弹窗与锁屏、新装的虚拟机不再锁屏；不再兼容 0.1.x 的钥匙串 |
 | 0.1.2 | 2026-10-02 | 外部 coding agent（`chatcomputer` 命令行与 MCP）、右侧面板收起、共享文件夹与聊天附件、退出时挂起虚拟机、密钥改存文件、单实例与虚拟机目录锁 |

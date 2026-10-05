@@ -11,51 +11,63 @@ struct CodingAgentsSettings: View {
     private var command: String { installedAt == nil ? "\"\(executable)\"" : "chatcomputer" }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Coding agents on this Mac can see and operate the virtual Mac with the `chatcomputer` command, or as an MCP server. They follow the same rules as the built-in agent: click the screen to take over at any time.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if let holder = model.externalHolder {
-                Label("\(holder) is controlling the virtual Mac", systemImage: "terminal.fill").foregroundStyle(Color.accentColor)
-            }
-
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Command line tool").font(.headline)
-                if let installedAt {
-                    Label("Installed: \(installedAt)", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                } else {
-                    HStack {
-                        Button("Install chatcomputer Command") { install() }
-                        Text("Links it into a folder on your PATH.").font(.caption).foregroundStyle(.secondary)
+        Form {
+            Section {
+                LabeledContent("Status") {
+                    if let holder = model.externalHolder {
+                        Label("\(holder) is controlling the virtual Mac", systemImage: "terminal.fill").foregroundStyle(Color.accentColor)
+                    } else {
+                        Text("No coding agent connected").foregroundStyle(.secondary)
                     }
+                }
+                LabeledContent {
+                    if let installedAt {
+                        Label(abbreviated(installedAt), systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    } else {
+                        Button("Install") { install() }
+                    }
+                } label: {
+                    Text("Command line tool")
+                    Text("chatcomputer, linked into a folder on your PATH")
                 }
                 if let installMessage {
                     Text(installMessage).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
                 }
+            } header: {
+                Text("Command Line")
+            } footer: {
+                Text("Coding agents on this Mac can see and operate the virtual Mac with the chatcomputer command, or as an MCP server. They follow the same rules as the built-in agent: one controller at a time, and clicking the screen takes over.")
             }
 
-            Snippet(title: "Tell your agent (add to CLAUDE.md or AGENTS.md)", text: """
-                A macOS virtual machine is available through Chat Computer. To use a real Mac desktop (GUI apps, \
-                browsers, UI tests), run `\(command) help` first, then use its commands: take a screenshot, act, \
-                and take another screenshot to check. Release control when done.
-                """)
-            Text("Give each agent either the command or the MCP server, not both: the same tools twice waste its context. Agents that can run shell commands work best with the command.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Snippet(title: "Claude Code (MCP)", text: "claude mcp add chatcomputer -- \(command) mcp")
-            Snippet(title: "Codex (~/.codex/config.toml)", text: """
-                [mcp_servers.chatcomputer]
-                command = "\(installedAt ?? executable)"
-                args = ["mcp"]
-                """)
-            Snippet(title: "Other MCP clients (JSON)", text: """
-                "chatcomputer": { "command": "\(installedAt ?? executable)", "args": ["mcp"] }
-                """)
+            Section {
+                Snippet(title: "Add to CLAUDE.md or AGENTS.md", text: """
+                    A macOS virtual machine is available through Chat Computer. To use a real Mac desktop (GUI apps, \
+                    browsers, UI tests), run `\(command) help` first, then use its commands: take a screenshot, act, \
+                    and take another screenshot to check. Release control when done.
+                    """)
+            } header: {
+                Text("Tell Your Agent")
+            } footer: {
+                Text("Agents that can run shell commands work best with the command.")
+            }
+
+            Section {
+                Snippet(title: "Claude Code", text: "claude mcp add chatcomputer -- \(command) mcp")
+                Snippet(title: "Codex (~/.codex/config.toml)", text: """
+                    [mcp_servers.chatcomputer]
+                    command = "\(installedAt ?? executable)"
+                    args = ["mcp"]
+                    """)
+                Snippet(title: "Other MCP clients (JSON)", text: """
+                    "chatcomputer": { "command": "\(installedAt ?? executable)", "args": ["mcp"] }
+                    """)
+            } header: {
+                Text("MCP Server")
+            } footer: {
+                Text("Give each agent either the command or the MCP server, not both: the same tools twice waste its context.")
+            }
         }
-        .padding(.vertical, 4)
+        .formStyle(.grouped)
     }
 
     private func install() {
@@ -77,7 +89,7 @@ private struct Snippet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(title).font(.headline)
+                Text(title)
                 Spacer()
                 Button(copied ? "Copied" : "Copy") {
                     NSPasteboard.general.clearContents()

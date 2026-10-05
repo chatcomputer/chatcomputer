@@ -229,9 +229,8 @@ struct OnboardingView: View {
                 }
                 Divider()
                 if model.onboarding.step == .apiKey {
-                    ScrollView {
-                        ModelSettingsForm(onSaved: { model.finishOnboarding() })
-                    }
+                    ModelSettingsForm(onSaved: { model.finishOnboarding() })
+                        .scrollContentBackground(.hidden)
                 } else {
                     if let progress = model.onboarding.progress { ProgressView(value: progress) }
                     Text(model.onboarding.detail).font(.callout).foregroundStyle(.secondary)

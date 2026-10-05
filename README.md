@@ -48,7 +48,7 @@ others can test GUI apps, installers and websites in a disposable macOS.
 
 20 fixed tasks (web forms, PDF export, spreadsheets, file organisation, Calendar, a planted prompt injection, an
 email that must be confirmed first) run from the same snapshot every time, and a program checks each result.
-Results for 0.9.0 (every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
+Results for 0.9 (every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
 
 | Agent | Passed | Median turns per task |
 |---|---|---|

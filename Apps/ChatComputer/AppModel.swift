@@ -100,6 +100,8 @@ final class AppModel {
         transcript.append(ChatItem(role: .status, text: text))
     }
 
+    /// The pane shown in the Settings window.
+    var settingsPane: SettingsPane? = .model
     /// Bumped to open the Settings window from code (SwiftUI only opens it from a view).
     var settingsRequest = 0
     /// Files to attach to the next task; copied into its inbox when it starts.

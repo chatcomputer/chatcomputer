@@ -113,19 +113,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-struct SettingsView: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        Form {
-            Section("Model") {
-                ModelSettingsForm()
-            }
-            Section("Coding agents") {
-                CodingAgentsSettings()
-            }
-        }
-        .formStyle(.grouped)
-        .frame(width: 520)
-    }
-}
