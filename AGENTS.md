@@ -3,6 +3,9 @@
 Guidance for coding agents (Claude Code, Codex, and others) working in this repository. Read
 [README.md](README.md) for the layout and [docs/STATUS.md](docs/STATUS.md) for what works and what is next.
 
+The repository is public. The current release is 0.9.0, the 1.0 candidate: features are frozen until 1.0, so
+prefer fixing, testing and documenting over adding capabilities.
+
 ## Workflow
 
 - **Commit straight to `main`** until the first stable release. Don't use feature branches or pull requests.
@@ -13,6 +16,10 @@ Guidance for coding agents (Claude Code, Codex, and others) working in this repo
   - probe results go in `docs/ROADMAP.md` §5.1
   - the current state and the plan go in `docs/STATUS.md`
   - task checkboxes go in `TODO.md`
+  - regression results go in `scripts/regress/results/` (JSONL, one file per run set)
+- Related repositories: the website is `chatcomputer/chatcomputer.github.io` (static; regenerate its
+  `results.json` with `scripts/regress/site-results.py`), and organisation-wide issue templates and policies
+  live in `chatcomputer/.github`.
 
 ## Build and test
 
@@ -59,13 +66,19 @@ Before claiming a change works, run the layer that exercises it:
    Release builds must use the same Developer ID. Replace the agent bundle; never overwrite it in place,
    or code signing kills the running binary.
 6. **Guest input must look like hardware.** Shortcuts press and release modifier keys with device flag
-   bits. Text is typed as real key presses where the US layout has the character. Out-of-process panels
-   such as the save dialog drop anything else.
+   bits. Text is typed as real key presses where the US layout has the character. Every key event keeps the
+   bits a real keyboard sets (`NativeDriver.preservedFlagBits`, including NX_NONCOALESCED): without them,
+   out-of-process panels such as the save dialog and Spotlight drop typing after any Cmd or Ctrl shortcut.
 7. **The guest agent updates itself from the app.** On connect the app compares the agent's version
-   ("0.9.0 (6)", with the build number) to the one it bundles and, when the guest is idle, replaces it through
+   ("0.9.0 (24)", with the build number) to the one it bundles and, when the guest is idle, replaces it through
    the bootstrap share. Snapshots keep the agent they were taken with, so restoring an old one updates it again.
    Bump `CURRENT_PROJECT_VERSION` for every build you put in a guest.
-8. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
+8. **A shared folder caches names in the guest.** A file or folder deleted and recreated on the host under the
+   same name reads as stale or missing in a running guest. Give new content a new name (`AgentStaging` stages
+   each agent update in its own folder) or delete-then-create each file; never rename over an existing one.
+9. **The guest's clock lags after a snapshot restore.** Files it writes carry that time; compare files by
+   fingerprint, not modification time (`SaveDialog.fingerprints`).
+10. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
    agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
    (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.
 
@@ -81,7 +94,7 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_DEV_TASK` | Submit this task once the guest is ready |
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |
 | `CC_DEV_CONTINUE=1` | Continue a task restored from the last session once the guest is ready |
-| `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs |
+| `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs and tests (`dev_ui` actions include `submit`, `cancel`, `continue`, `hostSleep`, `hostWake`, `diagnostics`, `snapshots`, `settings`) |
 
 To drive the app's own VM from `cc-harness`, quit the app and set
 `CC_VM_BUNDLE="$HOME/Library/Application Support/ChatComputer/ChatComputer.vm"`; both read the bundle's `secrets.json`.
@@ -93,4 +106,7 @@ Only one process can run a VM bundle at a time (it is locked). Coding agents can
 - The guest is a disposable test machine, but treat its prompts carefully. Decline permission requests
   the task doesn't need.
 - Never type real credentials into the guest. Only use the guest's own test password, from `secrets.json`.
-- Releases are outward-facing. Publish to GitHub Releases only when the user asks.
+- Before taking screenshots for docs or the website, clear the guest's notifications and permission prompts,
+  and don't show the user's own snapshots or files.
+- Releases are outward-facing. Publish to GitHub Releases only when the user asks. A release is
+  `scripts/release.sh` (notarized), a `vX.Y.Z` tag, and `gh release create` with Chinese notes and the zip's SHA-256.
