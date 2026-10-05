@@ -31,14 +31,12 @@ struct ChatComputerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     private var model: AppModel { delegate.model }
 
+    // The main window is AppKit (`MainWindowController`, made by the app delegate); SwiftUI keeps Settings and the
+    // menu commands, which act on the whole app.
     var body: some Scene {
-        WindowGroup("Chat Computer") {
-            RootView()
-                .environment(model)
+        Settings {
+            SettingsView().environment(model)
         }
-        // Sized for a landscape guest screen plus the side panel; onboarding and the main view share it.
-        .defaultSize(WorkspaceMetrics.defaultContentSize)
-        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(before: .toolbar) {
                 Button(model.isPanelCollapsed ? "Show Chat" : "Hide Chat") { model.setPanelCollapsed(!model.isPanelCollapsed) }
@@ -74,10 +72,6 @@ struct ChatComputerApp: App {
                 Button("Export Diagnostics…") { Task { await Diagnostics.export(model) } }
             }
         }
-
-        Settings {
-            SettingsView().environment(model)
-        }
     }
 }
 
@@ -97,6 +91,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         source.setEventHandler { RunLoop.main.perform { NSApp.terminate(nil) } }
         source.resume()
         terminationSignal = source
+        showMainWindow()
+    }
+
+    private var mainWindow: MainWindowController?
+
+    func showMainWindow() {
+        if mainWindow == nil { mainWindow = MainWindowController(model: model) }
+        mainWindow?.showWindow(nil)
+        mainWindow?.window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Clicking the Dock icon brings the window back (it is never closed without quitting, but may be minimised).
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showMainWindow()
+        return true
     }
 
     /// One window, one virtual Mac: closing the window quits (and so saves the VM).

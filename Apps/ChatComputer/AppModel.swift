@@ -10,7 +10,7 @@ import Orchestrator
 import VMKit
 import Virtualization
 
-struct ChatItem: Identifiable, Equatable, Codable {
+struct ChatItem: Identifiable, Hashable, Codable {
     /// `status` lines (who controls the Mac, the VM resumed, the agent updated) replace each other; see `appendStatus`.
     enum Role: String, Codable { case user, agent, action, system, status }
     var id = UUID()

@@ -147,4 +147,4 @@
 - **`ArchitectureTests`**：用测试强制模块依赖边界（例如编排层不准 import VMKit）。我们可以加一个同类测试。
 - **本地 mock LLM HTTP 服务**：让 App 的 UI 测试不依赖真实 API。
 - **macOS UI 测试脚本**（启动、发消息、设置页）：等界面稳定后（M2），给 `ChatComputer.app` 加一套。
-- **聊天组件拆成独立的包**（SwiftConversationUI 的做法）：做 Markdown 和流式输出时，把聊天面板拆成 `ChatUI` 模块，便于单独预览和测试。
+- ~~聊天组件拆成独立的包~~：0.9.4 改用 MarkdownView 渲染、ListViewKit 做列表（均为 MIT），聊天代码在 `Apps/ChatComputer/MainWindow/`。

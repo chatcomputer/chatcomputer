@@ -136,7 +136,8 @@ to break; [docs/STATUS.md](docs/STATUS.md) has what works, the measurements, kno
 
 ```
 project.yml                  XcodeGen spec (targets, entitlements, Info.plist, version)
-Apps/ChatComputer/           host app (SwiftUI): guest screen, chat, onboarding, model settings
+Apps/ChatComputer/           host app: main window in AppKit (MainWindow/: guest screen, chat with MarkdownView and
+                             ListViewKit, toolbar); onboarding, Settings and sheets in SwiftUI
 Apps/ChatComputerAgent/      guest agent (menu bar app inside the VM)
 Packages/ChatComputerKit/    all logic, as a local Swift package
   BridgeProtocol             host⇄guest messages and framing (vsock)

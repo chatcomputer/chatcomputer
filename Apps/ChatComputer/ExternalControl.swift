@@ -184,6 +184,22 @@ final class ExternalControl {
                 display.move(to: CGPoint(x: 600, y: 400))
                 display.move(to: CGPoint(x: 640, y: 420))
             case "diagnostics": await Diagnostics.export(model)
+            case "appearance":
+                // light, dark, or anything else for the system setting.
+                NSApp.appearance = switch request.arguments["mode"]?.stringValue {
+                case "light": NSAppearance(named: .aqua)
+                case "dark": NSAppearance(named: .darkAqua)
+                default: nil
+                }
+            case "appendChat":
+                // Test content for the transcript: role (user, agent, action, system, status), text, emphasis, count.
+                let role = request.arguments["role"]?.stringValue.flatMap(ChatItem.Role.init(rawValue:)) ?? .agent
+                let emphasis = request.arguments["emphasis"]?.stringValue.flatMap(ChatItem.Emphasis.init(rawValue:))
+                let text = request.arguments["text"]?.stringValue ?? ""
+                let count = Int(request.arguments["count"]?.stringValue ?? "1") ?? 1
+                for index in 0..<max(1, count) {
+                    model.transcript.append(ChatItem(role: role, text: count > 1 ? "\(text) #\(index + 1)" : text, emphasis: emphasis))
+                }
             case "cancel": model.cancel()
             case "continue": model.resume()
             case "hostSleep": model.hostWillSleep()
