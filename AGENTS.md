@@ -18,8 +18,8 @@ prefer fixing, testing and documenting over adding capabilities.
   - task checkboxes go in `TODO.md`
   - regression results go in `scripts/regress/results/` (JSONL, one file per run set)
 - Related repositories: the website is `chatcomputer/chatcomputer.github.io` (static; regenerate its
-  `results.json` with `scripts/regress/site-results.py`), and organisation-wide issue templates and policies
-  live in `chatcomputer/.github`.
+  `results.json` with `scripts/regress/site-results.py`), the Homebrew cask is `chatcomputer/homebrew-tap`
+  (`scripts/update-cask.sh`), and organisation-wide issue templates and policies live in `chatcomputer/.github`.
 
 ## Build and test
 
@@ -116,4 +116,5 @@ Only one process can run a VM bundle at a time (it is locked). Coding agents can
 - Before taking screenshots for docs or the website, clear the guest's notifications and permission prompts,
   and don't show the user's own snapshots or files.
 - Releases are outward-facing. Publish to GitHub Releases only when the user asks. A release is
-  `scripts/release.sh` (notarized), a `vX.Y.Z` tag, and `gh release create` with Chinese notes and the zip's SHA-256.
+  `scripts/release.sh` (notarized), a `vX.Y.Z` tag, `gh release create` with Chinese notes and the zip's SHA-256,
+  then `scripts/update-cask.sh X.Y.Z` for the Homebrew cask in `chatcomputer/homebrew-tap`.

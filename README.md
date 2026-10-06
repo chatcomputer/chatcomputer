@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="https://chatcomputer.github.io">Website</a> ·
-  <a href="https://github.com/chatcomputer/chatcomputer/releases/latest">Download</a> ·
+  <a href="https://github.com/chatcomputer/chatcomputer/releases">Download</a> ·
   <a href="docs/STATUS.md">Status</a> ·
   <a href="PRIVACY.md">Privacy</a>
 </p>
@@ -61,8 +61,15 @@ A 4.3-hour soak test (161 tasks, 53 quits mid-task, 30 snapshot restores) had no
 
 ## Install
 
-Download `ChatComputer.zip` from [Releases](https://github.com/chatcomputer/chatcomputer/releases/latest), unzip it
-and move **Chat Computer.app** to Applications. It is signed with a Developer ID and notarized by Apple.
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask chatcomputer/tap/chatcomputer
+```
+
+This also puts the `chatcomputer` command on your PATH; `brew upgrade --cask chatcomputer` updates it. Or download
+`ChatComputer.zip` from [Releases](https://github.com/chatcomputer/chatcomputer/releases), unzip it and move
+**ChatComputer.app** to Applications. It is signed with a Developer ID and notarized by Apple.
 
 | Requirement | |
 |---|---|
