@@ -10,7 +10,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/chatcomputer/chatcomputer/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/chatcomputer/chatcomputer?include_prereleases&label=release"></a>
   <img alt="macOS 27" src="https://img.shields.io/badge/macOS-27-black?logo=apple">
   <img alt="Apple silicon" src="https://img.shields.io/badge/Apple%20silicon-required-555">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-blue"></a>
@@ -48,7 +47,7 @@ others can test GUI apps, installers and websites in a disposable macOS.
 
 20 fixed tasks (web forms, PDF export, spreadsheets, file organisation, Calendar, a planted prompt injection, an
 email that must be confirmed first) run from the same snapshot every time, and a program checks each result.
-Results for 0.9 (every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
+Results (every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
 
 | Agent | Passed | Median turns per task |
 |---|---|---|
