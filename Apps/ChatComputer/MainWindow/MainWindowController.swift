@@ -1,13 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// The one main window, in AppKit: the guest screen on the left, the chat (or its rail) on the right, and a toolbar.
-/// Setup (onboarding) is still the SwiftUI `OnboardingView`, shown in the same window until the virtual Mac is ready.
+/// The one main window, in AppKit: the guest screen on the left, a panel on the right (the setup steps, then the chat
+/// or its rail), and a toolbar.
 @MainActor
 final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
     let model: AppModel
     private var observers: [Observing] = []
-    private var showingWorkspace: Bool?
     private let toolbarItems = ToolbarItems()
 
     init(model: AppModel) {
@@ -29,7 +28,14 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
 
-        observers.append(Observing { [weak self] in self?.updateContent() })
+        let content = WorkspaceViewController(model: model)
+        // The bridge hosts what is still SwiftUI: sheets, the error alert, opening Settings, start-up work.
+        let bridge = NSHostingView(rootView: SceneBridge().environment(model))
+        bridge.frame = NSRect(x: 0, y: 0, width: 1, height: 1)
+        content.view.addSubview(bridge)
+        window.contentViewController = content
+        window.setContentSize(size)
+
         observers.append(Observing { [weak self] in self?.updateChrome() })
 
         if !window.setFrameUsingName("MainWindow") { window.center() }
@@ -40,31 +46,15 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
-    // MARK: Content
-
-    /// The workspace once the virtual Mac is set up; the SwiftUI setup steps before that.
-    private func updateContent() {
-        let ready = model.isReady
-        guard ready != showingWorkspace, let window else { return }
-        showingWorkspace = ready
-        let content: NSViewController = ready
-            ? WorkspaceViewController(model: model)
-            : NSHostingController(rootView: OnboardingView().environment(model))
-        // The bridge hosts what is still SwiftUI: sheets, the error alert, opening Settings, start-up work.
-        let bridge = NSHostingView(rootView: SceneBridge().environment(model))
-        bridge.frame = NSRect(x: 0, y: 0, width: 1, height: 1)
-        content.view.addSubview(bridge)
-        let frame = window.frame
-        window.contentViewController = content
-        window.setFrame(frame, display: true)
-        fitHeightToGuest()
-    }
+    // MARK: Title and toolbar
 
     private func updateChrome() {
         guard let window else { return }
         window.subtitle = model.isReady ? statusText : "Setting up · step \(model.onboarding.step.rawValue + 1) of \(OnboardingState.Step.allCases.count)"
         toolbarItems.update(model)
-        if model.isReady { _ = model.isPanelCollapsed; fitHeightToGuest() }
+        // Finishing setup or collapsing the panel changes the panel's width; keep the guest screen's aspect ratio.
+        _ = model.isReady; _ = model.isPanelCollapsed
+        fitHeightToGuest()
     }
 
     private var statusText: String {
@@ -238,7 +228,8 @@ private struct SceneBridge: View {
                 Text(model.errorMessage ?? "")
             }
             .onChange(of: model.settingsRequest) { openSettings() }
-            .task {
+            .task(id: model.isReady) {
+                // Again when setup finishes: boot the new machine and start any development task.
                 guard model.isReady else { return }
                 if model.vm?.state == .stopped { await model.bootVM() }
                 await model.startDevelopmentTaskIfRequested()

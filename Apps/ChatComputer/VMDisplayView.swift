@@ -1,35 +1,11 @@
 import AppKit
-import SwiftUI
 import Virtualization
 
-/// Left pane: the live guest screen. `VZVirtualMachineView` handles framebuffer and manual input;
-/// it is not a semantic automation API (the agent observes through the guest driver instead).
+/// The live guest screen (`GuestStageView` lays it out). `VZVirtualMachineView` handles the framebuffer and manual
+/// input; it is not a semantic automation API (the agent observes through the guest driver instead).
 ///
 /// While the agent holds input, a transparent shield sits on top. Any click or key press on it
 /// is treated as the user taking over (proposal §04), and only then does input reach the guest.
-struct VMDisplayView: NSViewRepresentable {
-    let virtualMachine: VZVirtualMachine?
-    let agentHoldsInput: Bool
-    let onUserIntervention: (String) -> Void
-    /// Hands the underlying view to the model for host-level control (`HostControl.HostDisplay`).
-    var onViewReady: (VZVirtualMachineView) -> Void = { _ in }
-
-    func makeNSView(context: Context) -> VMContainerView {
-        let view = VMContainerView()
-        onViewReady(view.machineView)
-        return view
-    }
-
-    func updateNSView(_ view: VMContainerView, context: Context) {
-        if view.machineView.virtualMachine !== virtualMachine {
-            view.machineView.virtualMachine = virtualMachine
-        }
-        view.shield.isHidden = !agentHoldsInput
-        view.shield.onIntervention = onUserIntervention
-        if agentHoldsInput { view.window?.makeFirstResponder(view.shield) }
-    }
-}
-
 final class VMContainerView: NSView {
     let machineView = VZVirtualMachineView()
     let shield = InputShieldView()

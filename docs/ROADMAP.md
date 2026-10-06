@@ -99,9 +99,9 @@ nic.attachment = VZVmnetNetworkDeviceAttachment(network: network)
 
 ```
 ┌─────────────────────────── Host: ChatComputer.app (macOS 27) ───────────────────────────┐
-│  SwiftUI 双栏窗口                                                                         │
-│  ├─ VMDisplayView (NSViewRepresentable → VZVirtualMachineView + 输入租约遮罩)             │
-│  └─ ChatPanel / TaskPanel / ApprovalSheet / OnboardingFlow                               │
+│  AppKit 主窗口（设置、引导面板、弹窗为 SwiftUI）                                          │
+│  ├─ GuestStageView → VZVirtualMachineView + 输入租约遮罩                                  │
+│  └─ 聊天：ListViewKit 列表 + MarkdownView / 引导面板 / 控制竖栏                           │
 │                                                                                          │
 │  Orchestrator (actor)  ── Policy ── Budget ── ControlLease                               │
 │      │                     │                                                             │

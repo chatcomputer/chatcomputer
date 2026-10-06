@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
-import Virtualization
 
-/// Window geometry shared by onboarding and the main view, so finishing setup never resizes the window:
+/// Main window geometry, the same during setup and after, so finishing setup never resizes the window:
 /// the guest screen on the left at the guest display's aspect ratio, a fixed-width panel on the right.
 enum WorkspaceMetrics {
     static let panelWidth: CGFloat = 380
@@ -14,71 +13,22 @@ enum WorkspaceMetrics {
     static let smallestStage = CGSize(width: 800, height: 500)
     /// Title bar with its toolbar (always shown, so its height never changes). The default window size includes it.
     static let chromeHeight: CGFloat = 52
-    /// Space around the guest screen inside the left pane.
-    static let stagePadding: CGFloat = 0
 
     static var minimumContentSize: CGSize { minimumContentSize(panelWidth: panelWidth) }
 
     static func minimumContentSize(panelWidth: CGFloat) -> CGSize {
-        CGSize(width: smallestStage.width + 2 * stagePadding + 1 + panelWidth, height: smallestStage.height + 2 * stagePadding)
+        CGSize(width: smallestStage.width + 1 + panelWidth, height: smallestStage.height)
     }
 
     /// The largest stage that fits on the main screen with some margin, without exceeding 1280×800.
     static var defaultContentSize: CGSize {
         let visible = NSScreen.main?.visibleFrame.size ?? CGSize(width: 1440, height: 900)
-        let widthLimit = visible.width * 0.92 - panelWidth - 1 - 2 * stagePadding
-        let heightLimit = (visible.height * 0.9 - chromeHeight - 2 * stagePadding) * guestAspect
+        let widthLimit = visible.width * 0.92 - panelWidth - 1
+        let heightLimit = (visible.height * 0.9 - chromeHeight) * guestAspect
         let stageWidth = max(smallestStage.width, min(largestStage.width, widthLimit, heightLimit)).rounded()
         // The toolbar is part of the content area, so the stage fits exactly with no letterbox at the default size.
-        return CGSize(width: stageWidth + 2 * stagePadding + 1 + panelWidth,
-                      height: (stageWidth / guestAspect).rounded() + 2 * stagePadding + chromeHeight)
-    }
-}
-
-/// Guest screen on the left, a fixed-width panel on the right.
-struct Workspace<Stage: View, Panel: View>: View {
-    var panelWidth = WorkspaceMetrics.panelWidth
-    @ViewBuilder var stage: Stage
-    @ViewBuilder var panel: Panel
-
-    var body: some View {
-        HStack(spacing: 0) {
-            stage
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Divider()
-            panel
-                .frame(width: panelWidth)
-                .frame(maxHeight: .infinity, alignment: .top)
-        }
-        .frame(minWidth: WorkspaceMetrics.minimumContentSize(panelWidth: panelWidth).width,
-               minHeight: WorkspaceMetrics.minimumContentSize.height)
-    }
-}
-
-/// The guest display at its own aspect ratio, letterboxed in whatever space the window gives it.
-/// Before a VM exists, the same rectangle shows a placeholder, so the layout looks the same.
-struct GuestStage<Placeholder: View>: View {
-    let virtualMachine: VZVirtualMachine?
-    var aspectRatio: CGFloat = WorkspaceMetrics.guestAspect
-    var agentHoldsInput = false
-    var onUserIntervention: (String) -> Void = { _ in }
-    var onViewReady: (VZVirtualMachineView) -> Void = { _ in }
-    @ViewBuilder var placeholder: Placeholder
-
-    var body: some View {
-        ZStack {
-            Color(nsColor: .underPageBackgroundColor)
-            Group {
-                if let virtualMachine {
-                    VMDisplayView(virtualMachine: virtualMachine, agentHoldsInput: agentHoldsInput,
-                                  onUserIntervention: onUserIntervention, onViewReady: onViewReady)
-                } else {
-                    placeholder
-                }
-            }
-            .aspectRatio(aspectRatio, contentMode: .fit)
-            .padding(WorkspaceMetrics.stagePadding)
-        }
+        return CGSize(width: stageWidth + 1 + panelWidth,
+                      height: (stageWidth / guestAspect).rounded() + chromeHeight)
     }
 }
 

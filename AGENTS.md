@@ -3,7 +3,7 @@
 Guidance for coding agents (Claude Code, Codex, and others) working in this repository. Read
 [README.md](README.md) for the layout and [docs/STATUS.md](docs/STATUS.md) for what works and what is next.
 
-The repository is public. The current release is 0.9.4, a 1.0 candidate: features are frozen until 1.0, so
+The repository is public. The current release is 0.9.5, a 1.0 candidate: features are frozen until 1.0, so
 prefer fixing, testing and documenting over adding capabilities.
 
 ## Workflow
@@ -81,8 +81,10 @@ Before claiming a change works, run the layer that exercises it:
 10. **The main window is AppKit; the rest is SwiftUI.** `MainWindowController` owns the window, its toolbar and
     its aspect-ratio resizing; the chat transcript is a ListViewKit `ListView` whose rows (`ChatRows.swift`)
     render agent messages with MarkdownView. A row's `height` closure and its `layout()` must agree exactly, or rows
-    overlap. AppKit views follow `AppModel` through `Observing`. Onboarding, Settings, the sheets and the error alert
-    stay SwiftUI (`SceneBridge` hosts the sheets and alert inside the AppKit window).
+    overlap. AppKit views follow `AppModel` through `Observing`. The window's content is always
+    `WorkspaceViewController`: one `GuestStageView` on the left, and on the right the setup panel until the guest is
+    ready, then the chat. The setup panel, Settings, the sheets and the error alert stay SwiftUI (`SceneBridge` hosts
+    the sheets and alert inside the AppKit window).
 11. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
    agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
    (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.

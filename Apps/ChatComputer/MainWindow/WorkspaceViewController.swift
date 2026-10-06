@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 import Virtualization
 
-/// The set-up machine's window content: the guest screen on the left, a fixed-width panel on the right (the chat,
-/// or the rail of controls when it is collapsed).
+/// The main window's content: the guest screen on the left, a fixed-width panel on the right. The panel holds the
+/// setup steps until the virtual Mac is ready, then the chat (or the rail of controls when it is collapsed).
 @MainActor
 final class WorkspaceViewController: NSViewController {
     let model: AppModel
@@ -12,6 +12,7 @@ final class WorkspaceViewController: NSViewController {
     private var panelWidth: NSLayoutConstraint!
     private var chat: ChatViewController?
     private var rail: NSView?
+    private var setup: NSView?
     private var observers: [Observing] = []
 
     init(model: AppModel) {
@@ -54,10 +55,22 @@ final class WorkspaceViewController: NSViewController {
     }
 
     private func updatePanel() {
-        let collapsed = model.isPanelCollapsed
+        let ready = model.isReady
+        let collapsed = ready && model.isPanelCollapsed
         panelWidth.constant = collapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth
+        if !ready {
+            removeChat()
+            if rail != nil { rail?.removeFromSuperview(); rail = nil }
+            if setup == nil {
+                let hosting = NSHostingView(rootView: OnboardingPanel().environment(model))
+                embed(hosting)
+                setup = hosting
+            }
+            return
+        }
+        if setup != nil { setup?.removeFromSuperview(); setup = nil }
         if collapsed {
-            if chat != nil { chat?.view.removeFromSuperview(); chat?.removeFromParent(); chat = nil }
+            removeChat()
             if rail == nil {
                 let hosting = NSHostingView(rootView: ControlRail().environment(model))
                 embed(hosting)
@@ -74,6 +87,12 @@ final class WorkspaceViewController: NSViewController {
         }
     }
 
+    private func removeChat() {
+        chat?.view.removeFromSuperview()
+        chat?.removeFromParent()
+        chat = nil
+    }
+
     private func embed(_ view: NSView) {
         view.translatesAutoresizingMaskIntoConstraints = false
         panel.addSubview(view)
@@ -87,7 +106,7 @@ final class WorkspaceViewController: NSViewController {
 }
 
 /// The guest display at its own aspect ratio, centred in whatever space the window gives it, with the placeholder
-/// before the machine exists and the frozen last frame while a snapshot is taken or restored.
+/// before the machine exists (showing setup progress) and the frozen last frame while a snapshot is taken or restored.
 @MainActor
 final class GuestStageView: NSView {
     private let model: AppModel
@@ -118,8 +137,15 @@ final class GuestStageView: NSView {
         display.isHidden = machine == nil
         placeholder.isHidden = machine != nil
         if machine == nil {
-            let title = model.vm?.state == .starting ? "Starting your virtual Mac…" : "Your virtual Mac is off"
-            placeholder.rootView = AnyView(GuestPlaceholder(title: title))
+            if model.isReady {
+                let title = model.vm?.state == .starting ? "Starting your virtual Mac…" : "Your virtual Mac is off"
+                placeholder.rootView = AnyView(GuestPlaceholder(title: title))
+            } else {
+                let working = model.onboarding.isWorking
+                placeholder.rootView = AnyView(GuestPlaceholder(title: "Your virtual Mac will appear here",
+                                                                detail: working ? model.onboarding.detail : "",
+                                                                progress: working ? model.onboarding.progress : nil))
+            }
         }
         let holds = model.agentHoldsInput
         display.shield.isHidden = !holds

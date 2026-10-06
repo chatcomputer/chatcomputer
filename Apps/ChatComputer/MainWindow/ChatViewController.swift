@@ -16,6 +16,9 @@ final class ChatViewController: NSViewController {
     private var observers: [Observing] = []
     private var showsSteps = UserDefaults.standard.bool(forKey: "showSteps")
     private var shownItems: [ChatItem] = []
+    /// When the chat appeared: it settles at its final width just after (the panel expanding, the window fitting).
+    private var appearedAt: Date?
+    private var laidOutWidth: CGFloat = 0
 
     init(model: AppModel) {
         self.model = model
@@ -76,8 +79,29 @@ final class ChatViewController: NSViewController {
     override func viewDidAppear() {
         super.viewDidAppear()
         // A restored chat opens at its latest message.
-        list.scrollToBottom(animated: false)
+        settleAtBottom()
+        appearedAt = Date()
         view.window?.makeFirstResponder(composer.textView)
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        // Rows re-wrap when the width settles after appearing; land on the latest message again.
+        guard view.bounds.width != laidOutWidth else { return }
+        laidOutWidth = view.bounds.width
+        guard let appearedAt, Date().timeIntervalSince(appearedAt) < 1 else { return }
+        // After the list has laid out its rows at the new width.
+        DispatchQueue.main.async { [weak self] in self?.settleAtBottom() }
+    }
+
+    /// Jumps to the end without animation. Rows off screen only have estimated heights until they are measured, so
+    /// one jump lands at the estimated end; measuring the rows there moves it. Repeat until it holds.
+    private func settleAtBottom() {
+        for _ in 0..<8 {
+            list.scrollToBottom(animated: false)
+            list.layoutSubtreeIfNeeded()
+            if list.isScrolledToBottom(tolerance: 1) { break }
+        }
     }
 
     private func separator() -> NSView {
@@ -101,7 +125,7 @@ final class ChatViewController: NSViewController {
         }
         shownItems = items
         if following || appendedByUser, !list.isUserInteractingWithScroll {
-            list.scrollToBottom(animated: !isAppend ? false : true)
+            if isAppend { list.scrollToBottom(animated: true) } else { settleAtBottom() }
         }
     }
 

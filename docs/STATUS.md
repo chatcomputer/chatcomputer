@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-05，对应 **0.9.4**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
+更新于 2026-10-05，对应 **0.9.5**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -246,6 +246,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.9.5 | 2026-10-05 | 首次引导也用 AppKit 主窗口：左侧虚拟机画面与平时同一个视图，右侧先是引导面板、装好后换成聊天，删去旧的 SwiftUI 布局代码；展开聊天后准确停在最新一条消息。测试：单元测试 114 个、从零安装（10.2 分钟，首个任务 50 秒）、0.9.4 升级（agent 自动更新）并完成任务 |
 | 0.9.4 | 2026-10-05 | 主窗口改用 AppKit：聊天按 Markdown 渲染（MarkdownView：代码高亮、表格、列表、链接），列表用 ListViewKit 复用行（5000 条消息仍流畅），结果和提问显示成卡片，悬停复制原文；工具栏和窗口比例由 AppKit 管理，设置和引导仍是 SwiftUI。发布前完整测试：从零安装（9.7 分钟）、0.9.3 升级、输入 3/3、DeepSeek 回归 20/20、Claude Code 20/20、半小时长跑 0 崩溃（10 个任务完成 9 个，1 个停在模型提问）|
 | 0.9.3 | 2026-10-05 | 首个任务从干净桌面开始（安装时关掉系统设置、预先处理录屏确认框）；安装中切走时 Dock 图标跳动提醒。发布前完整测试：两次从零安装、0.9.2 升级、输入 3/3、DeepSeek 回归 19/20、Claude Code 20/20、1 小时长跑 0 崩溃 |
 | 0.9.2 | 2026-10-05 | 修复首次安装：授权时 agent 先清理旧记录、系统晚 3 秒才执行，删掉了刚登记的申请，导致「设备控制」列表一直为空；新虚拟机 SSH 握手超时不再中断安装 |

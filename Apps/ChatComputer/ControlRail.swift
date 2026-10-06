@@ -104,25 +104,3 @@ private struct RailButton: View {
         .onHover { isHovering = $0 }
     }
 }
-
-/// Top of the expanded panel: who has control, and the button that collapses the panel.
-struct PanelHeader: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let control = ControlState(model)
-        HStack(spacing: 8) {
-            Label(control.title, systemImage: control.symbol)
-                .font(.callout.weight(.medium))
-                .foregroundStyle(control.isAgent ? Color.accentColor : .secondary)
-                .lineLimit(1)
-            Spacer()
-            Button("Hide Chat", systemImage: "sidebar.right") { model.setPanelCollapsed(true) }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.borderless)
-                .help("Hide Chat (⌃⌘S): keep only the controls, e.g. while a coding agent works")
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 36)
-    }
-}

@@ -235,68 +235,59 @@ extension AppModel {
     }
 }
 
-struct OnboardingView: View {
+/// The setup steps, in the main window's right-hand panel until the virtual Mac is ready. The guest screen on the
+/// left is the window's own `GuestStageView`, visible from first boot on, so the permission step happens in place.
+struct OnboardingPanel: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Workspace {
-            // The guest screen is visible from first boot on, so the permission step happens in place.
-            GuestStage(virtualMachine: model.vm?.virtualMachine, aspectRatio: model.guestAspectRatio,
-                       onViewReady: { model.guestView = $0 }) {
-                GuestPlaceholder(title: "Your virtual Mac will appear here",
-                                 detail: model.onboarding.isWorking ? model.onboarding.detail : "",
-                                 progress: model.onboarding.isWorking ? model.onboarding.progress : nil)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Set up your Chat Computer").font(.title2.bold())
+            ForEach(OnboardingState.Step.allCases, id: \.self) { step in
+                Label(step.title, systemImage: icon(for: step))
+                    .foregroundStyle(step == model.onboarding.step ? .primary : .secondary)
             }
-        } panel: {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Set up your Chat Computer").font(.title2.bold())
-                ForEach(OnboardingState.Step.allCases, id: \.self) { step in
-                    Label(step.title, systemImage: icon(for: step))
-                        .foregroundStyle(step == model.onboarding.step ? .primary : .secondary)
-                }
-                Divider()
-                if model.onboarding.step == .apiKey {
-                    ModelSettingsForm(onSaved: { model.finishOnboarding() })
-                        .scrollContentBackground(.hidden)
+            Divider()
+            if model.onboarding.step == .apiKey {
+                ModelSettingsForm(onSaved: { model.finishOnboarding() })
+                    .scrollContentBackground(.hidden)
+            } else {
+                if let progress = model.onboarding.progress { ProgressView(value: progress) }
+                Text(model.onboarding.detail).font(.callout).foregroundStyle(.secondary)
+                if model.onboarding.step == .grantPermissions {
+                    // Host-level control does the clicks; the user watches it happen on the left.
+                    Button(model.onboarding.isWorking ? "Working…" : "Grant automatically") {
+                        Task { await model.grantPermissionsStep() }
+                    }
+                    .disabled(model.onboarding.isWorking)
+                    .keyboardShortcut(.defaultAction)
+                    Button("I granted them myself") {
+                        Task { await model.runOnboardingStep() }
+                    }
+                    .buttonStyle(.link)
+                    .disabled(model.onboarding.isWorking)
                 } else {
-                    if let progress = model.onboarding.progress { ProgressView(value: progress) }
-                    Text(model.onboarding.detail).font(.callout).foregroundStyle(.secondary)
-                    if model.onboarding.step == .grantPermissions {
-                        // Host-level control does the clicks; the user watches it happen on the left.
-                        Button(model.onboarding.isWorking ? "Working…" : "Grant automatically") {
-                            Task { await model.grantPermissionsStep() }
-                        }
-                        .disabled(model.onboarding.isWorking)
-                        .keyboardShortcut(.defaultAction)
-                        Button("I granted them myself") {
-                            Task { await model.runOnboardingStep() }
+                    Button(model.onboarding.isWorking ? "Working…" : "Continue") {
+                        Task { await model.runOnboardingStep() }
+                    }
+                    .disabled(model.onboarding.isWorking)
+                    .keyboardShortcut(.defaultAction)
+                    if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
+                        // A restore image downloaded earlier (about 26 GB) saves the download.
+                        Button(model.onboarding.restoreImage.map { "Using \($0.lastPathComponent)" } ?? "Use a downloaded restore image…") {
+                            let panel = NSOpenPanel()
+                            panel.allowedContentTypes = [UTType(filenameExtension: "ipsw") ?? .data]
+                            panel.message = "Choose a macOS restore image (.ipsw)"
+                            if panel.runModal() == .OK { model.onboarding.restoreImage = panel.url }
                         }
                         .buttonStyle(.link)
-                        .disabled(model.onboarding.isWorking)
-                    } else {
-                        Button(model.onboarding.isWorking ? "Working…" : "Continue") {
-                            Task { await model.runOnboardingStep() }
-                        }
-                        .disabled(model.onboarding.isWorking)
-                        .keyboardShortcut(.defaultAction)
-                        if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
-                            // A restore image downloaded earlier (about 26 GB) saves the download.
-                            Button(model.onboarding.restoreImage.map { "Using \($0.lastPathComponent)" } ?? "Use a downloaded restore image…") {
-                                let panel = NSOpenPanel()
-                                panel.allowedContentTypes = [UTType(filenameExtension: "ipsw") ?? .data]
-                                panel.message = "Choose a macOS restore image (.ipsw)"
-                                if panel.runModal() == .OK { model.onboarding.restoreImage = panel.url }
-                            }
-                            .buttonStyle(.link)
-                        }
                     }
                 }
-                Spacer()
             }
-            .padding(24)
+            Spacer()
         }
-        .navigationTitle("Chat Computer")
-        .navigationSubtitle("Setting up · step \(model.onboarding.step.rawValue + 1) of \(OnboardingState.Step.allCases.count)")
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             model.resumeOnboarding()
             model.startAutoOnboardingIfRequested()
