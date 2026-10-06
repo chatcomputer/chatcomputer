@@ -8,7 +8,7 @@ enum ChatLayout {
     static let side: CGFloat = 14
     static let gap: CGFloat = 5          // above and below every row
     static let cardPadding: CGFloat = 10
-    static let cardHeader: CGFloat = 22  // "Result" / "Waiting for your reply"
+    static let cardHeader: CGFloat = 22  // "Waiting for your reply"
     static let fileButton: CGFloat = 26
     static let bubblePadding: CGFloat = 9
     static let bubbleMaxShare: CGFloat = 0.85
@@ -16,28 +16,56 @@ enum ChatLayout {
     static let copyColumn: CGFloat = 24
 
     static var theme: MarkdownTheme { .default }
+
+    /// The agent's folded steps: smaller, quieter, and tight, so a long task reads as a log rather than a letter.
+    static let stepsTheme: MarkdownTheme = {
+        var theme = MarkdownTheme.default
+        let size = NSFont.smallSystemFontSize + 1
+        theme.fonts.body = .systemFont(ofSize: size)
+        theme.fonts.bold = .systemFont(ofSize: size, weight: .semibold)
+        theme.fonts.italic = NSFontManager.shared.convert(.systemFont(ofSize: size), toHaveTrait: .italicFontMask)
+        theme.fonts.title = .systemFont(ofSize: size, weight: .semibold)
+        theme.fonts.largeTitle = .systemFont(ofSize: size, weight: .semibold)
+        theme.fonts.codeInline = .monospacedSystemFont(ofSize: size - 1, weight: .regular)
+        theme.fonts.code = .monospacedSystemFont(ofSize: size - 1, weight: .regular)
+        theme.colors.body = .secondaryLabelColor
+        theme.colors.code = .secondaryLabelColor
+        theme.spacings.paragraph = 6
+        theme.spacings.general = 4
+        theme.spacings.list = 4
+        theme.spacings.final = 0
+        return theme
+    }()
 }
 
-/// Parsed Markdown per message, so measuring and showing a row parse it once. Keyed by text: a message's text only
-/// changes when it is a different message.
+/// How a piece of Markdown is set: as a message, or among the agent's folded steps.
+enum MarkdownStyle: String {
+    case message, steps
+
+    @MainActor var theme: MarkdownTheme { self == .steps ? ChatLayout.stepsTheme : ChatLayout.theme }
+}
+
+/// Parsed Markdown per message, so measuring and showing a row parse it once. Keyed by style and text: a message's
+/// text only changes when it is a different message.
 @MainActor
 enum MarkdownCache {
     private static var contents: [String: MarkdownContent] = [:]
     private static var heights: [String: CGFloat] = [:]
     private static let sizer = MarkdownTextView()
 
-    static func content(for text: String) -> MarkdownContent {
-        if let cached = contents[text] { return cached }
-        let content = MarkdownContent(markdown: delimitingURLs(in: text), theme: ChatLayout.theme)
+    static func content(for text: String, style: MarkdownStyle = .message) -> MarkdownContent {
+        let key = "\(style.rawValue)|\(text)"
+        if let cached = contents[key] { return cached }
+        let content = MarkdownContent(markdown: delimitingURLs(in: text), theme: style.theme)
         if contents.count > 2000 { contents.removeAll(); heights.removeAll() }
-        contents[text] = content
+        contents[key] = content
         return content
     }
 
-    static func height(for text: String, width: CGFloat) -> CGFloat {
-        let key = "\(Int(width))|\(text)"
+    static func height(for text: String, width: CGFloat, style: MarkdownStyle = .message) -> CGFloat {
+        let key = "\(style.rawValue)|\(Int(width))|\(text)"
         if let cached = heights[key] { return cached }
-        sizer.setContentImmediately(content(for: text), theme: ChatLayout.theme)
+        sizer.setContentImmediately(content(for: text, style: style), theme: style.theme)
         let height = ceil(sizer.boundingSize(for: width).height)
         heights[key] = height
         return height
@@ -85,7 +113,7 @@ enum MarkdownCache {
 
 // MARK: Agent messages (Markdown)
 
-/// What the agent says: along the way as plain Markdown, and the task's result or a question as a card.
+/// What the agent says: its answer as plain Markdown, and a question that waits for you as a card.
 final class MarkdownRow: ListRowView {
     private let card = NSView()
     private let header = NSTextField(labelWithString: "")
@@ -117,35 +145,31 @@ final class MarkdownRow: ListRowView {
     @available(*, unavailable)
     required init?(coder _: NSCoder) { fatalError() }
 
+    /// A question waits for you, so it stands out as a card. A result needs no frame: the folded steps above it
+    /// already set it apart.
+    private static func isCard(_ item: ChatItem) -> Bool { item.emphasis == .question }
+
     static func height(for item: ChatItem, width: CGFloat) -> CGFloat {
         let inner = textWidth(for: item, rowWidth: width)
         var height = MarkdownCache.height(for: item.text, width: inner)
-        if item.emphasis != nil { height += 2 * ChatLayout.cardPadding + ChatLayout.cardHeader }
+        if isCard(item) { height += 2 * ChatLayout.cardPadding + ChatLayout.cardHeader }
         height += CGFloat(item.files.count) * ChatLayout.fileButton
         return height + 2 * ChatLayout.gap
     }
 
     private static func textWidth(for item: ChatItem, rowWidth: CGFloat) -> CGFloat {
         // A card's copy button sits in its header row; a plain message keeps a column free for it.
-        let inset = ChatLayout.side * 2 + (item.emphasis != nil ? 2 * ChatLayout.cardPadding : ChatLayout.copyColumn)
+        let inset = ChatLayout.side * 2 + (isCard(item) ? 2 * ChatLayout.cardPadding : ChatLayout.copyColumn)
         return max(40, rowWidth - inset)
     }
 
     func show(_ item: ChatItem) {
         self.item = item
         body.setContentImmediately(MarkdownCache.content(for: item.text), theme: ChatLayout.theme)
-        switch item.emphasis {
-        case .result:
-            header.stringValue = "✓  Result"
-            header.textColor = .systemGreen
-        case .question:
-            header.stringValue = "?  Waiting for your reply"
-            header.textColor = .systemOrange
-        case nil:
-            header.stringValue = ""
-        }
-        header.isHidden = item.emphasis == nil
-        card.isHidden = item.emphasis == nil
+        header.stringValue = "?  Waiting for your reply"
+        header.textColor = .systemOrange
+        header.isHidden = !Self.isCard(item)
+        card.isHidden = !Self.isCard(item)
         files.show(item.files) { [weak self] in self?.onExport?($0) }
         needsLayout = true
     }
@@ -163,7 +187,7 @@ final class MarkdownRow: ListRowView {
         let textWidth = Self.textWidth(for: item, rowWidth: width)
         let textHeight = MarkdownCache.height(for: item.text, width: textWidth)
         var y = ChatLayout.gap
-        if item.emphasis != nil {
+        if Self.isCard(item) {
             let cardHeight = 2 * ChatLayout.cardPadding + ChatLayout.cardHeader + textHeight
             card.frame = NSRect(x: ChatLayout.side, y: y, width: width - 2 * ChatLayout.side, height: cardHeight)
             effectiveAppearance.performAsCurrentDrawingAppearance {
@@ -182,7 +206,7 @@ final class MarkdownRow: ListRowView {
         }
         files.frame = NSRect(x: ChatLayout.side, y: y, width: width - 2 * ChatLayout.side,
                              height: CGFloat(item.files.count) * ChatLayout.fileButton)
-        copyButton.frame = NSRect(x: width - ChatLayout.side - 20, y: ChatLayout.gap + (item.emphasis != nil ? 6 : -2), width: 18, height: 18)
+        copyButton.frame = NSRect(x: width - ChatLayout.side - 20, y: ChatLayout.gap + (Self.isCard(item) ? 6 : -2), width: 18, height: 18)
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -231,7 +255,6 @@ final class ProcessRow: ListRowView {
         header.target = self
         header.action = #selector(toggle)
         rule.wantsLayer = true
-        body.alphaValue = 0.8
         body.linkHandler = { payload, _, _ in
             if case .url(let url) = payload { NSWorkspace.shared.open(url) }
         }
@@ -251,7 +274,7 @@ final class ProcessRow: ListRowView {
 
     static func height(for process: ChatProcess, width: CGFloat) -> CGFloat {
         var height = 2 * ChatLayout.gap + headerHeight
-        if let text = bodyText(for: process) { height += bodyGap + MarkdownCache.height(for: text, width: bodyWidth(width)) }
+        if let text = bodyText(for: process) { height += bodyGap + MarkdownCache.height(for: text, width: bodyWidth(width), style: .steps) }
         return height
     }
 
@@ -271,7 +294,7 @@ final class ProcessRow: ListRowView {
         header.toolTip = process.isExpanded ? "Hide the steps" : "Show the steps"
         if let text = Self.bodyText(for: process) {
             body.isHidden = false
-            body.setContentImmediately(MarkdownCache.content(for: text), theme: ChatLayout.theme)
+            body.setContentImmediately(MarkdownCache.content(for: text, style: .steps), theme: ChatLayout.stepsTheme)
         } else {
             body.isHidden = true
         }
@@ -295,7 +318,7 @@ final class ProcessRow: ListRowView {
         guard let text = Self.bodyText(for: process) else { return }
         let bodyWidth = Self.bodyWidth(width)
         let y = ChatLayout.gap + Self.headerHeight + Self.bodyGap
-        let height = MarkdownCache.height(for: text, width: bodyWidth)
+        let height = MarkdownCache.height(for: text, width: bodyWidth, style: .steps)
         body.frame = NSRect(x: ChatLayout.side + Self.indent, y: y, width: bodyWidth, height: height)
         rule.frame = NSRect(x: ChatLayout.side + 4, y: y, width: 2, height: height)
         effectiveAppearance.performAsCurrentDrawingAppearance {

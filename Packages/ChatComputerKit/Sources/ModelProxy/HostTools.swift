@@ -21,7 +21,11 @@ public enum HostTools {
                 "required": ["status", "summary", "outputs"],
                 "properties": [
                     "status": ["type": "string", "enum": ["complete", "partial", "failed"]],
-                    "summary": ["type": "string", "description": "What was done, and what is missing if not complete. Write it in the language the user wrote the task in."],
+                    "summary": ["type": "string", "description": """
+                        Your answer to the user, shown as the task's result: what they asked for (as a Markdown table \
+                        or list when they asked for one), and what is missing if not complete. Write it in the same \
+                        language as the user's task: English for a task in English, Chinese for a task in Chinese.
+                        """],
                     "outputs": ["type": "array", "items": ["type": "string"]],
                 ],
             ],
@@ -59,7 +63,7 @@ public enum HostTools {
                 "required": ["kind", "question", "target"],
                 "properties": [
                     "kind": ["type": "string", "enum": ["approval", "login", "information"]],
-                    "question": ["type": "string", "description": "In the language the user wrote the task in."],
+                    "question": ["type": "string", "description": "In the same language as the user's task: English for a task in English, Chinese for a task in Chinese."],
                     "target": ["type": "string", "description": "Exact site, recipient, file or setting affected."],
                 ],
             ],

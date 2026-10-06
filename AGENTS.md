@@ -3,7 +3,7 @@
 Guidance for coding agents (Claude Code, Codex, and others) working in this repository. Read
 [README.md](README.md) for the layout and [docs/STATUS.md](docs/STATUS.md) for what works and what is next.
 
-The repository is public. The current release is 0.9.6, a 1.0 candidate: features are frozen until 1.0, so
+The repository is public. The current release is 0.9.7, a 1.0 candidate: features are frozen until 1.0, so
 prefer fixing, testing and documenting over adding capabilities.
 
 ## Workflow
