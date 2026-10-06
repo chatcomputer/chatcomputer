@@ -37,6 +37,8 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         window.setContentSize(size)
 
         observers.append(Observing { [weak self] in self?.updateChrome() })
+        // Finishing setup can change the guest's shape; collapsing the panel resizes the window itself.
+        observers.append(Observing { [weak self] in _ = self?.model.isReady; self?.fitHeightToGuest() })
 
         if !window.setFrameUsingName("MainWindow") { window.center() }
         window.setFrameAutosaveName("MainWindow")
@@ -52,9 +54,6 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
         guard let window else { return }
         window.subtitle = model.isReady ? statusText : "Setting up · step \(model.onboarding.step.rawValue + 1) of \(OnboardingState.Step.allCases.count)"
         toolbarItems.update(model)
-        // Finishing setup or collapsing the panel changes the panel's width; keep the guest screen's aspect ratio.
-        _ = model.isReady; _ = model.isPanelCollapsed
-        fitHeightToGuest()
     }
 
     private var statusText: String {
@@ -133,15 +132,16 @@ final class MainWindowController: NSWindowController, NSWindowDelegate, NSToolba
     }
 }
 
-/// The toolbar's buttons. The snapshot button is always there, so the title bar keeps one height: a toolbar that
-/// appeared with a task would shrink the guest screen and leave bars beside it.
+/// The toolbar's buttons. The snapshot and chat buttons are always there, so the title bar keeps one height: a toolbar
+/// that appeared with a task would shrink the guest screen and leave bars beside it.
 @MainActor
 private final class ToolbarItems {
     static let control = NSToolbarItem.Identifier("control")
     static let handBack = NSToolbarItem.Identifier("handBack")
     static let cancel = NSToolbarItem.Identifier("cancel")
     static let snapshot = NSToolbarItem.Identifier("snapshot")
-    static let identifiers = [control, handBack, cancel, snapshot]
+    static let chat = NSToolbarItem.Identifier("chat")
+    static let identifiers = [control, handBack, cancel, snapshot, chat]
 
     private var items: [NSToolbarItem.Identifier: NSToolbarItem] = [:]
     private weak var model: AppModel?
@@ -160,6 +160,9 @@ private final class ToolbarItems {
     func update(_ model: AppModel) {
         set(Self.snapshot, title: "Take Snapshot", symbol: "camera", tip: model.snapshotsUnavailableReason ?? "Save the whole virtual Mac now (⌥⌘S)",
             hidden: !model.isReady, enabled: model.canManageSnapshots)
+        let chatTitle = model.isPanelCollapsed ? "Show Chat" : "Hide Chat"
+        set(Self.chat, title: chatTitle, symbol: "sidebar.right",
+            tip: model.isPanelCollapsed ? "Show Chat (⌃⌘S)" : "Hide Chat (⌃⌘S): keep only the controls", hidden: !model.isReady)
         switch model.phase {
         case .running:
             set(Self.control, title: "Pause", symbol: "pause.fill", tip: "Pause the agent (⌘.)", hidden: false)
@@ -192,6 +195,7 @@ private final class ToolbarItems {
         guard let model else { return }
         switch sender.itemIdentifier {
         case Self.snapshot: Task { await model.takeSnapshot() }
+        case Self.chat: model.setPanelCollapsed(!model.isPanelCollapsed)
         case Self.cancel: model.cancel()
         case Self.handBack: model.returnControl()
         case Self.control:

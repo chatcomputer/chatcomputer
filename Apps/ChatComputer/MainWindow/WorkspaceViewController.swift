@@ -13,6 +13,9 @@ final class WorkspaceViewController: NSViewController {
     private var chat: ChatViewController?
     private var rail: NSView?
     private var setup: NSView?
+    /// What the panel shows; nil before the first update, which applies it without animating.
+    private var shownCollapsed: Bool?
+    private var animating = false
     private var observers: [Observing] = []
 
     init(model: AppModel) {
@@ -57,7 +60,6 @@ final class WorkspaceViewController: NSViewController {
     private func updatePanel() {
         let ready = model.isReady
         let collapsed = ready && model.isPanelCollapsed
-        panelWidth.constant = collapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth
         if !ready {
             removeChat()
             if rail != nil { rail?.removeFromSuperview(); rail = nil }
@@ -66,24 +68,70 @@ final class WorkspaceViewController: NSViewController {
                 embed(hosting)
                 setup = hosting
             }
+            panelWidth.constant = WorkspaceMetrics.panelWidth
+            shownCollapsed = false
             return
         }
         if setup != nil { setup?.removeFromSuperview(); setup = nil }
-        if collapsed {
-            removeChat()
-            if rail == nil {
-                let hosting = NSHostingView(rootView: ControlRail().environment(model))
-                embed(hosting)
-                rail = hosting
-            }
-        } else {
-            if rail != nil { rail?.removeFromSuperview(); rail = nil }
-            if chat == nil {
-                let controller = ChatViewController(model: model)
-                addChild(controller)
-                embed(controller.view)
-                chat = controller
-            }
+        guard collapsed != shownCollapsed else { return }
+        let first = shownCollapsed == nil
+        shownCollapsed = collapsed
+        if first || animating { showPanel(collapsed: collapsed); return }
+        animatePanel(collapsed: collapsed)
+    }
+
+    /// The panel's content and width, at once.
+    private func showPanel(collapsed: Bool) {
+        panelWidth.constant = collapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth
+        if collapsed { showRail() } else { showChat() }
+    }
+
+    private func showRail() {
+        removeChat()
+        if rail == nil {
+            let hosting = NSHostingView(rootView: ControlRail().environment(model))
+            embed(hosting)
+            rail = hosting
+        }
+    }
+
+    private func showChat() {
+        if rail != nil { rail?.removeFromSuperview(); rail = nil }
+        if chat == nil {
+            let controller = ChatViewController(model: model)
+            addChild(controller)
+            embed(controller.view)
+            chat = controller
+        }
+    }
+
+    /// Collapsing or expanding changes the window's width by the panel's change, and only the panel moves: the guest
+    /// screen's width is pinned while the window animates, so the panel takes all of it. Expanding keeps the rail
+    /// until the window is wide, so the chat lays out once, at its width.
+    private func animatePanel(collapsed: Bool) {
+        guard let window = view.window, !window.styleMask.contains(.fullScreen) else { showPanel(collapsed: collapsed); return }
+        let target = collapsed ? WorkspaceMetrics.railWidth : WorkspaceMetrics.panelWidth
+        var frame = window.frame
+        frame.size.width += target - panelWidth.constant
+        if let screen = window.screen?.visibleFrame, !collapsed {
+            frame.size.width = min(frame.width, screen.width)
+            if frame.maxX > screen.maxX { frame.origin.x = max(screen.minX, screen.maxX - frame.width) }
+        }
+        if collapsed { showRail() }
+        let pin = stage.widthAnchor.constraint(equalToConstant: stage.frame.width)
+        panelWidth.isActive = false
+        pin.isActive = true
+        animating = true
+        // Out of the observation callback: an animated setFrame runs until the animation ends.
+        DispatchQueue.main.async { [self] in
+            window.setFrame(frame, display: true, animate: true)
+            pin.isActive = false
+            panelWidth.constant = target
+            panelWidth.isActive = true
+            animating = false
+            // The state may have changed again meanwhile; show what it is now.
+            let now = model.isPanelCollapsed
+            if now == collapsed { showPanel(collapsed: now) } else { shownCollapsed = now; animatePanel(collapsed: now) }
         }
     }
 

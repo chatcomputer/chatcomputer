@@ -19,6 +19,8 @@ struct ChatItem: Identifiable, Hashable, Codable {
     var files: [URL] = []
     /// The agent's closing words: the task's result, or a question the user has to answer.
     var emphasis: Emphasis?
+    /// When it was added; missing in chats saved before 0.9.6.
+    var date: Date? = Date()
 
     enum Emphasis: String, Codable { case result, question }
 }
@@ -169,23 +171,13 @@ final class AppModel {
     var unreadMessageCount: Int { isPanelCollapsed ? max(0, messageCount - seenMessageCount) : 0 }
     private var messageCount: Int { transcript.count { $0.role != .action && $0.role != .status } }
 
-    /// Collapses the panel to the rail, or expands it. The window changes width so the guest screen keeps its size.
+    /// Collapses the panel to the rail, or expands it. The main window animates the change, keeping the guest screen
+    /// where it is.
     func setPanelCollapsed(_ collapsed: Bool) {
         guard collapsed != isPanelCollapsed else { return }
-        let delta = WorkspaceMetrics.panelWidth - WorkspaceMetrics.railWidth
-        var frame = guestView?.window?.frame
-        if var target = frame {
-            target.size.width += collapsed ? -delta : delta
-            if !collapsed, let screen = guestView?.window?.screen?.visibleFrame {
-                target.size.width = min(target.width, screen.width)
-                if target.maxX > screen.maxX { target.origin.x = max(screen.minX, screen.maxX - target.width) }
-            }
-            frame = target
-        }
         isPanelCollapsed = collapsed
         seenMessageCount = messageCount
         UserDefaults.standard.set(collapsed, forKey: "panelCollapsed")
-        if let frame { guestView?.window?.setFrame(frame, display: true, animate: true) }
     }
 
     init() {
@@ -671,6 +663,20 @@ final class AppModel {
     }
 
     /// Starts a fresh chat. Not while a task is unfinished.
+    /// The whole chat as Markdown, steps included, on the clipboard.
+    func copyConversation() {
+        let text = transcript.map { item -> String in
+            switch item.role {
+            case .user: "**You:** \(item.text)"
+            case .agent: item.text
+            case .action: "`\(item.text)`"
+            case .system, .status: "_\(item.text)_"
+            }
+        }.joined(separator: "\n\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
     func clearChat() {
         guard !isRunningTask else { return }
         transcript = []

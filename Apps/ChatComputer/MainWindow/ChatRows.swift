@@ -28,7 +28,7 @@ enum MarkdownCache {
 
     static func content(for text: String) -> MarkdownContent {
         if let cached = contents[text] { return cached }
-        let content = MarkdownContent(markdown: text, theme: ChatLayout.theme)
+        let content = MarkdownContent(markdown: delimitingURLs(in: text), theme: ChatLayout.theme)
         if contents.count > 2000 { contents.removeAll(); heights.removeAll() }
         contents[text] = content
         return content
@@ -41,6 +41,45 @@ enum MarkdownCache {
         let height = ceil(sizer.boundingSize(for: width).height)
         heights[key] = height
         return height
+    }
+
+    private static let bareURL = try! NSRegularExpression(
+        pattern: #"(?<![<(\[\w/])https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%\p{L}\p{N}]+"#)
+
+    /// GitHub's autolinks run to the next space, so a URL followed by Chinese text ("…google.com），页面…") takes the
+    /// sentence with it. Marking each bare URL as `<url>`, ended at the first character that is neither a URL
+    /// character nor a letter or digit (full-width punctuation ends it; "wiki/苹果公司" stays whole), stops it there.
+    /// Code is left alone. Only what is shown changes; copying gives the agent's text.
+    static func delimitingURLs(in text: String) -> String {
+        guard text.contains("://") else { return text }
+        var inFence = false
+        return text.components(separatedBy: "\n").map { line in
+            if line.trimmingCharacters(in: .whitespaces).hasPrefix("```") { inFence.toggle(); return line }
+            if inFence { return line }
+            // Outside inline code spans: the even pieces between backticks.
+            return line.components(separatedBy: "`").enumerated().map { index, piece in
+                index.isMultiple(of: 2) ? delimit(piece) : piece
+            }.joined(separator: "`")
+        }.joined(separator: "\n")
+    }
+
+    private static func delimit(_ text: String) -> String {
+        let source = text as NSString
+        var result = ""
+        var last = 0
+        for match in bareURL.matches(in: text, range: NSRange(location: 0, length: source.length)) {
+            var url = source.substring(with: match.range)
+            // Sentence punctuation after a URL, and a closing bracket it didn't open, aren't part of it.
+            while let end = url.last, ".,;:!?'\"".contains(end)
+                    || (end == ")" && url.count(where: { $0 == ")" }) > url.count(where: { $0 == "(" }))
+                    || (end == "]" && url.count(where: { $0 == "]" }) > url.count(where: { $0 == "[" })) {
+                url.removeLast()
+            }
+            result += source.substring(with: NSRange(location: last, length: match.range.location - last))
+            result += "<\(url)>"
+            last = match.range.location + (url as NSString).length
+        }
+        return result + source.substring(from: last)
     }
 }
 
@@ -166,6 +205,116 @@ final class MarkdownRow: ListRowView {
         guard let item else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(item.text, forType: .string)
+    }
+}
+
+// MARK: The agent's work, folded
+
+/// The notes and actions between your message and the agent's answer, as one row: a line with the number of steps
+/// that opens to show them all. While the task works, it shows the latest note; once answered, it folds away.
+final class ProcessRow: ListRowView {
+    static let headerHeight: CGFloat = 22
+    static let indent: CGFloat = 14
+    static let bodyGap: CGFloat = 4
+
+    private let header = NSButton()
+    private let rule = NSView()
+    private let body = MarkdownTextView()
+    private var process: ChatProcess?
+    var onToggle: ((UUID) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        header.isBordered = false
+        header.imagePosition = .imageLeading
+        header.alignment = .left
+        header.target = self
+        header.action = #selector(toggle)
+        rule.wantsLayer = true
+        body.alphaValue = 0.8
+        body.linkHandler = { payload, _, _ in
+            if case .url(let url) = payload { NSWorkspace.shared.open(url) }
+        }
+        for view in [rule, body, header] as [NSView] { addSubview(view) }
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) { fatalError() }
+
+    /// The Markdown under the header: everything when open, the latest note while live, nothing when folded.
+    private static func bodyText(for process: ChatProcess) -> String? {
+        if process.isExpanded { return process.markdown.isEmpty ? nil : process.markdown }
+        return process.state == .live ? process.latestNote : nil
+    }
+
+    private static func bodyWidth(_ width: CGFloat) -> CGFloat { max(40, width - 2 * ChatLayout.side - indent) }
+
+    static func height(for process: ChatProcess, width: CGFloat) -> CGFloat {
+        var height = 2 * ChatLayout.gap + headerHeight
+        if let text = bodyText(for: process) { height += bodyGap + MarkdownCache.height(for: text, width: bodyWidth(width)) }
+        return height
+    }
+
+    func show(_ process: ChatProcess) {
+        self.process = process
+        // While live, the progress line under the list shows the step and a running clock; this row adds the notes.
+        let live = process.state == .live
+        let title = live ? (process.steps == 1 ? "1 step" : "\(process.steps) steps") : process.summary
+        header.attributedTitle = NSAttributedString(string: " " + title, attributes: [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize + 1, weight: .medium),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+        header.image = NSImage(systemSymbolName: process.isExpanded ? "chevron.down" : "chevron.right",
+                               accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 9, weight: .semibold))
+        header.contentTintColor = .secondaryLabelColor
+        header.toolTip = process.isExpanded ? "Hide the steps" : "Show the steps"
+        if let text = Self.bodyText(for: process) {
+            body.isHidden = false
+            body.setContentImmediately(MarkdownCache.content(for: text), theme: ChatLayout.theme)
+        } else {
+            body.isHidden = true
+        }
+        rule.isHidden = !process.isExpanded || body.isHidden
+        needsLayout = true
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        body.textLabelView.clearSelection()
+    }
+
+    override func layout() {
+        super.layout()
+        guard let process else { return }
+        let width = bounds.width
+        let headerX = ChatLayout.side
+        header.sizeToFit()
+        header.frame = NSRect(x: headerX - 2, y: ChatLayout.gap, width: min(header.frame.width + 8, width - headerX - ChatLayout.side),
+                              height: Self.headerHeight)
+        guard let text = Self.bodyText(for: process) else { return }
+        let bodyWidth = Self.bodyWidth(width)
+        let y = ChatLayout.gap + Self.headerHeight + Self.bodyGap
+        let height = MarkdownCache.height(for: text, width: bodyWidth)
+        body.frame = NSRect(x: ChatLayout.side + Self.indent, y: y, width: bodyWidth, height: height)
+        rule.frame = NSRect(x: ChatLayout.side + 4, y: y, width: 2, height: height)
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            rule.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        }
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsLayout = true
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(header.frame, cursor: .pointingHand)
+    }
+
+    @objc private func toggle() {
+        guard let process else { return }
+        onToggle?(process.id)
     }
 }
 

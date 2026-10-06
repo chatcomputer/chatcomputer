@@ -3,19 +3,21 @@ import ChatCore
 import ListViewKit
 import UniformTypeIdentifiers
 
-/// The expanded right panel: who has control, the transcript, live progress, and the composer.
+/// The expanded right panel: the transcript, live progress, and the composer. Who has control is in the window's
+/// subtitle; hiding the chat is a toolbar button.
 @MainActor
 final class ChatViewController: NSViewController {
     let model: AppModel
-    private let list = ListView<ChatItem>()
-    private let header = ChatHeaderView()
+    private let list = ListView<ChatEntry>()
     private let progress = ProgressBar()
     private let footer = ChatFooterView()
     private let attachments = AttachmentStrip()
     private let composer = Composer()
     private var observers: [Observing] = []
     private var showsSteps = UserDefaults.standard.bool(forKey: "showSteps")
-    private var shownItems: [ChatItem] = []
+    private var shownEntries: [ChatEntry] = []
+    /// Processes opened or closed against their default.
+    private var toggledProcesses: Set<UUID> = []
     /// When the chat appeared: it settles at its final width just after (the panel expanding, the window fitting).
     private var appearedAt: Date?
     private var laidOutWidth: CGFloat = 0
@@ -31,7 +33,7 @@ final class ChatViewController: NSViewController {
     override func loadView() {
         let root = DropView()
         root.onDrop = { [weak self] urls in self?.model.attach(urls) }
-        let stack = NSStackView(views: [header, separator(), list, progress, separator(), footer, attachments, composer])
+        let stack = NSStackView(views: [list, progress, separator(), footer, attachments, composer])
         stack.orientation = .vertical
         stack.spacing = 0
         stack.alignment = .width
@@ -49,21 +51,45 @@ final class ChatViewController: NSViewController {
         view = root
 
         let export: (URL) -> Void = { [weak model] url in model?.export(url) }
+        let toggle: (UUID) -> Void = { [weak self] id in self?.toggleProcess(id) }
         list.rows {
+            ListRow(ProcessRow.self)
+                .when { if case .process = $0 { true } else { false } }
+                .estimatedHeight(32)
+                .height { entry, context in
+                    guard case .process(let process) = entry else { return 0 }
+                    return ProcessRow.height(for: process, width: context.width)
+                }
+                .configure { row, entry, _ in
+                    guard case .process(let process) = entry else { return }
+                    row.onToggle = toggle
+                    row.show(process)
+                }
             ListRow(MarkdownRow.self)
-                .when { $0.role == .agent }
+                .when { if case .message(let item) = $0 { item.role == .agent } else { false } }
                 .estimatedHeight(60)
-                .height { item, context in MarkdownRow.height(for: item, width: context.width) }
-                .configure { row, item, _ in row.onExport = export; row.show(item) }
+                .height { entry, context in
+                    guard case .message(let item) = entry else { return 0 }
+                    return MarkdownRow.height(for: item, width: context.width)
+                }
+                .configure { row, entry, _ in
+                    guard case .message(let item) = entry else { return }
+                    row.onExport = export
+                    row.show(item)
+                }
             ListRow(TextRow.self)
                 .estimatedHeight(28)
-                .height { item, context in TextRow.height(for: item, width: context.width) }
-                .configure { row, item, _ in row.onExport = export; row.show(item) }
+                .height { entry, context in
+                    guard case .message(let item) = entry else { return 0 }
+                    return TextRow.height(for: item, width: context.width)
+                }
+                .configure { row, entry, _ in
+                    guard case .message(let item) = entry else { return }
+                    row.onExport = export
+                    row.show(item)
+                }
         }
 
-        header.onCollapse = { [weak model] in model?.setPanelCollapsed(true) }
-        header.onCopyConversation = { [weak self] in self?.copyConversation() }
-        header.onClearChat = { [weak model] in model?.clearChat() }
         footer.showsSteps = showsSteps
         footer.onToggleSteps = { [weak self] in self?.toggleSteps($0) }
         footer.onSharedFolders = { [weak model] in model?.showingSharedFolders = true }
@@ -112,25 +138,30 @@ final class ChatViewController: NSViewController {
 
     // MARK: Updates
 
-    private func updateTranscript() {
-        let items = showsSteps ? model.transcript : model.transcript.filter { $0.role != .action }
-        guard items != shownItems else { return }
-        let following = list.isScrolledToBottom(tolerance: 40) || shownItems.isEmpty
-        let appendedByUser = items.last?.role == .user && items.last?.id != shownItems.last?.id
-        let isAppend = items.count >= shownItems.count && Array(items.prefix(shownItems.count)) == shownItems
-        if isAppend {
-            list.append(contentsOf: items.dropFirst(shownItems.count))
-        } else {
-            list.apply(items)
-        }
-        shownItems = items
-        if following || appendedByUser, !list.isUserInteractingWithScroll {
-            if isAppend { list.scrollToBottom(animated: true) } else { settleAtBottom() }
+    private func updateTranscript(scrollingToBottom: Bool = true) {
+        let entries = ChatEntries.make(from: model.transcript, isWorking: model.phase == .running,
+                                       toggled: toggledProcesses, showsActions: showsSteps)
+        guard entries != shownEntries else { return }
+        let following = list.isScrolledToBottom(tolerance: 40) || shownEntries.isEmpty
+        let appendedByUser = if case .message(let item) = entries.last { item.role == .user && item.id != shownEntries.last?.id }
+            else { false }
+        // Growing at the end (a new message, or the live process gaining a note) scrolls smoothly; anything else jumps.
+        let grows = entries.count >= shownEntries.count
+            && zip(entries.dropLast(), shownEntries.dropLast()).allSatisfy { $0 == $1 }
+        list.apply(entries)
+        shownEntries = entries
+        if scrollingToBottom, following || appendedByUser, !list.isUserInteractingWithScroll {
+            if grows { list.scrollToBottom(animated: true) } else { settleAtBottom() }
         }
     }
 
+    /// Opening or closing a process keeps the view where it is.
+    private func toggleProcess(_ id: UUID) {
+        if toggledProcesses.remove(id) == nil { toggledProcesses.insert(id) }
+        updateTranscript(scrollingToBottom: false)
+    }
+
     private func updateChrome() {
-        header.show(ControlState(model))
         progress.show(model.phase == .running ? model.progress : nil)
         footer.show(phase: phaseText, help: phaseHelp, tokens: model.tokens, cached: model.cachedTokens)
         attachments.show(model.pendingAttachments)
@@ -141,19 +172,6 @@ final class ChatViewController: NSViewController {
         showsSteps = on
         UserDefaults.standard.set(on, forKey: "showSteps")
         updateTranscript()
-    }
-
-    private func copyConversation() {
-        let text = model.transcript.map { item -> String in
-            switch item.role {
-            case .user: "**You:** \(item.text)"
-            case .agent: item.text
-            case .action: "`\(item.text)`"
-            case .system, .status: "_\(item.text)_"
-            }
-        }.joined(separator: "\n\n")
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private var phaseText: String {
@@ -177,66 +195,6 @@ final class ChatViewController: NSViewController {
         default: phaseText
         }
     }
-}
-
-// MARK: Header
-
-final class ChatHeaderView: NSView {
-    private let icon = NSImageView()
-    private let title = NSTextField(labelWithString: "")
-    private let more = NSButton()
-    private let collapse = NSButton()
-    var onCollapse: (() -> Void)?
-    var onCopyConversation: (() -> Void)?
-    var onClearChat: (() -> Void)?
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        title.font = .systemFont(ofSize: NSFont.systemFontSize, weight: .medium)
-        title.lineBreakMode = .byTruncatingTail
-        for (button, symbol, tip) in [(more, "ellipsis.circle", "More"), (collapse, "sidebar.right", "Hide Chat (⌃⌘S): keep only the controls")] {
-            button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: tip)
-            button.isBordered = false
-            button.toolTip = tip
-            button.target = self
-            button.contentTintColor = .secondaryLabelColor
-        }
-        more.action = #selector(showMenu(_:))
-        collapse.action = #selector(collapse(_:))
-        let stack = NSStackView(views: [icon, title, NSView(), more, collapse])
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            stack.topAnchor.constraint(equalTo: topAnchor), stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            heightAnchor.constraint(equalToConstant: 36),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
-
-    func show(_ control: ControlState) {
-        icon.image = NSImage(systemSymbolName: control.symbol, accessibilityDescription: nil)
-        icon.contentTintColor = control.isAgent ? .controlAccentColor : .secondaryLabelColor
-        title.stringValue = control.title
-        title.textColor = control.isAgent ? .controlAccentColor : .secondaryLabelColor
-    }
-
-    @objc private func collapse(_ sender: Any?) { onCollapse?() }
-
-    @objc private func showMenu(_ sender: NSButton) {
-        let menu = NSMenu()
-        menu.addItem(withTitle: "Copy Conversation", action: #selector(copyConversation), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Clear Chat", action: #selector(clearChat), keyEquivalent: "").target = self
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
-    }
-
-    @objc private func copyConversation() { onCopyConversation?() }
-    @objc private func clearChat() { onClearChat?() }
 }
 
 // MARK: Progress
@@ -329,7 +287,7 @@ final class ChatFooterView: NSView {
         let stepsLabel = NSTextField(labelWithString: "Steps")
         stepsLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
         stepsLabel.textColor = .secondaryLabelColor
-        steps.toolTip = "Show every click and key press"
+        steps.toolTip = "Also list every click and key press when you open the agent's steps"
         let stack = NSStackView(views: [phase, NSView(), folders, snapshots, steps, stepsLabel, tokens])
         stack.spacing = 8
         stack.edgeInsets = NSEdgeInsets(top: 6, left: 12, bottom: 0, right: 12)

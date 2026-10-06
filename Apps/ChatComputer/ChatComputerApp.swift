@@ -64,6 +64,7 @@ struct ChatComputerApp: App {
                     .keyboardShortcut("t", modifiers: [.command, .shift])
                 Button("Cancel Task") { model.cancel() }
                 Divider()
+                Button("Copy Conversation") { model.copyConversation() }
                 Button("Clear Chat") { model.clearChat() }
                     .keyboardShortcut("k", modifiers: [.command])
                     .disabled(model.isRunningTask)
