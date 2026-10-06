@@ -70,6 +70,7 @@ struct ChatComputerApp: App {
                     .disabled(model.isRunningTask)
             }
             CommandGroup(after: .help) {
+                Link("Discord", destination: URL(string: "https://discord.gg/eGzEaP6TzR")!)
                 Button("Export Diagnostics…") { Task { await Diagnostics.export(model) } }
             }
         }

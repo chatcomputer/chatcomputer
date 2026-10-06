@@ -204,3 +204,5 @@ This signs the app with a Developer ID, notarizes and staples it, checks it with
 ## License
 
 [Apache 2.0](LICENSE). Not affiliated with Apple; macOS is a trademark of Apple Inc.
+
+[Discord](https://discord.gg/eGzEaP6TzR)
