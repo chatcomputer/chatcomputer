@@ -38,6 +38,8 @@ actor FakeGuest: GuestChannel {
 
     func send(_ envelope: CommandEnvelope) async throws -> CommandResult {
         if case .setLease = envelope.command { return .ok }
+        // The runner asks once whether the agent can read its accessibility tree; this guest can't.
+        if case .capabilities = envelope.command { return .ok }
         performed.append(envelope.command)
         switch envelope.command {
         case .screenshot:

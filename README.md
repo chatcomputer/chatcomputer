@@ -120,6 +120,7 @@ as the `chatcomputer` command line tool (Settings › Coding agents installs it 
 ```sh
 chatcomputer help                      # usage and guidance for agents
 chatcomputer screenshot                # saves a PNG and prints its path
+chatcomputer elements Save             # controls of the app in front, by name, with click coordinates
 chatcomputer click 640 400
 chatcomputer type "hello"
 chatcomputer save notes.txt              # fills in the save dialog; the file lands in the outbox

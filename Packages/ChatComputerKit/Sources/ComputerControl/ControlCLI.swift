@@ -44,6 +44,10 @@ public enum ControlCLI {
         case "help", "--help", "-h": return .help
         case "mcp": return .mcp
         case "status", "outbox", "release": return try done(first)
+        case "elements":
+            let query = rest.joined(separator: " ")
+            rest = []
+            return try done("elements", query.isEmpty ? [:] : ["query": .string(query)])
         case "screenshot":
             let path = try option("--out")
             if rest.isEmpty { return try done("screenshot", screenshotPath: path) }
@@ -157,7 +161,7 @@ public enum ControlCLI {
     /// Which control commands (MCP tool names) each command-line command reaches. Tests check that together
     /// they cover `ControlTool.all` exactly, so the two entry points can't drift apart.
     public static let toolsByCommand: [String: [String]] = [
-        "status": ["status"], "screenshot": ["screenshot"], "click": ["click"], "move": ["move"], "drag": ["drag"],
+        "status": ["status"], "screenshot": ["screenshot"], "elements": ["elements"], "click": ["click"], "move": ["move"], "drag": ["drag"],
         "scroll": ["scroll"], "type": ["type"], "key": ["key"], "wait": ["wait"], "release": ["release"],
         "snapshot": ["snapshot_list", "snapshot_take", "snapshot_restore", "snapshot_delete"],
         "put": ["put_file"], "outbox": ["outbox"], "save": ["save_file"],

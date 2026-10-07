@@ -73,6 +73,11 @@ public actor AgentRunner {
     private var warnedAboutTurns = false
     /// Turns left when that reminder is sent.
     static let turnReminderThreshold = 10
+    /// Whether the guest agent can read its accessibility tree, so `find_elements` / `click_element` are offered.
+    /// Asked once per runner, before the first request: the tool list is part of the cached prompt prefix.
+    private var elementToolsAvailable: Bool?
+    /// The last `find_elements` list, which `click_element(id:)` refers to.
+    private var lastElements: [UIElement] = []
 
     /// Files the user attached; copied into the task's inbox when it starts.
     private let attachments: [URL]
@@ -214,12 +219,14 @@ public actor AgentRunner {
         var attempt = 0
         while true {
             do {
+                let elements = await resolveElementTools()
                 return try await deps.model.respond(
                     system: SystemPrompt.make(
                         outboxPath: SharedFolders.guestOutboxPath(for: task),
-                        inboxPath: SharedFolders.guestInboxPath(for: task)
+                        inboxPath: SharedFolders.guestInboxPath(for: task),
+                        elementTools: elements
                     ),
-                    tools: [ComputerToolset.definition] + HostTools.definitions,
+                    tools: [ComputerToolset.definition] + HostTools.definitions + (elements ? ElementTools.definitions : []),
                     messages: messages
                 )
             } catch let error as ModelError where error.isTransient && attempt < deps.modelRetryDelays.count {
@@ -347,6 +354,18 @@ public actor AgentRunner {
                     batchFailed = !result.succeeded
                     changedScreen = true
                     lastWasScreenshot = false
+                } else if ElementTools.names.contains(name) {
+                    if batchFailed || interrupted {
+                        results.append(HostTools.result(toolUseID: id, "Not executed: an earlier action in this turn failed or the task was paused.", isError: true))
+                        continue
+                    }
+                    let result = await elementTool(toolUseID: id, name: name, input: input)
+                    results.append(result.json)
+                    batchFailed = !result.succeeded
+                    if result.clicked {
+                        changedScreen = true
+                        lastWasScreenshot = false
+                    }
                 } else if name == HostTools.reportResult, let report = HostTools.parseReport(input) {
                     results.append(await finish(toolUseID: id, report: report))
                 } else {
@@ -418,7 +437,7 @@ public actor AgentRunner {
             case .cursor(let point):
                 usage.consecutiveFailures = 0
                 return (ComputerToolset.textResult(toolUseID: toolUseID, "X=\(point.x),Y=\(point.y)"), true)
-            case .ok, .health, .capabilities:
+            case .ok, .health, .capabilities, .elements:
                 usage.consecutiveFailures = 0
                 return (ComputerToolset.textResult(toolUseID: toolUseID, "OK"), true)
             case .failure(let error):
@@ -432,6 +451,104 @@ public actor AgentRunner {
             try? await deps.store.append(TaskEvent(taskID: task.id, kind: .step(stepID: stepID, status: .uncertain, summary: "\(error)")))
             return (ComputerToolset.textResult(toolUseID: toolUseID, "Unknown whether the action ran (\(error)). Take a screenshot to check.", isError: true), false)
         }
+    }
+
+    /// Asks the guest once whether it can read its accessibility tree. An older agent says no (or doesn't know
+    /// the command), and the tools stay off rather than failing mid-task.
+    private func resolveElementTools() async -> Bool {
+        if let known = elementToolsAvailable { return known }
+        var available = false
+        if case .capabilities(let capabilities)? = try? await deps.guest.send(envelope(.capabilities)) {
+            available = capabilities.supportsAccessibilityTree
+        }
+        elementToolsAvailable = available
+        return available
+    }
+
+    /// `find_elements` lists the controls of the app in front; `click_element` clicks one by number or name,
+    /// as an ordinary click: same lease check, same hardware-like input, a fresh screenshot afterwards.
+    private func elementTool(toolUseID: String, name: String, input: JSONValue) async -> (json: JSONValue, succeeded: Bool, clicked: Bool) {
+        func fail(_ text: String) -> (JSONValue, Bool, Bool) {
+            usage.consecutiveFailures += 1
+            return (HostTools.result(toolUseID: toolUseID, text, isError: true), false, false)
+        }
+        func elements(_ query: String?) async -> Result<UIElementList, BridgeError> {
+            do {
+                switch try await deps.guest.send(envelope(.uiElements(query: query))) {
+                case .elements(let list): return .success(list)
+                case .failure(let error): return .failure(error)
+                default: return .failure(BridgeError(.driverFailure, "Unexpected answer from the virtual Mac."))
+                }
+            } catch {
+                return .failure(BridgeError(.driverFailure, "\(error)"))
+            }
+        }
+
+        if name == ElementTools.findElements {
+            let query = ElementTools.parseFind(input)
+            continuation.yield(.action("find_elements" + (query.map { " \"\($0)\"" } ?? "")))
+            switch await elements(query) {
+            case .success(let list):
+                lastElements = list.elements
+                usage.consecutiveFailures = 0
+                return (HostTools.result(toolUseID: toolUseID, ElementTools.describe(list, query: query)), true, false)
+            case .failure(let error):
+                return fail("\(error.category.rawValue): \(error.message)")
+            }
+        }
+
+        guard let request = ElementTools.parseClick(input) else {
+            return fail("Give click_element an id from find_elements, or a name.")
+        }
+        let target: UIElement
+        if let id = request.id {
+            guard let element = lastElements.first(where: { $0.id == id }) else {
+                return fail("No control [\(id)] in the last find_elements list. Call find_elements again.")
+            }
+            target = element
+        } else {
+            let wanted = request.name ?? ""
+            switch await elements(wanted) {
+            case .failure(let error):
+                return fail("\(error.category.rawValue): \(error.message)")
+            case .success(let list):
+                switch ElementTools.match(wanted, role: request.role, in: list.elements) {
+                case .found(let element):
+                    target = element
+                case .none:
+                    return fail("No control named \"\(wanted)\"\(request.role.map { " (\($0))" } ?? "") in \(list.app). Call find_elements to see what is there, or use a screenshot.")
+                case .ambiguous(let candidates):
+                    lastElements = list.elements
+                    let lines = candidates.prefix(10).map { "[\($0.id)] \($0.role) \"\($0.name)\" at (\($0.center.x), \($0.center.y))" }
+                    return fail("Several controls match \"\(wanted)\"; click one by id:\n" + lines.joined(separator: "\n"))
+                }
+            }
+        }
+        guard target.enabled else {
+            return fail("\(target.role) \"\(target.name)\" is disabled.")
+        }
+
+        guard let token = leaseToken, await deps.lease.isValid(token) else {
+            return (HostTools.result(toolUseID: toolUseID, "Not executed: the agent no longer holds input control.", isError: true), false, false)
+        }
+        usage.actions += 1
+        let point = target.center
+        continuation.yield(.action("click_element \(target.role) \"\(target.name)\" [\(point.x), \(point.y)]"))
+        let stepID = UUID()
+        try? await deps.store.append(TaskEvent(taskID: task.id, kind: .step(stepID: stepID, status: .dispatched, summary: name)))
+        do {
+            let result = try await deps.guest.send(envelope(.perform(.click(button: .left, count: 1, at: point, modifiers: []))))
+            if case .failure(let error) = result {
+                try? await deps.store.append(TaskEvent(taskID: task.id, kind: .step(stepID: stepID, status: .failed, summary: error.message)))
+                return fail("\(error.category.rawValue): \(error.message)")
+            }
+        } catch {
+            usage.consecutiveFailures += 1
+            try? await deps.store.append(TaskEvent(taskID: task.id, kind: .step(stepID: stepID, status: .uncertain, summary: "\(error)")))
+            return (HostTools.result(toolUseID: toolUseID, "Unknown whether the click ran (\(error)). Take a screenshot to check.", isError: true), false, true)
+        }
+        usage.consecutiveFailures = 0
+        return (HostTools.result(toolUseID: toolUseID, "Clicked \(target.role) \"\(target.name)\" at (\(point.x), \(point.y))."), true, true)
     }
 
     /// Completion requires evidence: every reported output must exist in the outbox.

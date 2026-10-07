@@ -26,7 +26,7 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
     }
 
     public var capabilities: DriverCapabilities {
-        DriverCapabilities(driver: "native", driverVersion: agentVersion, supportsAccessibilityTree: false,
+        DriverCapabilities(driver: "native", driverVersion: agentVersion, supportsAccessibilityTree: true,
                            supportsBrowserSnapshot: false, supportsBackgroundInput: false)
     }
 
@@ -249,6 +249,13 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
                 try await Task.sleep(for: .milliseconds(15))
             }
         }
+    }
+
+    // MARK: Accessibility
+
+    public func uiElements(query: String?) async throws -> UIElementList {
+        let factor = lock.withLock { scale }
+        return try AccessibilityTree.elements(query: query, scale: factor, display: CGDisplayBounds(CGMainDisplayID()))
     }
 
     // MARK: Helpers
