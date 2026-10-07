@@ -42,6 +42,7 @@ public struct AnthropicClient: ModelClient {
     public let configuration: Configuration
     private let apiKey: @Sendable () throws -> String?
     private let session: URLSession
+    private let streaming = StreamingSupport()
 
     public var modelID: String { configuration.model }
 
@@ -51,7 +52,7 @@ public struct AnthropicClient: ModelClient {
         self.apiKey = apiKey
     }
 
-    public func makeRequest(system: String, tools: [JSONValue], messages: [JSONValue]) throws -> URLRequest {
+    public func makeRequest(system: String, tools: [JSONValue], messages: [JSONValue], stream: Bool = false) throws -> URLRequest {
         guard let key = try apiKey(), !key.isEmpty else { throw ModelError.missingAPIKey }
 
         if case .compatible(let width, let height) = configuration.dialect {
@@ -62,12 +63,11 @@ public struct AnthropicClient: ModelClient {
                 "tools": .array(CompatibleDialect.requestTools(tools, displayWidth: width, displayHeight: height)),
                 "messages": .array(CompatibleDialect.requestMessages(CompatibleDialect.keepingRecentImages(messages, limit: 3))),
             ]
+            guard case .object(var object) = body else { return try request(body: body, key: key, betas: []) }
             // Some compatible endpoints reject an empty tool list (e.g. a connection test without tools).
-            if tools.isEmpty, case .object(var object) = body {
-                object["tools"] = nil
-                return try request(body: .object(object), key: key, betas: [])
-            }
-            return try request(body: body, key: key, betas: [])
+            if tools.isEmpty { object["tools"] = nil }
+            if stream { object["stream"] = true }
+            return try request(body: .object(object), key: key, betas: [])
         }
 
         let body: JSONValue = [
@@ -82,8 +82,9 @@ public struct AnthropicClient: ModelClient {
             "cache_control": ["type": "ephemeral"],
             "fallbacks": "default",
         ]
-
-        return try request(body: body, key: key, betas: Self.betaHeaders)
+        guard stream, case .object(var object) = body else { return try request(body: body, key: key, betas: Self.betaHeaders) }
+        object["stream"] = true
+        return try request(body: .object(object), key: key, betas: Self.betaHeaders)
     }
 
     private func request(body: JSONValue, key: String, betas: [String]) throws -> URLRequest {
@@ -109,6 +110,38 @@ public struct AnthropicClient: ModelClient {
         }
         guard let http = response as? HTTPURLResponse else { throw ModelError.malformedResponse }
         var parsed = try Self.parse(status: http.statusCode, retryAfter: http.value(forHTTPHeaderField: "retry-after"), body: data)
+        if case .compatible = configuration.dialect {
+            parsed.content = CompatibleDialect.responseContent(parsed.content)
+        }
+        return parsed
+    }
+
+    public func respond(system: String, tools: [JSONValue], messages: [JSONValue], onText: PartialTextHandler?) async throws -> ModelResponse {
+        guard let onText, streaming.enabled else { return try await respond(system: system, tools: tools, messages: messages) }
+        let opened = try await StreamTransport.open(try makeRequest(system: system, tools: tools, messages: messages, stream: true), session: session)
+        guard opened.status == 200 else {
+            let body = await StreamTransport.collect(opened.lines)
+            do {
+                _ = try Self.parse(status: opened.status, retryAfter: opened.retryAfter, body: body)
+                throw ModelError.malformedResponse
+            } catch where StreamingSupport.isRefusal(error) {
+                streaming.refuse()
+                return try await respond(system: system, tools: tools, messages: messages)
+            }
+        }
+        var events = ServerSentEvents()
+        var assembler = AnthropicStreamAssembler()
+        var throttle = PartialThrottle()
+        for try await line in opened.lines {
+            guard let event = events.feed(line) else { continue }
+            if try assembler.apply(event), throttle.due() { onText(assembler.currentText) }
+        }
+        if let event = events.flush() { _ = try assembler.apply(event) }
+        if let error = assembler.error { throw ModelError.fromStreamError(error) }
+        let body = assembler.body()
+        // A stream that stopped before the message did would leave a tool call half written: send it again.
+        guard body["stop_reason"] != nil, body["stop_reason"] != .null else { throw ModelError.network("The response stream ended early.") }
+        var parsed = try Self.parse(status: 200, retryAfter: nil, body: try StableJSON.encoder.encode(body))
         if case .compatible = configuration.dialect {
             parsed.content = CompatibleDialect.responseContent(parsed.content)
         }

@@ -140,7 +140,7 @@ final class ChatViewController: NSViewController {
 
     private func updateTranscript(scrollingToBottom: Bool = true) {
         let entries = ChatEntries.make(from: model.transcript, isWorking: model.phase == .running,
-                                       toggled: toggledProcesses, showsActions: showsSteps)
+                                       toggled: toggledProcesses, showsActions: showsSteps, liveText: model.liveText)
         guard entries != shownEntries else { return }
         let following = list.isScrolledToBottom(tolerance: 40) || shownEntries.isEmpty
         let appendedByUser = if case .message(let item) = entries.last { item.role == .user && item.id != shownEntries.last?.id }

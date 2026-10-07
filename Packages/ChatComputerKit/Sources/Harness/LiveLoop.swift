@@ -98,6 +98,7 @@ enum LiveLoop {
         print("goal:  \(goal)\n")
 
         let asks = AskLog()
+        let streamed = StreamLog()
         let printer = Task {
             for await update in runner.updates {
                 switch update {
@@ -111,6 +112,7 @@ enum LiveLoop {
                 case .delivered(let files): print("[delivered] \(files.map(\.lastPathComponent))")
                 case .thinking(let turn, _): print("[turn] \(turn)")
                 case .notice(let text): print("[notice] \(text)")
+                case .streaming(let text): streamed.add(text)
                 }
             }
         }
@@ -130,6 +132,7 @@ enum LiveLoop {
         let log = await desktop.log
         print("\n--- \(name) result after \(Int(Date().timeIntervalSince(started)))s")
         print("phase:  \(phase)")
+        print("stream: \(streamed.summary)")
         print("saved:  \(saved.map { "\"\($0)\"" } ?? "nothing")")
         print("guest:  \(log.count) commands")
         let passed = scenario.passed(phase, saved, asks.all)
@@ -150,6 +153,15 @@ final class JobBox: @unchecked Sendable {
 #endif
 
 #if os(macOS)
+/// Partial text the model streamed: how often it arrived, and the longest piece.
+final class StreamLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var updates = 0
+    private var longest = 0
+    func add(_ text: String) { lock.withLock { updates += 1; longest = max(longest, text.count) } }
+    var summary: String { lock.withLock { updates == 0 ? "no partial text (not streamed)" : "\(updates) partial updates, longest \(longest) characters" } }
+}
+
 final class AskLog: @unchecked Sendable {
     private let lock = NSLock()
     private var values: [HostTools.AskUser] = []

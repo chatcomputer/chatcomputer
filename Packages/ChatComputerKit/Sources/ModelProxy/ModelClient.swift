@@ -115,4 +115,14 @@ extension ModelError {
 public protocol ModelClient: Sendable {
     var modelID: String { get }
     func respond(system: String, tools: [JSONValue], messages: [JSONValue]) async throws -> ModelResponse
+    /// The same turn, streamed: `onText` gets the text of the block being written as it arrives (throttled).
+    /// The response is identical to `respond`'s, so the history stays the same either way.
+    func respond(system: String, tools: [JSONValue], messages: [JSONValue], onText: PartialTextHandler?) async throws -> ModelResponse
+}
+
+extension ModelClient {
+    /// Clients that don't stream answer in one piece.
+    public func respond(system: String, tools: [JSONValue], messages: [JSONValue], onText: PartialTextHandler?) async throws -> ModelResponse {
+        try await respond(system: system, tools: tools, messages: messages)
+    }
 }
