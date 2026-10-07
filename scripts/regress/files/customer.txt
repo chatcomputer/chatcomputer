@@ -1,0 +1,5 @@
+New customer
+Name: Grace Hopper
+Email: grace@navy.example
+Plan: Team
+Newsletter: yes, she wants it

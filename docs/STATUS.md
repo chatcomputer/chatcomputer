@@ -135,7 +135,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 | L2 宿主 API 自检 | DiskImageKit 分层与重置、vmnet | `scripts/harness.sh vm selftest` |
 | L3 真实模型 + 模拟桌面 | notes / approval / injection 三个场景 | `scripts/harness.sh live-loop --scenario …` |
 | L4 真实虚拟机 | 安装、启动、vsock、截图、挂起恢复、关机；快照（`vm snapshot-test`）；运行中改共享（`vm share-test`）；输入可靠性（`--input-test`，13/13）；经 agent 手动操作（`--agent-console`） | `scripts/harness.sh vm up …` |
-| L4+ 回归集 | 20 个固定任务，从同一快照开始，程序检查结果；内置 agent 与 Claude Code 各一套；`--runs 3` 多轮，`report.py` 汇总通过率与中位数并与基线对比；结果存在 `scripts/regress/results/` | `scripts/harness.sh vm regress`、`scripts/regress/external.py`、`scripts/regress/report.py` |
+| L4+ 回归集 | 20 个固定任务，从同一快照开始，程序检查结果；另有 6 个长任务（`--suite long`，`tasks-long.json`：每个 5–15 步、跨 2–4 个应用，单独统计）；内置 agent 与 Claude Code 各一套；`--runs 3` 多轮，`report.py` 汇总通过率与中位数并与基线对比；结果存在 `scripts/regress/results/` | `scripts/harness.sh vm regress`、`scripts/regress/external.py`、`scripts/regress/report.py` |
 | L5 发布 | 签名、公证、Gatekeeper | `scripts/release.sh` |
 
 开发用环境变量（正常使用时都不设置）：

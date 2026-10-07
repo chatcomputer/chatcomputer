@@ -41,7 +41,7 @@ Before claiming a change works, run the layer that exercises it:
 | Portable logic (BridgeProtocol, ChatCore, ModelProxy, Orchestrator) | `swift test` |
 | The agent loop or a model client | `scripts/harness.sh live-loop --scenario notes|approval|injection` (needs `CC_API_KEY`) |
 | The guest driver (`AgentCore`) | `scripts/harness.sh vm up --update-agent --input-test 3` |
-| Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code), before and after |
+| Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code), before and after; add `--suite long` for multi-step, multi-app work (`tasks-long.json`) |
 | The guest agent's version or driver, for regression | `vm regress --rebuild-base --agent <ChatComputerAgent.app>`: the base snapshot keeps the agent it was made with |
 | Lifecycle: quit, sleep, snapshots, long runs | `scripts/soak.py`; a release's install path: `scripts/fresh-install.sh` |
 | Apps, onboarding, signing | `scripts/release.sh`, then launch `build/release/ChatComputer.app` |

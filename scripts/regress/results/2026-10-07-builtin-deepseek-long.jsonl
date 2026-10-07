@@ -1,0 +1,6 @@
+{"outputTokens":5101,"task":"planet-report","detail":"ok","inputTokens":267424,"cachedInputTokens":224256,"seconds":165,"agent":"deepseek:openAI:deepseek-flash","actions":46,"run":1,"turns":39,"passed":true}
+{"turns":32,"inputTokens":207436,"actions":35,"cachedInputTokens":169984,"outputTokens":3920,"task":"sales-summary","agent":"deepseek:openAI:deepseek-flash","passed":true,"detail":"ok","run":1,"seconds":154}
+{"agent":"deepseek:openAI:deepseek-flash","detail":"ok","turns":44,"outputTokens":6243,"passed":true,"inputTokens":323888,"actions":50,"cachedInputTokens":272000,"task":"signup-from-file","run":1,"seconds":164}
+{"agent":"deepseek:openAI:deepseek-flash","detail":"ok","turns":35,"outputTokens":4705,"passed":true,"inputTokens":237183,"actions":39,"cachedInputTokens":194688,"task":"compare-shops","run":1,"seconds":132}
+{"agent":"deepseek:openAI:deepseek-flash","detail":"ok","turns":14,"outputTokens":2204,"passed":true,"inputTokens":70126,"actions":11,"cachedInputTokens":54400,"seconds":72,"task":"organize-files","run":1}
+{"turns":29,"agent":"deepseek:openAI:deepseek-flash","run":1,"outputTokens":4602,"detail":"ok","task":"calendar-to-file","inputTokens":203995,"actions":33,"seconds":108,"cachedInputTokens":168192,"passed":true}
