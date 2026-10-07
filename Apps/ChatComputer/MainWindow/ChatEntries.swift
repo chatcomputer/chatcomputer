@@ -40,6 +40,8 @@ struct ChatProcess: Hashable {
 
     /// From your message to the last note, when the items carry dates.
     let seconds: Int?
+    /// The model's text arriving right now, for a live process.
+    var liveText: String? = nil
 
     /// What the expanded row shows, as Markdown: the notes, and the actions when steps are shown, each run of
     /// actions on one line.
@@ -62,8 +64,11 @@ struct ChatProcess: Hashable {
         return paragraphs.joined(separator: "\n\n")
     }
 
-    /// The newest note, for a live process.
-    var latestNote: String? { notes.last { $0.role == .agent }?.text }
+    /// The newest note, for a live process: what is streaming in, else the last note that arrived.
+    var latestNote: String? { liveText ?? notes.last { $0.role == .agent }?.text }
+
+    /// Stands in for the process of a turn that has no notes yet, while its first text streams in.
+    static let pendingID = UUID(uuidString: "00000000-0000-0000-0000-00000000C0DE")!
 
     var summary: String {
         let steps = steps == 1 ? "1 step" : "\(steps) steps"
@@ -76,7 +81,8 @@ struct ChatProcess: Hashable {
 enum ChatEntries {
     /// Groups the transcript's runs of agent notes and actions. `toggled` holds the processes the user opened or
     /// closed against their default (answered ones start closed, stopped ones open).
-    static func make(from transcript: [ChatItem], isWorking: Bool, toggled: Set<UUID>, showsActions: Bool) -> [ChatEntry] {
+    static func make(from transcript: [ChatItem], isWorking: Bool, toggled: Set<UUID>, showsActions: Bool,
+                     liveText: String? = nil) -> [ChatEntry] {
         var entries: [ChatEntry] = []
         var run: [ChatItem] = []
         var startedAt: Date?
@@ -96,7 +102,8 @@ enum ChatEntries {
             let seconds = startedAt.flatMap { start in end.map { max(0, Int($0.timeIntervalSince(start).rounded())) } }
             entries.append(.process(ChatProcess(id: first.id, notes: run, state: state,
                                                 isExpanded: defaultOpen != toggled.contains(first.id),
-                                                showsActions: showsActions, seconds: seconds)))
+                                                showsActions: showsActions, seconds: seconds,
+                                                liveText: state == .live ? liveText : nil)))
         }
 
         for item in transcript {
@@ -110,6 +117,11 @@ enum ChatEntries {
             entries.append(.message(item))
         }
         flush(before: nil)
+        // The first turn after your message: nothing has arrived yet but the text being written.
+        if isWorking, let liveText, !liveText.isEmpty, case .message? = entries.last {
+            entries.append(.process(ChatProcess(id: ChatProcess.pendingID, notes: [], state: .live, isExpanded: false,
+                                                showsActions: showsActions, seconds: nil, liveText: liveText)))
+        }
         return entries
     }
 }

@@ -49,6 +49,7 @@ public struct OpenAICompatibleClient: ModelClient {
     public let configuration: Configuration
     private let apiKey: @Sendable () throws -> String?
     private let session: URLSession
+    private let streaming = StreamingSupport()
 
     public var modelID: String { configuration.model }
 
@@ -71,9 +72,43 @@ public struct OpenAICompatibleClient: ModelClient {
         return try Self.parse(status: http.statusCode, retryAfter: http.value(forHTTPHeaderField: "retry-after"), body: data)
     }
 
+    public func respond(system: String, tools: [JSONValue], messages: [JSONValue], onText: PartialTextHandler?) async throws -> ModelResponse {
+        guard let onText, streaming.enabled else { return try await respond(system: system, tools: tools, messages: messages) }
+        let opened = try await StreamTransport.open(try makeRequest(system: system, tools: tools, messages: messages, stream: true), session: session)
+        guard opened.status == 200 else {
+            let body = await StreamTransport.collect(opened.lines)
+            do {
+                _ = try Self.parse(status: opened.status, retryAfter: opened.retryAfter, body: body)
+                throw ModelError.malformedResponse
+            } catch where StreamingSupport.isRefusal(error) {
+                streaming.refuse()
+                return try await respond(system: system, tools: tools, messages: messages)
+            }
+        }
+        var events = ServerSentEvents()
+        var assembler = ChatCompletionsStreamAssembler()
+        var throttle = PartialThrottle()
+        for try await line in opened.lines {
+            guard let event = events.feed(line) else { continue }
+            if assembler.apply(event), throttle.due() { onText(assembler.currentText) }
+            if assembler.done { break }
+        }
+        if let event = events.flush() { _ = assembler.apply(event) }
+        if let error = assembler.error {
+            let status = error["error"]?["code"]?.intValue ?? 500
+            return try Self.parse(status: status == 200 ? 500 : status, retryAfter: nil, body: try StableJSON.encoder.encode(error))
+        }
+        let body = assembler.body()
+        // A stream that stopped before the turn did would leave a tool call half written: send it again.
+        guard body["choices"]?.arrayValue?.first?["finish_reason"] != .null else {
+            throw ModelError.network("The response stream ended early.")
+        }
+        return try Self.parse(status: 200, retryAfter: nil, body: try StableJSON.encoder.encode(body))
+    }
+
     // MARK: Request
 
-    public func makeRequest(system: String, tools: [JSONValue], messages: [JSONValue]) throws -> URLRequest {
+    public func makeRequest(system: String, tools: [JSONValue], messages: [JSONValue], stream: Bool = false) throws -> URLRequest {
         guard let key = try apiKey(), !key.isEmpty else { throw ModelError.missingAPIKey }
 
         var body: [String: JSONValue] = [
@@ -83,6 +118,11 @@ public struct OpenAICompatibleClient: ModelClient {
         body[configuration.usesMaxCompletionTokens ? "max_completion_tokens" : "max_tokens"] = .number(Double(configuration.maxTokens))
         let functions = Self.functions(from: tools, displayWidth: configuration.displayWidth, displayHeight: configuration.displayHeight)
         if !functions.isEmpty { body["tools"] = .array(functions) }
+        if stream {
+            body["stream"] = true
+            // Usage (and the cache hits) arrive in a last chunk only when asked for.
+            body["stream_options"] = ["include_usage": true]
+        }
 
         var request = URLRequest(url: configuration.endpoint)
         request.httpMethod = "POST"

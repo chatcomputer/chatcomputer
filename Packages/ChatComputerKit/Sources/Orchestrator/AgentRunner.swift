@@ -15,6 +15,9 @@ public enum RunnerUpdate: Sendable, Equatable {
     case thinking(turn: Int, of: Int)
     /// Something the user should know that isn't from the model: a retry, why the task paused.
     case notice(String)
+    /// The text the model is writing in the current turn, as it streams in. Replaced by `assistantNote` (or
+    /// nothing, for a turn of tool calls only) when the turn has arrived.
+    case streaming(String)
 }
 
 /// The agent loop (proposal §06): observe → act → re-observe, with every dispatch gated
@@ -214,13 +217,15 @@ public actor AgentRunner {
         var attempt = 0
         while true {
             do {
+                let live = continuation
                 return try await deps.model.respond(
                     system: SystemPrompt.make(
                         outboxPath: SharedFolders.guestOutboxPath(for: task),
                         inboxPath: SharedFolders.guestInboxPath(for: task)
                     ),
                     tools: [ComputerToolset.definition] + HostTools.definitions,
-                    messages: messages
+                    messages: messages,
+                    onText: { text in live.yield(.streaming(text)) }
                 )
             } catch let error as ModelError where error.isTransient && attempt < deps.modelRetryDelays.count {
                 var delay = deps.modelRetryDelays[attempt]

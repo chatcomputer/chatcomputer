@@ -69,6 +69,8 @@ final class AppModel {
     private(set) var phase: TaskPhase = .ready
     private(set) var tokens: (input: Int, output: Int) = (0, 0)
     private(set) var progress: TaskProgress?
+    /// What the model is writing right now, streamed; nil between turns.
+    private(set) var liveText: String?
     /// Of the input tokens, how many the provider served from its prompt cache.
     private(set) var cachedTokens = 0
     var errorMessage: String?
@@ -693,15 +695,20 @@ final class AppModel {
             self.phase = phase
             if case .waitingForUser = phase { emphasizeLastAgentMessage(.question) }
             if case .failed(let reason) = phase { transcript.append(ChatItem(role: .system, text: reason)) }
-            if phase != .running { progress = nil }
+            if phase != .running { progress = nil; liveText = nil }
             if phase.isTerminal { saveSession() }
         case .assistantNote(let text):
+            liveText = nil
             transcript.append(ChatItem(role: .agent, text: text))
+        case .streaming(let text):
+            liveText = text.isEmpty ? nil : text
         case .action(let name):
+            liveText = nil
             transcript.append(ChatItem(role: .action, text: name))
             progress?.lastAction = name
             progress?.waitingSince = nil
         case .thinking(let turn, let maxTurns):
+            liveText = nil
             progress = TaskProgress(turn: turn, maxTurns: maxTurns, waitingSince: Date(), lastAction: nil)
             // Saved once per model turn, so a crash loses at most the turn in progress.
             saveSession()

@@ -64,6 +64,11 @@ public enum JSONValue: Codable, Sendable, Equatable {
 
     public var intValue: Int? { doubleValue.map { Int($0) } }
 
+    public var objectValue: [String: JSONValue]? {
+        if case .object(let value) = self { return value }
+        return nil
+    }
+
     public var arrayValue: [JSONValue]? {
         if case .array(let value) = self { return value }
         return nil

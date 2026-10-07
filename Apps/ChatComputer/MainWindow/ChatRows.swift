@@ -282,7 +282,8 @@ final class ProcessRow: ListRowView {
         self.process = process
         // While live, the progress line under the list shows the step and a running clock; this row adds the notes.
         let live = process.state == .live
-        let title = live ? (process.steps == 1 ? "1 step" : "\(process.steps) steps") : process.summary
+        let title = if live { process.notes.isEmpty ? "Thinking" : process.steps == 1 ? "1 step" : "\(process.steps) steps" }
+            else { process.summary }
         header.attributedTitle = NSAttributedString(string: " " + title, attributes: [
             .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize + 1, weight: .medium),
             .foregroundColor: NSColor.secondaryLabelColor,
