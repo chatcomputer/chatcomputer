@@ -17,5 +17,9 @@ public protocol DriverAdapter: Sendable {
     /// Captures the main display in screenshot space, or a region of it scaled up to fill that space.
     func screenshot(region: ScreenRect?) async throws -> Screenshot
     func perform(_ action: ComputerAction) async throws -> CommandResult
+    /// The frontmost app's interactive elements in screenshot space, filtered by `query` when given.
+    func uiElements(query: String?) async throws -> UIElementList
+    /// The focused window's text in reading order.
+    func uiText() async throws -> UIText
 }
 #endif

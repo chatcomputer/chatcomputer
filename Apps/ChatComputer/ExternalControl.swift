@@ -82,6 +82,33 @@ final class ExternalControl {
                     ? "Screenshot \(shot.width)×\(shot.height). Click coordinates are pixels of this image."
                     : "Zoomed screenshot (\(shot.width)×\(shot.height)). Use coordinates from a full screenshot to click."
                 return ControlResponse(text: what, image: shot.imageData, imageType: shot.mediaType)
+            case .text:
+                let bridge = try await readyGuest()
+                guard case .capabilities(let capabilities) = try await bridge.send(envelope(.capabilities, deadline: 5)),
+                      capabilities.supportsAccessibilityTree else {
+                    throw Failure("The agent in the virtual Mac is too old to read text; it updates itself when the virtual Mac is idle.")
+                }
+                switch try await bridge.send(envelope(.uiText, deadline: 20)) {
+                case .text(let text): return ControlResponse(text: ElementTools.describe(text))
+                case .failure(let error): throw Failure(error.message)
+                default: throw Failure("The virtual Mac did not return its text.")
+                }
+            case .elements(let query):
+                let bridge = try await readyGuest()
+                // An older agent can't decode the command and would drop the connection: ask first.
+                guard case .capabilities(let capabilities) = try await bridge.send(envelope(.capabilities, deadline: 5)),
+                      capabilities.supportsAccessibilityTree else {
+                    throw Failure("The agent in the virtual Mac is too old to list controls; it updates itself when the virtual Mac is idle.")
+                }
+                switch try await bridge.send(envelope(.uiElements(query: query), deadline: 20)) {
+                case .elements(let list):
+                    return ControlResponse(text: ElementTools.describe(list, query: query)
+                        .replacingOccurrences(of: "Click one with click_element(id).", with: "Click one with `click X Y` at its position."))
+                case .failure(let error):
+                    throw Failure(error.message)
+                default:
+                    throw Failure("The virtual Mac did not return a list of controls.")
+                }
             case .wait(let seconds):
                 try await Task.sleep(for: .seconds(seconds))
                 return ControlResponse(text: "Waited \(seconds.formatted()) s.")

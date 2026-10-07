@@ -42,6 +42,8 @@ enum Regress {
         let seconds: Int
         let turns: Int
         let actions: Int
+        /// find_elements and click_element calls: how much the agent leaned on the accessibility tree.
+        let elementActions: Int
         let inputTokens: Int
         let cachedInputTokens: Int
         let outputTokens: Int
@@ -406,7 +408,7 @@ enum Regress {
         let detail = failures.isEmpty ? "ok" : failures.joined(separator: "; ")
         return Result(task: spec.id, run: run, agent: agent, passed: failures.isEmpty, detail: detail,
                       seconds: Int(Date().timeIntervalSince(started)), turns: usage.modelTurns, actions: usage.actions,
-                      inputTokens: usage.inputTokens, cachedInputTokens: usage.cachedInputTokens, outputTokens: usage.outputTokens)
+                      elementActions: await notes.elementActions, inputTokens: usage.inputTokens, cachedInputTokens: usage.cachedInputTokens, outputTokens: usage.outputTokens)
     }
 
     /// Lowercased, without thousands separators or spaces between digits.
@@ -471,7 +473,11 @@ enum Regress {
         private(set) var asked = false
         private var lines: [String] = []
         func add(_ note: String) { notes.append(note); lines.append("note: " + note) }
-        func addAction(_ action: String) { lines.append("action: " + action) }
+        private(set) var elementActions = 0
+        func addAction(_ action: String) {
+            lines.append("action: " + action)
+            if action.hasPrefix("find_elements") || action.hasPrefix("click_element") { elementActions += 1 }
+        }
         var log: String { lines.joined(separator: "\n") }
         func markAsked() { asked = true }
         var text: String { notes.joined(separator: "\n") }

@@ -51,6 +51,10 @@ public enum ComputerAction: Codable, Sendable, Equatable {
     case key(combo: String, repeat: Int)
     case holdKey(combo: String, seconds: Double)
     case wait(seconds: Double)
+    /// Starts an app by name, or opens a file (in a given app, or its default one), and brings it to the front.
+    /// One step for what takes Spotlight or an Open dialog five or six. Agents that support it report
+    /// `supportsAccessibilityTree`; older ones can't decode it.
+    case open(app: String?, path: String?)
 
     /// Actions that only observe or idle; they still go through the guest but change nothing.
     public var isReadOnly: Bool {

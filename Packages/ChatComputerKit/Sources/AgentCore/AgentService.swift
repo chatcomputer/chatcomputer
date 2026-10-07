@@ -124,6 +124,10 @@ public actor AgentService {
                     return .failure(BridgeError(.leaseRejected, "The agent does not hold input control."))
                 }
                 return try await driver.perform(action)
+            case .uiElements(let query):
+                return .elements(try await driver.uiElements(query: query))
+            case .uiText:
+                return .text(try await driver.uiText())
             case .cancel:
                 // TODO(M2): cancel long-running waits/holds; commands are short and sequential for now.
                 return .ok

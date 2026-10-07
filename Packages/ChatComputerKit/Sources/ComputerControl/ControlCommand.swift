@@ -10,6 +10,10 @@ import ModelProxy
 public enum ControlCommand: Sendable, Equatable {
     case status
     case screenshot(region: ScreenRect?)
+    /// The controls of the app in front, from the guest's accessibility tree.
+    case elements(query: String?)
+    /// The text of the window in front, from the guest's accessibility tree.
+    case text
     case click(at: ScreenPoint, button: MouseButton, count: Int, modifiers: [String])
     case move(to: ScreenPoint)
     case drag(from: ScreenPoint, to: ScreenPoint)
@@ -60,6 +64,8 @@ public enum ControlCommand: Sendable, Equatable {
 
         switch name {
         case "status": self = .status
+        case "text": self = .text
+        case "elements": self = .elements(query: arguments["query"]?.stringValue.flatMap { $0.isEmpty ? nil : $0 })
         case "screenshot":
             if let values = arguments["region"]?.arrayValue {
                 let numbers = values.compactMap(\.intValue)
@@ -153,6 +159,10 @@ public struct ControlTool: Sendable {
                         inputSchema: object([:])),
             ControlTool(name: "screenshot", description: "Capture the virtual Mac's screen. Coordinates for clicks are in this image's pixels. `region` [x0, y0, x1, y1] zooms into part of the screen.",
                         inputSchema: object(["region": ["type": "array", "items": integer, "minItems": 4, "maxItems": 4]])),
+            ControlTool(name: "text", description: "Read the text of the window in front of the virtual Mac (web page, document, table, dialog) in reading order, including what is scrolled out of view. Exact and cheaper than reading a screenshot.",
+                        inputSchema: object([:])),
+            ControlTool(name: "elements", description: "List the controls of the app in front of the virtual Mac (buttons, fields, menu items, links, rows) by name, with their centre in screenshot coordinates, ready for `click`. `query` keeps only controls whose name, value or role contains it.",
+                        inputSchema: object(["query": text("Optional text to look for, e.g. Save")])),
             ControlTool(name: "click", description: "Click at x, y (screenshot coordinates). count 2 double-clicks. modifiers such as [\"cmd\", \"shift\"] are held during the click.",
                         inputSchema: object(["x": integer, "y": integer, "button": enumeration(["left", "right", "middle"]), "count": integer,
                                              "modifiers": ["type": "array", "items": enumeration(["cmd", "shift", "option", "ctrl", "fn"])]], required: ["x", "y"])),
@@ -222,6 +232,8 @@ public enum ControlGuide {
           status                              state, who has control, screen size
           screenshot [X0 Y0 X1 Y1] [--out FILE]
                                               save a screenshot (or a zoomed region) and print its path
+          elements [QUERY]                    controls of the app in front, by name, with click coordinates
+          text                                the text of the window in front (page, document, table)
 
         Acting (takes control of the virtual Mac's input)
           click X Y [--right|--middle] [--double] [--mods cmd,shift]

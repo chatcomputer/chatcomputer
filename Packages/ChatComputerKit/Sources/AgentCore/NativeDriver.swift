@@ -26,7 +26,7 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
     }
 
     public var capabilities: DriverCapabilities {
-        DriverCapabilities(driver: "native", driverVersion: agentVersion, supportsAccessibilityTree: false,
+        DriverCapabilities(driver: "native", driverVersion: agentVersion, supportsAccessibilityTree: true,
                            supportsBrowserSnapshot: false, supportsBackgroundInput: false)
     }
 
@@ -109,6 +109,10 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
             let location = CGEvent(source: nil)?.location ?? .zero
             return .cursor(toScreenshot(location))
         }
+        if case .open(let app, let path) = action {
+            try await AppOpener.open(app: app, path: path)
+            return .ok
+        }
         guard AXIsProcessTrusted() else {
             throw BridgeError(.permissionDenied, "Accessibility is not granted to ChatComputerAgent.")
         }
@@ -177,7 +181,7 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
             try await Task.sleep(for: .seconds(seconds))
             post(keyboard(source, key, down: false, flags: held))
             try await releaseModifiers(flags, source: source)
-        case .wait, .cursorPosition:
+        case .wait, .cursorPosition, .open:
             break
         }
         return .ok
@@ -249,6 +253,17 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
                 try await Task.sleep(for: .milliseconds(15))
             }
         }
+    }
+
+    // MARK: Accessibility
+
+    public func uiElements(query: String?) async throws -> UIElementList {
+        let factor = lock.withLock { scale }
+        return try AccessibilityTree.elements(query: query, scale: factor, display: CGDisplayBounds(CGMainDisplayID()))
+    }
+
+    public func uiText() async throws -> UIText {
+        try AccessibilityTree.text()
     }
 
     // MARK: Helpers

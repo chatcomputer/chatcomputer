@@ -247,3 +247,55 @@ import BridgeProtocol
         #expect(ModelSettings.secretAccount(for: "anthropic") == "model.anthropic.apiKey")
     }
 }
+
+@Suite struct ElementToolsTests {
+    let elements = [
+        UIElement(id: 1, role: "button", name: "Save", value: nil, enabled: true, frame: ScreenRect(x0: 0, y0: 0, x1: 10, y1: 10)),
+        UIElement(id: 2, role: "button", name: "Save As…", value: nil, enabled: true, frame: ScreenRect(x0: 0, y0: 0, x1: 10, y1: 10)),
+        UIElement(id: 3, role: "menuitem", name: "Open Recent", value: nil, enabled: true, frame: ScreenRect(x0: 0, y0: 0, x1: 10, y1: 10)),
+        UIElement(id: 4, role: "button", name: "Delete", value: nil, enabled: false, frame: ScreenRect(x0: 0, y0: 0, x1: 10, y1: 10)),
+        UIElement(id: 5, role: "menuitem", name: "Delete", value: nil, enabled: true, frame: ScreenRect(x0: 0, y0: 0, x1: 10, y1: 10)),
+    ]
+
+    @Test func anExactNameBeatsAPartialOne() {
+        #expect(ElementTools.match("save", role: nil, in: elements) == .found(elements[0]))
+    }
+
+    @Test func aPartialNameMatchesWhenUnique() {
+        #expect(ElementTools.match("recent", role: nil, in: elements) == .found(elements[2]))
+    }
+
+    @Test func roleNarrowsAndEnabledWins() {
+        #expect(ElementTools.match("Delete", role: nil, in: elements) == .found(elements[4]))
+        #expect(ElementTools.match("Delete", role: "button", in: elements) == .found(elements[3]))
+    }
+
+    @Test func noGuessingBetweenEquals() {
+        let twins = [elements[0], UIElement(id: 9, role: "button", name: "Save", value: nil, enabled: true, frame: ScreenRect(x0: 0, y0: 0, x1: 4, y1: 4))]
+        guard case .ambiguous(let candidates) = ElementTools.match("Save", role: nil, in: twins) else {
+            Issue.record("expected ambiguous"); return
+        }
+        #expect(candidates.count == 2)
+        #expect(ElementTools.match("Print", role: nil, in: elements) == .none)
+    }
+
+    @Test func parsing() {
+        #expect(ElementTools.parseClick(["id": 3]) == .init(id: 3, name: nil, role: nil))
+        #expect(ElementTools.parseClick(["name": "Save", "role": "button"]) == .init(id: nil, name: "Save", role: "button"))
+        #expect(ElementTools.parseClick(["name": "  "]) == nil)
+        #expect(ElementTools.parseFind(["query": " "]) == nil)
+        #expect(ElementTools.parseFind([:]) == nil)
+    }
+
+    @Test func textSaysWhenItIsCutOrEmpty() {
+        let cut = ElementTools.describe(UIText(app: "Safari", window: nil, lines: ["a"], truncated: true))
+        #expect(cut.hasPrefix("Text of Safari:\na"))
+        #expect(cut.contains("call read_text again"))
+        #expect(ElementTools.describe(UIText(app: "Preview", window: "scan.png", lines: [], truncated: false)).contains("no readable text"))
+    }
+
+    @Test func emptyListSaysWhatToDoNext() {
+        let text = ElementTools.describe(UIElementList(app: "Safari", elements: [], truncated: false), query: "Login")
+        #expect(text.contains("no controls matching \"Login\""))
+    }
+}

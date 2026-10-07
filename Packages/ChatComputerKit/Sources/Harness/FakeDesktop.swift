@@ -36,6 +36,19 @@ actor FakeDesktop: GuestChannel {
             return .ok
         case .health, .capabilities:
             return .ok
+        case .uiText:
+            return .text(UIText(app: "Notes Demo", window: "Untitled — Notes", lines: text.isEmpty ? [] : text.components(separatedBy: "\n"), truncated: false))
+        case .uiElements(let query):
+            log.append("uiElements \(query ?? "")")
+            func rect(_ r: CGRect) -> ScreenRect { ScreenRect(x0: Int(r.minX), y0: Int(r.minY), x1: Int(r.maxX), y1: Int(r.maxY)) }
+            var elements = [
+                UIElement(id: 1, role: "button", name: "Save", value: nil, enabled: true, frame: rect(Self.saveButton)),
+                UIElement(id: 2, role: "textarea", name: "Note", value: text, enabled: true, frame: rect(Self.textArea)),
+            ]
+            if let query, !query.isEmpty {
+                elements = elements.filter { $0.name.localizedCaseInsensitiveContains(query) || $0.role.localizedCaseInsensitiveContains(query) }
+            }
+            return .elements(UIElementList(app: "Notes Demo", elements: elements, truncated: false))
         case .screenshot:
             version += 1
             let png = try render()

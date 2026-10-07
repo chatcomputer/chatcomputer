@@ -94,6 +94,13 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// Replace the agent with the copy in the bootstrap share, if it carries a valid signature from the
     /// same team, then restart. SSH is off after setup, so this is how a newer agent gets in.
     case updateAgent
+    /// The interactive elements of the frontmost app (its windows, sheets and menu bar) from the guest's
+    /// accessibility tree, optionally filtered. Read-only: needs Accessibility but not the input lease.
+    /// Only sent when `DriverCapabilities.supportsAccessibilityTree` is true.
+    case uiElements(query: String?)
+    /// The text of the frontmost app's focused window (and its sheets) in reading order: headings, paragraphs,
+    /// table rows, field values, including what is scrolled out of view. Read-only, like `uiElements`.
+    case uiText
 
     /// Whether the command synthesizes input in the guest and so needs the agent lease.
     public var requiresLease: Bool {
@@ -141,7 +148,66 @@ public enum CommandResult: Codable, Sendable, Equatable {
     case cursor(ScreenPoint)
     case health(HealthReport)
     case capabilities(DriverCapabilities)
+    case elements(UIElementList)
+    case text(UIText)
     case failure(BridgeError)
+}
+
+/// One control from the guest's accessibility tree, located in screenshot space.
+public struct UIElement: Codable, Sendable, Equatable {
+    /// Its position in this list; `click_element` refers to it by this number.
+    public var id: Int
+    /// The AX role without its prefix: "button", "textfield", "menuitem", "checkbox", …
+    public var role: String
+    /// What a person would call it: the title, description, label or placeholder, whichever exists first.
+    public var name: String
+    /// The current value of a text field, checkbox or popup, when it has one.
+    public var value: String?
+    public var enabled: Bool
+    public var frame: ScreenRect
+
+    public init(id: Int, role: String, name: String, value: String?, enabled: Bool, frame: ScreenRect) {
+        self.id = id
+        self.role = role
+        self.name = name
+        self.value = value
+        self.enabled = enabled
+        self.frame = frame
+    }
+
+    public var center: ScreenPoint { ScreenPoint(x: (frame.x0 + frame.x1) / 2, y: (frame.y0 + frame.y1) / 2) }
+}
+
+/// The readable text of the window in front, from the accessibility tree.
+public struct UIText: Codable, Sendable, Equatable {
+    public var app: String
+    /// The window's title, when it has one.
+    public var window: String?
+    /// One line per heading, paragraph, table row or field; headings start with "# ", rows join cells with " | ".
+    public var lines: [String]
+    /// The window had more text than fits.
+    public var truncated: Bool
+
+    public init(app: String, window: String?, lines: [String], truncated: Bool) {
+        self.app = app
+        self.window = window
+        self.lines = lines
+        self.truncated = truncated
+    }
+}
+
+public struct UIElementList: Codable, Sendable, Equatable {
+    /// The frontmost app, e.g. "TextEdit".
+    public var app: String
+    public var elements: [UIElement]
+    /// More elements matched than were returned.
+    public var truncated: Bool
+
+    public init(app: String, elements: [UIElement], truncated: Bool) {
+        self.app = app
+        self.elements = elements
+        self.truncated = truncated
+    }
 }
 
 public struct Screenshot: Codable, Sendable, Equatable {
