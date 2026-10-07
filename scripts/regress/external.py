@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Run the fixed regression tasks (tasks.json) with an outside coding agent through the `chatcomputer` CLI.
+"""Run the fixed regression tasks (tasks.json, or tasks-long.json with --suite long) with an outside coding agent
+through the `chatcomputer` CLI.
 
-    scripts/regress/external.py [--cli PATH] [--via cli|mcp] [--runs N] [--only id,id] [--out results.jsonl]
+    scripts/regress/external.py [--suite short|long] [--cli PATH] [--via cli|mcp] [--runs N] [--only id,id] [--out results.jsonl]
 
 --via mcp gives Claude Code the same commands as MCP tools (`chatcomputer mcp`) instead of the command line.
 
@@ -109,7 +110,9 @@ def run_task(task, run, binary, via="cli"):
                 continue
             # Case-insensitive: macOS capitalizes the first word of a line as it is typed.
             content = path.read_bytes().decode("utf-8", "replace").lower()
-            failures += [f"{check['name']} lacks “{n}”" for n in check["contains"] if n.lower() not in content]
+            # Numbers match with or without thousands separators, as in answers.
+            failures += [f"{check['name']} lacks “{n}”" for n in check["contains"]
+                         if n.lower() not in content and normalize(n) not in normalize(content)]
             failures += [f"{check['name']} still has “{n}”" for n in check.get("absent", []) if n.lower() in content]
         elif check["type"] == "answerAny":
             if not any(normalize(n) in normalize(answer) for n in check["contains"]):
@@ -135,8 +138,9 @@ def main():
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--only")
     parser.add_argument("--out")
+    parser.add_argument("--suite", choices=["short", "long"], default="short")
     args = parser.parse_args()
-    tasks = json.loads((HERE / "tasks.json").read_text())["tasks"]
+    tasks = json.loads((HERE / ("tasks-long.json" if args.suite == "long" else "tasks.json")).read_text())["tasks"]
     if args.only:
         wanted = set(args.only.split(","))
         tasks = [t for t in tasks if t["id"] in wanted]

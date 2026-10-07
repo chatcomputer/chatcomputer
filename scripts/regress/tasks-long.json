@@ -1,0 +1,174 @@
+{
+ "comment": "Long regression tasks: 5–15 steps across 2–4 apps each, checked like tasks.json (same check types). Run with `cc-harness vm regress --suite long` (built-in agent) or `scripts/regress/external.py --suite long` (coding agents). Each task starts from the snapshot \"Regression base\". Report these results separately from the short suite.",
+ "tasks": [
+  {
+   "id": "planet-report",
+   "goal": "Open the attached planets.html in Safari. In TextEdit, write a plain-text report listing the three largest planets by diameter, largest first, one per line with its diameter in kilometres. Save it as planets.txt in the outbox, then also export the same report as planets.pdf in the outbox.",
+   "attachments": [
+    "planets.html"
+   ],
+   "checks": [
+    {
+     "type": "file",
+     "name": "planets.txt",
+     "contains": [
+      "Jupiter",
+      "Saturn",
+      "Uranus",
+      "139"
+     ]
+    },
+    {
+     "type": "file",
+     "name": "planets.pdf",
+     "contains": [
+      "%PDF"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "sales-summary",
+   "goal": "The attached sales.csv lists monthly sales per region. Total the amounts for each region (use Numbers or Calculator), then save a plain-text file summary.txt in the outbox with one line per region and its total, and a last line naming the region with the highest total. Also tell me that region.",
+   "attachments": [
+    "sales.csv"
+   ],
+   "checks": [
+    {
+     "type": "file",
+     "name": "summary.txt",
+     "contains": [
+      "North",
+      "5000",
+      "South",
+      "4710",
+      "West",
+      "3535"
+     ]
+    },
+    {
+     "type": "answer",
+     "contains": [
+      "North"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "signup-from-file",
+   "goal": "Read the attached customer.txt, then open the attached signup.html in Safari and create the account with exactly those details. Save the confirmation code the page shows into confirmation.txt in the outbox, and tell me the code.",
+   "attachments": [
+    "customer.txt",
+    "signup.html"
+   ],
+   "checks": [
+    {
+     "type": "file",
+     "name": "confirmation.txt",
+     "contains": [
+      "SIGNUP-GRACE-TN"
+     ]
+    },
+    {
+     "type": "answer",
+     "contains": [
+      "SIGNUP-GRACE-TN"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "compare-shops",
+   "goal": "Open the attached shop-a.html and shop-b.html in Safari and compare the price of the noise-cancelling headphones. Save a plain-text file cheapest.txt in the outbox with the name of the cheaper shop and its price, and tell me how much cheaper it is.",
+   "attachments": [
+    "shop-a.html",
+    "shop-b.html"
+   ],
+   "checks": [
+    {
+     "type": "file",
+     "name": "cheapest.txt",
+     "contains": [
+      "Volt",
+      "219"
+     ]
+    },
+    {
+     "type": "answer",
+     "contains": [
+      "30"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "organize-files",
+   "goal": "Copy the attached files into the outbox, sorted by type into three folders: Text (for .txt files), Images (for .png files) and Data (for .csv files). Then create index.txt in the outbox listing every file with the folder it went into.",
+   "attachments": [
+    "poem.txt",
+    "letter.txt",
+    "gradient.png",
+    "expenses.csv"
+   ],
+   "checks": [
+    {
+     "type": "file",
+     "name": "Text/poem.txt",
+     "contains": []
+    },
+    {
+     "type": "file",
+     "name": "Text/letter.txt",
+     "contains": [
+      "Dear Sam"
+     ]
+    },
+    {
+     "type": "file",
+     "name": "Images/gradient.png",
+     "contains": []
+    },
+    {
+     "type": "file",
+     "name": "Data/expenses.csv",
+     "contains": [
+      "Coffee beans"
+     ]
+    },
+    {
+     "type": "file",
+     "name": "index.txt",
+     "contains": [
+      "poem.txt",
+      "letter.txt",
+      "gradient.png",
+      "expenses.csv"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "calendar-to-file",
+   "goal": "Use the Calendar app to find the weekday of 14 February 2027, 1 July 2027 and 31 October 2027. Write them into a plain-text file weekdays.txt in the outbox, one date per line with its weekday.",
+   "checks": [
+    {
+     "type": "file",
+     "name": "weekdays.txt",
+     "contains": [
+      "Sunday",
+      "Thursday"
+     ]
+    },
+    {
+     "type": "file",
+     "name": "weekdays.txt",
+     "contains": [
+      "14",
+      "July",
+      "31"
+     ]
+    }
+   ]
+  }
+ ]
+}

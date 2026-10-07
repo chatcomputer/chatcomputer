@@ -13,7 +13,7 @@ import VMKit
 
 /// `cc-harness vm regress`: the fixed task set (scripts/regress/tasks.json) with the built-in agent on the real VM.
 ///
-///     cc-harness vm regress [--model provider:protocol:model] [--runs N] [--only id,id] [--out results.jsonl] [--rebuild-base [--agent ChatComputerAgent.app]]
+///     cc-harness vm regress [--suite short|long] [--model provider:protocol:model] [--runs N] [--only id,id] [--out results.jsonl] [--rebuild-base [--agent ChatComputerAgent.app]]
 ///
 /// Every task starts from the snapshot "Regression base" (made once from "Freshly set up"). The VM's state
 /// before the run is saved as "Before regression" and restored at the end. The API key comes from
@@ -56,6 +56,7 @@ enum Regress {
         var only: Set<String>?
         var output: URL?
         var rebuildBase = false
+        var suiteName = "tasks"
         var agent: URL?
         var iterator = arguments.makeIterator()
         while let argument = iterator.next() {
@@ -65,6 +66,10 @@ enum Regress {
             case "--only": only = iterator.next().map { Set($0.split(separator: ",").map(String.init)) }
             case "--out": output = iterator.next().map { URL(fileURLWithPath: $0) }
             case "--rebuild-base": rebuildBase = true
+            case "--suite":
+                // "long" reads tasks-long.json; the default is the short set in tasks.json.
+                guard let name = iterator.next(), ["short", "long"].contains(name) else { throw ProbeError("--suite takes short or long") }
+                suiteName = name == "long" ? "tasks-long" : "tasks"
             case "--agent": agent = iterator.next().map { URL(fileURLWithPath: $0) }
             default: throw ProbeError("unknown option \(argument)")
             }
@@ -72,7 +77,7 @@ enum Regress {
 
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("../../../../scripts/regress").standardizedFileURL
-        let suite = try JSONDecoder().decode(Suite.self, from: Data(contentsOf: root.appendingPathComponent("tasks.json")))
+        let suite = try JSONDecoder().decode(Suite.self, from: Data(contentsOf: root.appendingPathComponent(suiteName + ".json")))
         let specs = suite.tasks.filter { only?.contains($0.id) ?? true }
 
         let settings = try modelSettings(modelSpec)
@@ -381,9 +386,13 @@ enum Regress {
             case "file":
                 let url = folders.outbox(for: task).appendingPathComponent(check.name ?? "")
                 guard let data = try? Data(contentsOf: url) else { failures.append("no \(check.name ?? "") in the outbox"); continue }
-                // Case-insensitive: macOS capitalizes the first word of a line as it is typed.
+                // Case-insensitive (macOS capitalizes the first word of a line as it is typed), and numbers match
+                // with or without thousands separators, as in answers.
                 let content = String(decoding: data, as: UTF8.self).lowercased()
-                for needle in check.contains ?? [] where !content.contains(needle.lowercased()) { failures.append("\(check.name ?? "") lacks “\(needle)”") }
+                let normalized = normalize(content)
+                for needle in check.contains ?? [] where !content.contains(needle.lowercased()) && !normalized.contains(normalize(needle)) {
+                    failures.append("\(check.name ?? "") lacks “\(needle)”")
+                }
                 for needle in check.absent ?? [] where content.contains(needle.lowercased()) { failures.append("\(check.name ?? "") still has “\(needle)”") }
             case "asksUser":
                 if !(await notes.asked) { failures.append("did not ask before acting") }

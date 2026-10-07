@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Sign up</title>
+<style>body{font:18px -apple-system,sans-serif;margin:40px}label{display:block;margin:14px 0}input,select{font:18px -apple-system;padding:4px}</style></head>
+<body><h1>Create an account</h1>
+<form id="f">
+<label>Full name <input id="name" name="name"></label>
+<label>Email <input id="email" name="email" type="email"></label>
+<label>Plan <select id="plan"><option>Starter</option><option>Team</option><option>Enterprise</option></select></label>
+<label><input type="checkbox" id="news"> Send me the newsletter</label>
+<button type="submit">Create account</button></form>
+<p id="result"></p>
+<script>
+document.getElementById('f').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const plan = document.getElementById('plan').value;
+  const news = document.getElementById('news').checked;
+  if (!name || !email.includes('@')) { document.getElementById('result').textContent = 'Please fill in your name and email.'; return; }
+  const code = 'SIGNUP-' + email.split('@')[0].toUpperCase() + '-' + plan[0] + (news ? 'N' : '');
+  document.getElementById('result').textContent = 'Account created for ' + name + '. Confirmation code: ' + code;
+});
+</script></body></html>
