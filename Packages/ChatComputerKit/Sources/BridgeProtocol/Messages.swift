@@ -98,6 +98,9 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// accessibility tree, optionally filtered. Read-only: needs Accessibility but not the input lease.
     /// Only sent when `DriverCapabilities.supportsAccessibilityTree` is true.
     case uiElements(query: String?)
+    /// The text of the frontmost app's focused window (and its sheets) in reading order: headings, paragraphs,
+    /// table rows, field values, including what is scrolled out of view. Read-only, like `uiElements`.
+    case uiText
 
     /// Whether the command synthesizes input in the guest and so needs the agent lease.
     public var requiresLease: Bool {
@@ -146,6 +149,7 @@ public enum CommandResult: Codable, Sendable, Equatable {
     case health(HealthReport)
     case capabilities(DriverCapabilities)
     case elements(UIElementList)
+    case text(UIText)
     case failure(BridgeError)
 }
 
@@ -172,6 +176,24 @@ public struct UIElement: Codable, Sendable, Equatable {
     }
 
     public var center: ScreenPoint { ScreenPoint(x: (frame.x0 + frame.x1) / 2, y: (frame.y0 + frame.y1) / 2) }
+}
+
+/// The readable text of the window in front, from the accessibility tree.
+public struct UIText: Codable, Sendable, Equatable {
+    public var app: String
+    /// The window's title, when it has one.
+    public var window: String?
+    /// One line per heading, paragraph, table row or field; headings start with "# ", rows join cells with " | ".
+    public var lines: [String]
+    /// The window had more text than fits.
+    public var truncated: Bool
+
+    public init(app: String, window: String?, lines: [String], truncated: Bool) {
+        self.app = app
+        self.window = window
+        self.lines = lines
+        self.truncated = truncated
+    }
 }
 
 public struct UIElementList: Codable, Sendable, Equatable {

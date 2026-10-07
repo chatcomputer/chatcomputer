@@ -19,5 +19,7 @@ public protocol DriverAdapter: Sendable {
     func perform(_ action: ComputerAction) async throws -> CommandResult
     /// The frontmost app's interactive elements in screenshot space, filtered by `query` when given.
     func uiElements(query: String?) async throws -> UIElementList
+    /// The focused window's text in reading order.
+    func uiText() async throws -> UIText
 }
 #endif

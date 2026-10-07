@@ -8,9 +8,37 @@ import Foundation
 public enum ElementTools {
     public static let findElements = "find_elements"
     public static let clickElement = "click_element"
-    public static let names: Set<String> = [findElements, clickElement]
+    public static let readText = "read_text"
+    public static let openApp = "open_app"
+    public static let names: Set<String> = [findElements, clickElement, readText, openApp]
 
     public static let definitions: [JSONValue] = [
+        [
+            "name": .string(openApp),
+            "description": """
+                Start an app, or open a file, in one step and bring it to the front: like double-clicking it in \
+                Finder. Give the app's name ("TextEdit", "Safari", "Calendar"), a file's full path in the virtual \
+                Mac, or both to open the file in that app. Use it instead of Spotlight or an Open dialog.
+                """,
+            "input_schema": [
+                "type": "object",
+                "additionalProperties": false,
+                "properties": [
+                    "app": ["type": "string", "description": "App name, e.g. TextEdit."],
+                    "file": ["type": "string", "description": "Full path of a file, e.g. /Volumes/My Shared Files/inbox/…/notes.txt."],
+                ],
+            ],
+        ],
+        [
+            "name": .string(readText),
+            "description": """
+                Read the text of the window in front as plain text, in reading order: a web page, document, table, \
+                list or dialog, including what is scrolled out of view. Headings start with "# ", table rows join \
+                cells with " | ", fields show "label: value". Exact and cheaper than reading a screenshot: use it \
+                to read content, not to see layout.
+                """,
+            "input_schema": ["type": "object", "additionalProperties": false, "properties": [:]],
+        ],
         [
             "name": .string(findElements),
             "description": """
@@ -30,8 +58,9 @@ public enum ElementTools {
             "name": .string(clickElement),
             "description": """
                 Click a control of the app in front: by its number from the last find_elements list, or by its name \
-                (optionally with its role, e.g. "button"). A name that matches more than one control returns the \
-                candidates instead of clicking. Use it for named controls; use the computer tool for anything else.
+                (optionally with its role, e.g. "button"). The name is looked up when the click runs, waiting briefly \
+                for a menu or dialog opened by the previous step, so several click_element calls can follow each other \
+                in one turn. A name that matches more than one control returns the candidates instead of clicking.
                 """,
             "input_schema": [
                 "type": "object",
@@ -49,6 +78,13 @@ public enum ElementTools {
         public var id: Int?
         public var name: String?
         public var role: String?
+    }
+
+    public static func parseOpen(_ input: JSONValue) -> (app: String?, file: String?)? {
+        let app = input["app"]?.stringValue.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        let file = input["file"]?.stringValue.flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
+        guard app != nil || file != nil else { return nil }
+        return (app, file)
     }
 
     public static func parseFind(_ input: JSONValue) -> String? {
@@ -78,6 +114,16 @@ public enum ElementTools {
         }
         if list.truncated { lines.append("More controls exist; pass a query to narrow the list.") }
         return lines.joined(separator: "\n")
+    }
+
+    /// The window's text for the model, with where it comes from.
+    public static func describe(_ text: UIText) -> String {
+        let source = text.app + (text.window.map { " — \($0)" } ?? "")
+        guard !text.lines.isEmpty else {
+            return "\(source): no readable text. The content may be an image or drawn without accessibility; take a screenshot."
+        }
+        return "Text of \(source):\n" + text.lines.joined(separator: "\n")
+            + (text.truncated ? "\n[The window has more text than fits; scroll and call read_text again for the rest.]" : "")
     }
 
     public enum Match: Equatable, Sendable {

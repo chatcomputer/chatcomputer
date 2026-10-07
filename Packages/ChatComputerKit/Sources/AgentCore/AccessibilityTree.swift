@@ -37,19 +37,170 @@ enum AccessibilityTree {
         // A hung app must not hang the agent.
         AXUIElementSetMessagingTimeout(root, 1.0)
 
-        let windows: [AXUIElement] = attribute(root, kAXWindowsAttribute) ?? []
-        var roots: [AXUIElement] = []
-        if let focused: AXUIElement = attribute(root, kAXFocusedWindowAttribute) ?? windows.first { roots.append(focused) }
-        // Dialogs and panels float above the focused window, so they are on screen too.
-        for window in windows where !roots.contains(where: { CFEqual($0, window) }) {
-            let subrole: String = attribute(window, kAXSubroleAttribute) ?? ""
-            if ["AXDialog", "AXSystemDialog", "AXFloatingWindow", "AXSystemFloatingWindow"].contains(subrole) { roots.append(window) }
-        }
+        var roots = frontWindows(of: root)
         if let menuBar: AXUIElement = attribute(root, kAXMenuBarAttribute) { roots.append(menuBar) }
 
         var walker = Walker(scale: scale, display: display, query: query.map(Self.fold).flatMap { $0.isEmpty ? nil : $0 })
         for element in roots { walker.visit(element, depth: 0) }
         return UIElementList(app: app.localizedName ?? "the frontmost app", elements: walker.found, truncated: walker.truncated)
+    }
+
+    /// The focused window (with its sheets, which are its children), and dialogs and panels floating above it.
+    private static func frontWindows(of app: AXUIElement) -> [AXUIElement] {
+        let windows: [AXUIElement] = attribute(app, kAXWindowsAttribute) ?? []
+        var roots: [AXUIElement] = []
+        if let focused: AXUIElement = attribute(app, kAXFocusedWindowAttribute) ?? windows.first { roots.append(focused) }
+        for window in windows where !roots.contains(where: { CFEqual($0, window) }) {
+            let subrole: String = attribute(window, kAXSubroleAttribute) ?? ""
+            if ["AXDialog", "AXSystemDialog", "AXFloatingWindow", "AXSystemFloatingWindow"].contains(subrole) { roots.append(window) }
+        }
+        return roots
+    }
+
+    // MARK: Text
+
+    /// Characters returned at most; a long page is cut, not summarized.
+    static let textLimit = 12_000
+    static let textNodeBudget = 12_000
+
+    /// The text of the window in front in reading order, the way a screen reader would read it, including what is
+    /// scrolled out of view: a model can read a page or table exactly, without zooming into screenshots.
+    static func text() throws -> UIText {
+        guard AXIsProcessTrusted() else {
+            throw BridgeError(.permissionDenied, "Accessibility is not granted to ChatComputerAgent.")
+        }
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            throw BridgeError(.desktopUnavailable, "No app is in front.")
+        }
+        let root = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(root, 1.0)
+        let windows = frontWindows(of: root)
+        var reader = TextReader()
+        for window in windows { reader.read(window, depth: 0) }
+        reader.flush()
+        // WebKit builds a page's accessibility tree on the first request: an empty first read gets a second one.
+        if reader.lines.isEmpty {
+            Thread.sleep(forTimeInterval: 0.4)
+            reader = TextReader()
+            for window in windows { reader.read(window, depth: 0) }
+            reader.flush()
+        }
+        let title: String? = windows.first.flatMap { attribute($0, kAXTitleAttribute) }.flatMap { cleaned($0, limit: 120) }
+        return UIText(app: app.localizedName ?? "the frontmost app", window: title, lines: reader.lines, truncated: reader.truncated)
+    }
+
+    private struct TextReader {
+        var lines: [String] = []
+        var truncated = false
+        private var characters = 0
+        private var visited = 0
+        /// Adjacent pieces of one paragraph (web text arrives as runs: "Read ", "the docs", " today").
+        private var paragraph: [String] = []
+        private var seen: [CFHashCode: [AXUIElement]] = [:]
+
+        /// Controls are listed by find_elements; their labels would only clutter the text.
+        private static let skipped: Set<String> = [
+            "AXScrollBar", "AXValueIndicator", "AXToolbar", "AXMenuBar", "AXMenu", "AXButton", "AXMenuButton",
+            "AXPopUpButton", "AXCheckBox", "AXRadioButton", "AXSlider", "AXIncrementor", "AXDisclosureTriangle", "AXImage",
+            // A table lists the same cells under its columns as under its rows; rows read in order.
+            "AXColumn",
+        ]
+        private static let paragraphBreaks: Set<String> = ["AXGroup", "AXList", "AXOutline", "AXTable", "AXScrollArea", "AXWebArea", "AXSplitGroup", "AXTabGroup", "AXSheet", "AXWindow"]
+
+        mutating func read(_ element: AXUIElement, depth: Int) {
+            guard depth <= AccessibilityTree.maxDepth, visited < AccessibilityTree.textNodeBudget, !truncated else { truncated = true; return }
+            let hash = CFHash(element)
+            if seen[hash, default: []].contains(where: { CFEqual($0, element) }) { return }
+            seen[hash, default: []].append(element)
+            visited += 1
+            let role: String = AccessibilityTree.attribute(element, kAXRoleAttribute) ?? ""
+            if Self.skipped.contains(role) { return }
+
+            switch role {
+            case "AXStaticText":
+                if let text: String = AccessibilityTree.attribute(element, kAXValueAttribute), let clean = AccessibilityTree.cleaned(text, limit: 2000) {
+                    paragraph.append(clean)
+                }
+                return
+            case "AXLink":
+                // Inline: its words belong to the sentence around it.
+                if let text = AccessibilityTree.allText(in: element) { paragraph.append(text) }
+                return
+            case "AXHeading":
+                flush()
+                let title: String? = AccessibilityTree.attribute(element, kAXTitleAttribute)
+                if let text = title.flatMap({ AccessibilityTree.cleaned($0, limit: 300) }) ?? AccessibilityTree.allText(in: element) {
+                    emit("# " + text)
+                }
+                return
+            case "AXRow":
+                flush()
+                let cells: [AXUIElement] = AccessibilityTree.attribute(element, kAXChildrenAttribute) ?? []
+                let texts = cells.compactMap { AccessibilityTree.allText(in: $0) }
+                if !texts.isEmpty { emit(texts.joined(separator: " | ")) }
+                return
+            case "AXTextArea", "AXTextField", "AXComboBox" where !AccessibilityTree.isEditable(element):
+                // A read-only field is a label (a file name in a browser, a status line): plain text.
+                if let text: String = AccessibilityTree.attribute(element, kAXValueAttribute), let clean = AccessibilityTree.cleaned(text, limit: 2000) {
+                    paragraph.append(clean)
+                }
+                return
+            case "AXTextArea", "AXTextField", "AXComboBox":
+                flush()
+                let label = AccessibilityTree.name(of: element, role: role)
+                let value: String = AccessibilityTree.attribute(element, kAXValueAttribute) ?? ""
+                let valueLines = value.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                if role == "AXTextArea", label.isEmpty {
+                    valueLines.forEach { emit(String($0.prefix(2000))) }
+                } else if !label.isEmpty || !valueLines.isEmpty {
+                    emit((label.isEmpty ? "field" : label) + ": " + (valueLines.joined(separator: " ").isEmpty ? "(empty)" : valueLines.joined(separator: " ")))
+                }
+                return
+            default:
+                break
+            }
+            let breaks = Self.paragraphBreaks.contains(role)
+            if breaks { flush() }
+            for child: AXUIElement in AccessibilityTree.attribute(element, kAXChildrenAttribute) ?? [] {
+                read(child, depth: depth + 1)
+            }
+            if breaks { flush() }
+        }
+
+        mutating func flush() {
+            guard !paragraph.isEmpty else { return }
+            let line = paragraph.joined(separator: " ").replacingOccurrences(of: "  ", with: " ").trimmingCharacters(in: .whitespaces)
+            paragraph = []
+            if !line.isEmpty { emit(line) }
+        }
+
+        private mutating func emit(_ line: String) {
+            guard lines.last != line else { return }
+            guard characters + line.count <= AccessibilityTree.textLimit else { truncated = true; return }
+            characters += line.count
+            lines.append(line)
+        }
+    }
+
+    /// Every piece of text inside an element, joined: a table cell, a link, a heading made of runs.
+    fileprivate static func allText(in element: AXUIElement, depth: Int = 0) -> String? {
+        let role: String = attribute(element, kAXRoleAttribute) ?? ""
+        // An icon's description ("letter A icon") is not text anyone reads.
+        if role == "AXImage" { return nil }
+        if role == "AXStaticText" || role == "AXTextField" {
+            return (attribute(element, kAXValueAttribute) as String?).flatMap { cleaned($0, limit: 500) }
+        }
+        guard depth < 6 else { return nil }
+        let parts = (attribute(element, kAXChildrenAttribute) as [AXUIElement]? ?? []).compactMap { allText(in: $0, depth: depth + 1) }
+        if !parts.isEmpty { return parts.joined(separator: " ") }
+        let title: String? = attribute(element, kAXTitleAttribute) ?? attribute(element, kAXDescriptionAttribute)
+        return title.flatMap { cleaned($0, limit: 300) }
+    }
+
+    /// Whether the user can type into it; a field whose value can't be set is a label.
+    fileprivate static func isEditable(_ element: AXUIElement) -> Bool {
+        var settable = DarwinBoolean(false)
+        return AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success && settable.boolValue
     }
 
     /// Case- and diacritic-insensitive, for matching what the model typed against what the app shows.
@@ -134,7 +285,7 @@ enum AccessibilityTree {
     private static let windowButtons = ["AXCloseButton": "close window", "AXMinimizeButton": "minimize window",
                                         "AXZoomButton": "zoom window", "AXFullScreenButton": "full screen"]
 
-    private static func name(of element: AXUIElement, role: String) -> String {
+    fileprivate static func name(of element: AXUIElement, role: String) -> String {
         if let subrole: String = attribute(element, kAXSubroleAttribute), let name = windowButtons[subrole] { return name }
         for key in [kAXTitleAttribute, kAXDescriptionAttribute, "AXLabel", kAXPlaceholderValueAttribute, kAXHelpAttribute] {
             if let text: String = attribute(element, key), let clean = cleaned(text) { return clean }
@@ -169,7 +320,7 @@ enum AccessibilityTree {
         return nil
     }
 
-    private static func cleaned(_ text: String, limit: Int = 60) -> String? {
+    fileprivate static func cleaned(_ text: String, limit: Int = 60) -> String? {
         let single = text.split(whereSeparator: \.isNewline).joined(separator: " ").trimmingCharacters(in: .whitespaces)
         guard !single.isEmpty else { return nil }
         return single.count > limit ? String(single.prefix(limit - 1)) + "…" : single
@@ -187,7 +338,7 @@ enum AccessibilityTree {
 
     /// Strings, numbers and booleans bridge safely with `as?`; CF types don't (any CFTypeRef casts to them),
     /// so those go through the typed helpers below, which check the type ID.
-    private static func attribute<T>(_ element: AXUIElement, _ name: String) -> T? {
+    fileprivate static func attribute<T>(_ element: AXUIElement, _ name: String) -> T? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success, let value else { return nil }
         if T.self == AXUIElement.self {

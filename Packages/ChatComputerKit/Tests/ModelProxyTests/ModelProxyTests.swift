@@ -287,6 +287,13 @@ import BridgeProtocol
         #expect(ElementTools.parseFind([:]) == nil)
     }
 
+    @Test func textSaysWhenItIsCutOrEmpty() {
+        let cut = ElementTools.describe(UIText(app: "Safari", window: nil, lines: ["a"], truncated: true))
+        #expect(cut.hasPrefix("Text of Safari:\na"))
+        #expect(cut.contains("call read_text again"))
+        #expect(ElementTools.describe(UIText(app: "Preview", window: "scan.png", lines: [], truncated: false)).contains("no readable text"))
+    }
+
     @Test func emptyListSaysWhatToDoNext() {
         let text = ElementTools.describe(UIElementList(app: "Safari", elements: [], truncated: false), query: "Login")
         #expect(text.contains("no controls matching \"Login\""))

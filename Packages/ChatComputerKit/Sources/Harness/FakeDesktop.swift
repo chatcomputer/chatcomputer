@@ -36,6 +36,8 @@ actor FakeDesktop: GuestChannel {
             return .ok
         case .health, .capabilities:
             return .ok
+        case .uiText:
+            return .text(UIText(app: "Notes Demo", window: "Untitled — Notes", lines: text.isEmpty ? [] : text.components(separatedBy: "\n"), truncated: false))
         case .uiElements(let query):
             log.append("uiElements \(query ?? "")")
             func rect(_ r: CGRect) -> ScreenRect { ScreenRect(x0: Int(r.minX), y0: Int(r.minY), x1: Int(r.maxX), y1: Int(r.maxY)) }

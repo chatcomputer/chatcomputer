@@ -437,7 +437,7 @@ public actor AgentRunner {
             case .cursor(let point):
                 usage.consecutiveFailures = 0
                 return (ComputerToolset.textResult(toolUseID: toolUseID, "X=\(point.x),Y=\(point.y)"), true)
-            case .ok, .health, .capabilities, .elements:
+            case .ok, .health, .capabilities, .elements, .text:
                 usage.consecutiveFailures = 0
                 return (ComputerToolset.textResult(toolUseID: toolUseID, "OK"), true)
             case .failure(let error):
@@ -497,6 +497,42 @@ public actor AgentRunner {
             }
         }
 
+        if name == ElementTools.readText {
+            continuation.yield(.action("read_text"))
+            do {
+                switch try await deps.guest.send(envelope(.uiText)) {
+                case .text(let text):
+                    usage.consecutiveFailures = 0
+                    return (HostTools.result(toolUseID: toolUseID, ElementTools.describe(text)), true, false)
+                case .failure(let error):
+                    return fail("\(error.category.rawValue): \(error.message)")
+                default:
+                    return fail("Unexpected answer from the virtual Mac.")
+                }
+            } catch {
+                return fail("\(error)")
+            }
+        }
+
+        if name == ElementTools.openApp {
+            guard let request = ElementTools.parseOpen(input) else { return fail("Give open_app an app name, a file path, or both.") }
+            guard let token = leaseToken, await deps.lease.isValid(token) else {
+                return (HostTools.result(toolUseID: toolUseID, "Not executed: the agent no longer holds input control.", isError: true), false, false)
+            }
+            usage.actions += 1
+            let what = [request.app, request.file.map { ($0 as NSString).lastPathComponent }].compactMap { $0 }.joined(separator: " ")
+            continuation.yield(.action("open_app \(what)"))
+            do {
+                if case .failure(let error) = try await deps.guest.send(envelope(.perform(.open(app: request.app, path: request.file)))) {
+                    return fail("\(error.category.rawValue): \(error.message)")
+                }
+            } catch {
+                return fail("\(error)")
+            }
+            usage.consecutiveFailures = 0
+            return (HostTools.result(toolUseID: toolUseID, "Opened \(what); it is in front."), true, true)
+        }
+
         guard let request = ElementTools.parseClick(input) else {
             return fail("Give click_element an id from find_elements, or a name.")
         }
@@ -508,7 +544,15 @@ public actor AgentRunner {
             target = element
         } else {
             let wanted = request.name ?? ""
-            switch await elements(wanted) {
+            // Names are resolved when the click runs, so a turn can chain a menu, its item and the dialog that
+            // follows. What the previous click opens takes a moment to appear: look again before giving up.
+            var lookup = await elements(wanted)
+            for _ in 0..<3 {
+                guard case .success(let list) = lookup, ElementTools.match(wanted, role: request.role, in: list.elements) == .none else { break }
+                try? await Task.sleep(for: .milliseconds(400))
+                lookup = await elements(wanted)
+            }
+            switch lookup {
             case .failure(let error):
                 return fail("\(error.category.rawValue): \(error.message)")
             case .success(let list):
