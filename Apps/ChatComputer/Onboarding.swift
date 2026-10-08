@@ -28,8 +28,10 @@ struct OnboardingState {
     var progress: Double?
     var detail = ""
     var isWorking = false
-    /// A local IPSW to install from instead of downloading one.
-    var restoreImage: URL?
+    /// A local IPSW to install from instead of downloading one. Development: CC_RESTORE_IMAGE sets it for unattended
+    /// setup.
+    var restoreImage: URL? = ProcessInfo.processInfo.environment["CC_RESTORE_IMAGE"]
+        .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
     /// The macOS release to install. Development: CC_GUEST_MACOS=26 chooses macOS 26 for unattended setup.
     var guestRelease: GuestRelease = ProcessInfo.processInfo.environment["CC_GUEST_MACOS"] == "26" ? .macOS26 : .macOS27
 }
@@ -263,6 +265,8 @@ extension AppModel {
             onboarding.detail = ""
             onboarding.progress = nil
         } catch {
+            // Logged as well: the alert is the only other trace, and an unattended setup has no one to read it.
+            devLog("onboarding: \(onboarding.step) failed: \(error)")
             errorMessage = error.localizedDescription
         }
     }

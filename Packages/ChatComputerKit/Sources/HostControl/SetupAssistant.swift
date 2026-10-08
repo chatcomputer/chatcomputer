@@ -51,7 +51,15 @@ public struct SetupAssistant {
             let screen = try ScreenText.recognize(image, guestSize: display.guestSize)
             let page = Self.page(screen)
             trace?(page, image)
-            if page == lastPage { repeats += 1 } else { repeats = 0; lastPage = page }
+            // Pages slide in: text shows before the controls take clicks and typing. Act on a page only when the
+            // next read still shows it.
+            if page != lastPage {
+                lastPage = page
+                repeats = -1
+                try await Task.sleep(for: .seconds(1))
+                continue
+            }
+            repeats += 1
             // A page that doesn't change after several tries: let it settle, then try its fallback.
             guard repeats < 12 else { throw HostControlError.gaveUp("Setup Assistant stayed on “\(page)”.") }
             if page == "desktop" {
@@ -75,6 +83,7 @@ public struct SetupAssistant {
             ("location dialog", ["Don't Use", "Don’t Use"]),
             ("filevault dialog", ["Securely Encrypted"]),
             ("creating account", ["Creating account"]),
+            ("missing information", ["haven't provided all", "haven’t provided all"]),
             ("language", ["Language"]),
             ("country", ["Select Your Country or Region"]),
             ("transfer", ["Transfer Your Data"]),
@@ -138,6 +147,9 @@ public struct SetupAssistant {
             if !click("Not Now") && !click("Set Up Later") { try await next() }
         case "account":
             try await fillAccount(screen)
+        case "missing information":
+            // Something didn't take on the account page: go back and fill it in again.
+            if !click("Go Back") { try await display.key("return") }
         case "apple account":
             // Other Sign-In Options › Sign in Later in Settings, then confirm the skip.
             if !click("Sign in Later") && !click("Set Up Later") {
@@ -179,31 +191,45 @@ public struct SetupAssistant {
         }
     }
 
-    /// Full name, account name, password twice; and no password reset through an Apple Account.
+    /// Full name, account name, password twice; and no password reset through an Apple Account. Presses Continue
+    /// only once the screen shows the fields filled (their placeholders gone); otherwise the next round fills again.
     private func fillAccount(_ screen: ScreenText) async throws {
-        guard let fullNameField = screen.first("Full Name"), let accountField = screen.first("Account Name"),
-              let passwordField = screen.first("Password"), let verifyField = screen.first("Verify Password") else {
-            // Already filled in (a second look while it works): press Continue.
+        let placeholders = ["Full Name", "Account Name", "Password", "Verify Password"]
+        let empty = placeholders.compactMap { label in screen.items.first { $0.text == label } }
+        guard !empty.isEmpty else {
+            // Filled in: the Apple Account reset box off, then Continue.
             if let continueButton = screen.first("Continue") { display.click(continueButton.center) }
+            log("setup assistant: account \(username) created")
             return
         }
         let secret = try password()
-        display.click(fullNameField.center)
-        try await display.type(fullName)
-        display.click(accountField.center)
-        try await display.key("cmd+a")
-        try await display.type(username)
-        display.click(passwordField.center)
-        try await display.type(secret)
-        display.click(verifyField.center)
-        try await display.type(secret)
-        if let reset = screen.first("Allow computer account password") {
+        let both = empty.contains { $0.text == "Password" }
+        for field in empty {
+            // With both password fields empty, the second is reached with Tab from the first: once the password
+            // is typed, a popover can cover the "Verify Password" field's place on screen.
+            if both, field.text == "Verify Password" { continue }
+            display.click(field.center)
+            try await Task.sleep(for: .milliseconds(400))
+            switch field.text {
+            case "Full Name":
+                try await display.type(fullName)
+            case "Account Name":
+                // Filled in from the full name; replace it.
+                try await display.key("cmd+a")
+                try await display.type(username)
+            case "Password":
+                try await display.type(secret)
+                try await display.key("tab")
+                try await Task.sleep(for: .milliseconds(300))
+                try await display.type(secret)
+            default:
+                try await display.type(secret)
+            }
+        }
+        // Only on the pass that filled the full name, so a second pass can't turn the box back on.
+        if empty.contains(where: { $0.text == "Full Name" }), let reset = screen.first("Allow computer account password") {
             display.click(CGPoint(x: reset.rect.minX - 11, y: reset.rect.midY))
         }
-        try await Task.sleep(for: .seconds(1))
-        guard let continueButton = screen.first("Continue") else { throw HostControlError.notFound("Continue") }
-        display.click(continueButton.center)
-        log("setup assistant: account \(username) created")
     }
 
     /// Remote Login and automatic login, from Terminal: `systemsetup` needs Full Disk Access on macOS 26, so sshd

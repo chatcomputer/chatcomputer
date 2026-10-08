@@ -10,7 +10,7 @@ settings:
     SWIFT_VERSION: "6.0"
     # App and guest agent share one version; bump both here for every release.
     MARKETING_VERSION: "0.9.8"
-    CURRENT_PROJECT_VERSION: "39"
+    CURRENT_PROJECT_VERSION: "40"
     MACOSX_DEPLOYMENT_TARGET: "27.0"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_STYLE: Automatic
@@ -20,6 +20,9 @@ settings:
 packages:
   ChatComputerKit:
     path: Packages/ChatComputerKit
+  # The guest agent's modules, built for macOS 26 too.
+  ChatComputerAgentKit:
+    path: Packages/ChatComputerAgentKit
   # The chat transcript: Markdown rendering and a reusing list (both MIT).
   MarkdownView:
     url: https://github.com/Lakr233/MarkdownView
@@ -34,7 +37,9 @@ targets:
     sources: [Apps/ChatComputer]
     dependencies:
       - package: ChatComputerKit
-        products: [BridgeProtocol, ChatCore, ModelProxy, Orchestrator, VMKit, GuestBridge, HostControl, ComputerControl]
+        products: [ChatCore, ModelProxy, Orchestrator, VMKit, GuestBridge, HostControl, ComputerControl]
+      - package: ChatComputerAgentKit
+        product: BridgeProtocol
       - package: MarkdownView
         product: MarkdownView
       - package: ListViewKit
@@ -67,7 +72,7 @@ targets:
     platform: macOS
     sources: [Apps/ChatComputerAgent]
     dependencies:
-      - package: ChatComputerKit
+      - package: ChatComputerAgentKit
         products: [AgentCore, BridgeProtocol]
     info:
       path: Apps/ChatComputerAgent/Info.plist
@@ -81,6 +86,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.chatcomputer.agent
+        # The agent also runs in macOS 26 guests. Launch Services, and so Privacy settings, refuses an app built
+        # for a newer macOS (-10825): the agent would never show in the Accessibility list there.
+        MACOSX_DEPLOYMENT_TARGET: "26.0"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 schemes:
   ChatComputer:

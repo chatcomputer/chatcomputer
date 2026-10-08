@@ -38,6 +38,8 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 | 5. 保存初始状态 | agent 从虚拟机内部干净关机，冻结磁盘为 base + overlay | 关机约 66 秒 |
 | 6. 连接模型 | 选厂商、协议、模型，填 Key，点「Save and test」 | DeepSeek 通过 |
 
+**也可以选 macOS 26**（第 1 步上方的两张卡片，默认 macOS 27）。macOS 26 不认 `VZMacGuestProvisioningOptions`，第 2 步改由宿主读画面、点完设置助理（`SetupAssistant`），再从终端打开 SSH 和自动登录。agent 单独放在 `ChatComputerAgentKit` 包里按 macOS 26 编译：按 27 编译的程序在 26 上会被 Launch Services 拒绝（-10825），隐私设置里就看不到 agent。2026-10-08 用 26.6.2 全新安装实测：引导 413 秒全部自动完成，第一个任务 45 秒通过。账户页的确认密码改为从密码框按 Tab 进入后一遍填好（之前点它的位置常落空，弹出"未提供全部信息"）；万一再弹出，会点 Go Back 重填。
+
 ### 2.2 执行任务
 
 用 DeepSeek（`deepseek-flash`）在真实虚拟机上实测：

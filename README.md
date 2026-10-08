@@ -147,8 +147,10 @@ project.yml                  XcodeGen spec (targets, entitlements, Info.plist, v
 Apps/ChatComputer/           host app: main window in AppKit (MainWindow/: guest screen, chat with MarkdownView and
                              ListViewKit, toolbar); onboarding, Settings and sheets in SwiftUI
 Apps/ChatComputerAgent/      guest agent (menu bar app inside the VM)
-Packages/ChatComputerKit/    all logic, as a local Swift package
+Packages/ChatComputerAgentKit/  what the guest agent is built from (macOS 26 and later)
   BridgeProtocol             host⇄guest messages and framing (vsock)
+  AgentCore       (macOS)    vsock client and NativeDriver in the guest
+Packages/ChatComputerKit/    the host's logic, as a local Swift package (macOS 27); tests for both packages
   ChatCore                   task state machine, control lease, budget, export checks, secret files
   ModelProxy                 Anthropic and OpenAI-compatible clients, provider catalog, computer toolset
   Orchestrator               the agent loop (AgentRunner)
@@ -156,7 +158,6 @@ Packages/ChatComputerKit/    all logic, as a local Swift package
   GuestBridge     (macOS)    vsock server on the host
   HostControl     (macOS)    host-level control of the guest (framebuffer, keyboard, mouse)
   ComputerControl            `chatcomputer` CLI and MCP server for outside coding agents, control socket
-  AgentCore       (macOS)    vsock client and NativeDriver in the guest
   Harness         (macOS)    cc-harness: live model scenarios and VM probes
 scripts/                     test-mac.sh, harness.sh, release.sh, test-linux.sh
 docs/                        STATUS, ROADMAP, DESIGN, proposal

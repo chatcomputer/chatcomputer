@@ -89,7 +89,9 @@ Before claiming a change works, run the layer that exercises it:
     `HostControl.SetupAssistant` reads each page (Vision) and clicks through it, then turns on SSH and automatic login
     from Terminal (`systemsetup` needs Full Disk Access there; `launchctl` doesn't). Page recognition is tested against
     text from real screens in `Tests/HostControlTests/SetupAssistantScreens`; when Apple changes a page, add its
-    fixture (`cc-harness vm up --setup-assistant DIR` saves every screen it reads).
+    fixture (`cc-harness vm up --setup-assistant DIR` saves every screen it reads). The guest agent is built for
+    macOS 26 from `Packages/ChatComputerAgentKit`: Launch Services refuses a binary built for a newer macOS
+    (-10825), and then the agent never shows in Privacy settings. Keep 27-only APIs out of that package.
 12. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
    agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
    (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.
@@ -103,6 +105,7 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_GUEST_PASSWORD` | Known guest password on first boot (at least 4 characters) |
 | `CC_AUTO_ONBOARD=1` | Run every setup step in turn |
 | `CC_GUEST_MACOS=26` | Choose macOS 26 for the virtual Mac during setup (default 27) |
+| `CC_RESTORE_IMAGE` | Install the virtual Mac from this local `.ipsw` instead of downloading one |
 | `CC_DEV_MODEL`, `CC_DEV_API_KEY` | Configure the model, e.g. `deepseek:openAI:deepseek-flash` |
 | `CC_DEV_TASK` | Submit this task once the guest is ready |
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |

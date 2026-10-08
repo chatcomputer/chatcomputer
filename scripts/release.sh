@@ -32,6 +32,13 @@ for bundle in "$APP" "$APP/Contents/Resources/GuestAgent/ChatComputerAgent.app";
 done
 codesign -d --entitlements - --xml "$APP" 2>/dev/null | grep -q com.apple.security.virtualization \
   && echo "  virtualization entitlement: present"
+# macOS 26 guests list the agent in Privacy settings only if Launch Services lets it run there: both its
+# Info.plist and its binary must say 26 (project.yml, the agent's MACOSX_DEPLOYMENT_TARGET).
+AGENT="$APP/Contents/Resources/GuestAgent/ChatComputerAgent.app"
+MIN=$(/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$AGENT/Contents/Info.plist")
+MINOS=$(vtool -show-build "$AGENT/Contents/MacOS/ChatComputerAgent" | awk '/minos/ { print $2; exit }')
+[ "$MIN" = "26.0" ] && [ "$MINOS" = "26.0" ] || { echo "  agent minimum macOS is $MIN (binary $MINOS), not 26.0"; exit 1; }
+echo "  agent runs on macOS $MIN and later"
 
 echo "== notarize"
 ditto -c -k --keepParent "$APP" "$OUT/ChatComputer.zip"
