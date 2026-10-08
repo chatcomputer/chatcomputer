@@ -713,7 +713,7 @@ final class AppModel {
             // Saved once per model turn, so a crash loses at most the turn in progress.
             saveSession()
         case .needsUser(let ask):
-            transcript.append(ChatItem(role: .agent, text: "\(ask.question)\n→ \(ask.target)"))
+            transcript.append(ChatItem(role: .agent, text: "\(ask.question)\n\n→ \(ask.target)"))
         case .usage(let input, let output, let cached):
             tokens = (input, output)
             cachedTokens = cached

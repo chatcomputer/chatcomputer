@@ -63,7 +63,11 @@ public enum HostTools {
                 "required": ["kind", "question", "target"],
                 "properties": [
                     "kind": ["type": "string", "enum": ["approval", "login", "information"]],
-                    "question": ["type": "string", "description": "In the same language as the user's task: English for a task in English, Chinese for a task in Chinese."],
+                    "question": ["type": "string", "description": """
+                        Markdown, shown to the user as a card. When offering choices, put each option on its own line \
+                        as a numbered list. In the same language as the user's task: English for a task in English, \
+                        Chinese for a task in Chinese.
+                        """],
                     "target": ["type": "string", "description": "Exact site, recipient, file or setting affected."],
                 ],
             ],
