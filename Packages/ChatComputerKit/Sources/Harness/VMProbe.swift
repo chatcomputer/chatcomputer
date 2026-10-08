@@ -107,7 +107,7 @@ enum VMProbe {
         try bundle.create()
         // Reuse an IPSW downloaded for the app's own bundle, or $CC_IPSW.
         let shared = ProcessInfo.processInfo.environment["CC_IPSW"].map { URL(fileURLWithPath: $0) }
-            ?? VMBundle.defaultLocation.appendingPathComponent("RestoreImage.ipsw")
+            ?? VMBundle(url: VMBundle.defaultLocation).restoreImageURL
         let restoreImage = FileManager.default.fileExists(atPath: shared.path) ? shared : nil
         let spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
         let started = Date()
@@ -375,7 +375,7 @@ enum VMProbe {
         } else {
             print("no spec yet")
         }
-        for url in [bundle.baseDiskURL, bundle.savedStateURL, bundle.url.appendingPathComponent("RestoreImage.ipsw")] {
+        for url in [bundle.baseDiskURL, bundle.savedStateURL, bundle.restoreImageURL] {
             print("\(url.lastPathComponent): \(diskUsage(url))")
         }
     }

@@ -28,9 +28,18 @@ struct OnboardingState {
     var progress: Double?
     var detail = ""
     var isWorking = false
-    /// A local IPSW to install from instead of downloading one. Development: CC_RESTORE_IMAGE sets it for unattended
-    /// setup.
-    var restoreImage: URL? = ProcessInfo.processInfo.environment["CC_RESTORE_IMAGE"]
+    /// Where the restore image comes from: downloaded by setup, or a file the user downloaded.
+    enum ImageSource { case download, local }
+    var imageSource: ImageSource = OnboardingState.environmentImage == nil ? .download : .local
+    /// The local IPSW to install from. Development: CC_RESTORE_IMAGE sets it for unattended setup.
+    var restoreImage: URL? = OnboardingState.environmentImage
+    /// What the chosen image turned out to be ("macOS 26 (25G83)"), or why it can't be used.
+    var restoreImageNote: String?
+    var restoreImageUsable = OnboardingState.environmentImage != nil
+    var restoreImageFailed = false
+    /// The release the chosen image installs; it decides over the cards.
+    var restoreImageRelease: GuestRelease?
+    private static let environmentImage = ProcessInfo.processInfo.environment["CC_RESTORE_IMAGE"]
         .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
     /// The macOS release to install. Development: CC_GUEST_MACOS=26 chooses macOS 26 for unattended setup.
     var guestRelease: GuestRelease = ProcessInfo.processInfo.environment["CC_GUEST_MACOS"] == "26" ? .macOS26 : .macOS27
@@ -175,7 +184,7 @@ extension AppModel {
                 var spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
                 // The choice holds until the image is downloaded; a local image decides it in the installer.
                 if spec.stage == .created { spec.guestRelease = onboarding.guestRelease }
-                _ = try await MacOSInstaller(bundle: bundle).install(spec: spec, restoreImage: onboarding.restoreImage) { [weak self] progress in
+                _ = try await MacOSInstaller(bundle: bundle).install(spec: spec, restoreImage: onboarding.imageSource == .local ? onboarding.restoreImage : nil) { [weak self] progress in
                     self?.show(progress)
                 }
                 loadVM()
@@ -316,22 +325,13 @@ struct OnboardingPanel: View {
                 } else {
                     if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
                         ReleaseChoice(selection: Bindable(model).onboarding.guestRelease)
+                        ImageSourceChoice()
                     }
                     Button(model.onboarding.isWorking ? "Working…" : "Continue") {
                         Task { await model.runOnboardingStep() }
                     }
-                    .disabled(model.onboarding.isWorking)
+                    .disabled(model.onboarding.isWorking || !model.canStartInstall)
                     .keyboardShortcut(.defaultAction)
-                    if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
-                        // A restore image downloaded earlier (about 26 GB) saves the download.
-                        Button(model.onboarding.restoreImage.map { "Using \($0.lastPathComponent)" } ?? "Use a downloaded restore image…") {
-                            let panel = NSOpenPanel()
-                            panel.allowedContentTypes = [UTType(filenameExtension: "ipsw") ?? .data]
-                            panel.message = "Choose a macOS restore image (.ipsw)"
-                            if panel.runModal() == .OK { model.onboarding.restoreImage = panel.url }
-                        }
-                        .buttonStyle(.link)
-                    }
                 }
             }
             Spacer()
@@ -347,6 +347,99 @@ struct OnboardingPanel: View {
     private func icon(for step: OnboardingState.Step) -> String {
         if step.rawValue < model.onboarding.step.rawValue { return "checkmark.circle.fill" }
         return step == model.onboarding.step ? "arrow.right.circle" : "circle"
+    }
+}
+
+extension AppModel {
+    /// Step 1 can start once the image it needs is settled: setup downloads one, or the chosen file checked out.
+    var canStartInstall: Bool {
+        onboarding.step != .installMacOS || onboarding.imageSource == .download || onboarding.restoreImageUsable
+    }
+
+    /// Asks for a restore image the user downloaded, checks that this Mac can install it, and selects its release.
+    func chooseRestoreImage() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "ipsw") ?? .data]
+        panel.message = "Choose a macOS restore image (.ipsw)"
+        panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        onboarding.restoreImage = url
+        onboarding.restoreImageUsable = false
+        onboarding.restoreImageRelease = nil
+        onboarding.restoreImageFailed = false
+        onboarding.restoreImageNote = "Checking the image…"
+        Task {
+            do {
+                let image = try await MacOSInstaller.describeImage(at: url)
+                guard onboarding.restoreImage == url else { return }
+                onboarding.guestRelease = image.release
+                onboarding.restoreImageRelease = image.release
+                onboarding.restoreImageUsable = true
+                onboarding.restoreImageNote = "\(image.release.title) (\(image.build))"
+            } catch {
+                guard onboarding.restoreImage == url else { return }
+                onboarding.restoreImageFailed = true
+                onboarding.restoreImageNote = "This file can't be used: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    /// Machine › Show Restore Image in Finder: the image the machine was installed from (about 20–27 GB, kept for
+    /// reinstalling), else the file chosen for setup, else the machine's folder.
+    func revealRestoreImage() {
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: bundle.restoreImageURL.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([bundle.restoreImageURL])
+        } else if let chosen = onboarding.restoreImage, fileManager.fileExists(atPath: chosen.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([chosen])
+        } else if fileManager.fileExists(atPath: bundle.url.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([bundle.url])
+        } else {
+            NSSound.beep()
+        }
+    }
+}
+
+/// Where the restore image comes from: setup downloads it, or the user downloads it (a browser or download
+/// manager can pause and resume) and chooses the file.
+private struct ImageSourceChoice: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        let onboarding = model.onboarding
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Restore image").font(.headline)
+            Picker("Restore image", selection: $model.onboarding.imageSource) {
+                Text("Download it during setup").tag(OnboardingState.ImageSource.download)
+                Text("Use one I downloaded").tag(OnboardingState.ImageSource.local)
+            }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
+            if onboarding.imageSource == .local {
+                HStack(spacing: 8) {
+                    Button(onboarding.restoreImage == nil ? "Choose…" : "Choose Another…") { model.chooseRestoreImage() }
+                    if let image = onboarding.restoreImage {
+                        Text(image.lastPathComponent).font(.callout).lineLimit(1).truncationMode(.middle)
+                    }
+                }
+                if let note = onboarding.restoreImageNote {
+                    Text(note).font(.callout)
+                        .foregroundStyle(onboarding.restoreImageFailed ? Color.red : Color.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let imageRelease = onboarding.restoreImageRelease, imageRelease != onboarding.guestRelease {
+                    Text("This image installs \(imageRelease.title); choose another file for \(onboarding.guestRelease.title).")
+                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                if onboarding.restoreImage == nil || !onboarding.restoreImageUsable {
+                    Link("Download \(onboarding.guestRelease.title) from Apple",
+                         destination: MacOSInstaller.downloadURL(for: onboarding.guestRelease))
+                        .font(.callout)
+                    Text("Then choose the .ipsw file here.").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 }
 

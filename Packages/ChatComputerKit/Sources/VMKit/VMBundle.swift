@@ -38,6 +38,8 @@ public struct VMBundle: Sendable {
     public var baseDiskURL: URL { diskDirectory.appendingPathComponent("base.asif") }
     public func overlayURL(_ index: Int) -> URL { diskDirectory.appendingPathComponent("overlay-\(index).asif") }
     public var savedStateURL: URL { url.appendingPathComponent("SavedState.vzvmsave") }
+    /// The macOS restore image the machine was installed from: downloaded, or a hard link to one the user chose.
+    public var restoreImageURL: URL { url.appendingPathComponent("RestoreImage.ipsw") }
     /// Guest password and pairing token (0600), shared by the app and `cc-harness`.
     public var secretsURL: URL { url.appendingPathComponent("secrets.json") }
     public var snapshotsDirectory: URL { url.appendingPathComponent("Snapshots", isDirectory: true) }
