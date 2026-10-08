@@ -1,0 +1,6 @@
+{"passed":true,"actions":26,"elementActions":1,"outputTokens":1746,"cachedInputTokens":71424,"seconds":69,"task":"planet-report","agent":"deepseek:openAI:deepseek-flash","inputTokens":88009,"detail":"ok","run":1,"turns":15}
+{"task":"sales-summary","agent":"deepseek:openAI:deepseek-flash","passed":true,"run":1,"inputTokens":96661,"seconds":73,"cachedInputTokens":78720,"outputTokens":2230,"actions":19,"detail":"ok","elementActions":2,"turns":16}
+{"outputTokens":5803,"passed":true,"cachedInputTokens":345728,"run":1,"task":"signup-from-file","detail":"ok","agent":"deepseek:openAI:deepseek-flash","turns":47,"inputTokens":400847,"seconds":188,"actions":57,"elementActions":8}
+{"passed":true,"actions":32,"elementActions":2,"outputTokens":2971,"cachedInputTokens":74624,"seconds":91,"task":"compare-shops","agent":"deepseek:openAI:deepseek-flash","inputTokens":91873,"detail":"ok","run":1,"turns":15}
+{"task":"organize-files","elementActions":0,"cachedInputTokens":30336,"run":1,"agent":"deepseek:openAI:deepseek-flash","detail":"ok","seconds":41,"passed":true,"actions":5,"inputTokens":37321,"outputTokens":1476,"turns":7}
+{"run":1,"detail":"ok","seconds":218,"agent":"deepseek:openAI:deepseek-flash","passed":true,"turns":48,"actions":65,"elementActions":10,"inputTokens":504611,"cachedInputTokens":441216,"task":"calendar-to-file","outputTokens":11900}
