@@ -4,6 +4,8 @@ import ChatCore
 import AppKit
 import Foundation
 import GuestBridge
+import HostControl
+import ImageIO
 import Virtualization
 import VMKit
 
@@ -72,6 +74,8 @@ enum VMProbe {
         var inputTests = 0
         var updateAgent = false
         var agentConsole: URL?
+        /// macOS 26: walk Setup Assistant from the host (`HostControl.SetupAssistant`), saving each screen here.
+        var setupAssistant: URL?
 
         init(_ arguments: [String]) {
             var iterator = arguments.makeIterator()
@@ -89,6 +93,7 @@ enum VMProbe {
                 case "--input-test": inputTests = iterator.next().flatMap(Int.init) ?? 3; bridge = true
                 case "--console": console = iterator.next().map { URL(fileURLWithPath: $0) }; window = true
                 case "--wait-ready": waitReady = true; bridge = true
+                case "--setup-assistant": setupAssistant = iterator.next().map { URL(fileURLWithPath: $0) }; window = true
                 default: print("ignoring unknown option \(argument)")
                 }
             }
@@ -148,6 +153,29 @@ enum VMProbe {
         var console: GuestConsole?
         if options.window, let machine = controller.virtualMachine {
             let (view, window) = showWindow(machine, spec: spec)
+            if let directory = options.setupAssistant {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                if try secrets.read(SecretAccount.guestPassword(vmID: spec.id)) == nil {
+                    _ = try GuestProvisioner(bundle: bundle, secrets: secrets).firstBootOptions(spec: spec)
+                }
+                let display = HostDisplay(view: view, guestSize: CGSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2))
+                var shot = 0
+                let assistant = SetupAssistant(
+                    display: display, fullName: spec.name, username: spec.guestUsername,
+                    password: { try secrets.read(SecretAccount.guestPassword(vmID: spec.id)) ?? "" },
+                    log: { log($0) },
+                    trace: { page, image in
+                        shot += 1
+                        let url = directory.appendingPathComponent(String(format: "%03d-%@.png", shot, page.replacingOccurrences(of: " ", with: "_")))
+                        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else { return }
+                        CGImageDestinationAddImage(destination, image, nil)
+                        CGImageDestinationFinalize(destination)
+                    })
+                let walkStarted = Date()
+                try await assistant.run()
+                log("setup assistant finished in \(elapsed(since: walkStarted))")
+                try controller.updateSpec { $0.stage = .provisioned }
+            }
             if let directory = options.console {
                 console = GuestConsole(view: view, window: window, directory: directory)
                 console?.guestSize = CGSize(width: spec.displayWidth / 2, height: spec.displayHeight / 2)

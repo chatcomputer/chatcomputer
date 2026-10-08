@@ -161,12 +161,15 @@ public final class HostDisplay {
     }
 }
 
-public enum HostControlError: Error, Equatable, CustomStringConvertible {
+public enum HostControlError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case noWindow
     case noFramebuffer
     case untypable
     case notFound(String)
     case gaveUp(String)
+
+    /// So the alert shows the sentence, not "HostControlError error 1".
+    public var errorDescription: String? { description }
 
     public var description: String {
         switch self {

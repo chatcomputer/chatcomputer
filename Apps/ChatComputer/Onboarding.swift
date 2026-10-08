@@ -30,6 +30,8 @@ struct OnboardingState {
     var isWorking = false
     /// A local IPSW to install from instead of downloading one.
     var restoreImage: URL?
+    /// The macOS release to install. Development: CC_GUEST_MACOS=26 chooses macOS 26 for unattended setup.
+    var guestRelease: GuestRelease = ProcessInfo.processInfo.environment["CC_GUEST_MACOS"] == "26" ? .macOS26 : .macOS27
 }
 
 extension AppModel {
@@ -104,6 +106,38 @@ extension AppModel {
         }
     }
 
+    /// macOS 26: Setup Assistant done from this Mac (account, the least sharing choices), then SSH and automatic
+    /// login turned on, so the agent installs as on macOS 27. It types and clicks into the guest, which works only
+    /// while this app is in front.
+    private func walkSetupAssistant(_ vm: VirtualMachineController) async throws {
+        var waited = 0
+        while guestView?.window == nil, waited < 30 {
+            try await Task.sleep(for: .seconds(1))
+            waited += 1
+        }
+        guard let view = guestView else { throw VMError.bootstrapFailed("the virtual Mac's screen is not showing") }
+        var attention: Int?
+        while !NSApp.isActive {
+            onboarding.detail = "Click this window to continue: setting up macOS 26 operates the virtual Mac's screen, which only works while Chat Computer is in front."
+            if attention == nil { attention = NSApp.requestUserAttention(.criticalRequest) }
+            try await Task.sleep(for: .seconds(1))
+        }
+        if let attention { NSApp.cancelUserAttentionRequest(attention) }
+        onboarding.detail = "Setting up macOS 26 and creating the account…"
+        let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+        let secrets = self.secrets
+        let id = vm.spec.id
+        let assistant = SetupAssistant(display: display, fullName: vm.spec.name, username: vm.spec.guestUsername,
+                                       password: {
+                                           guard let password = try secrets.read(SecretAccount.guestPassword(vmID: id)) else {
+                                               throw VMError.bootstrapFailed("guest password missing from secrets.json")
+                                           }
+                                           return password
+                                       },
+                                       log: { [weak self] in self?.devLog("onboarding: \($0)") })
+        try await assistant.run()
+    }
+
     /// The clean starting point should greet the first task with an empty desktop. The agent's first screenshot
     /// makes macOS ask whether it may keep recording the screen: take one now and answer it from the host, so the
     /// answer is part of the saved machine. And System Settings, left open by the permission step, would reopen
@@ -136,7 +170,9 @@ extension AppModel {
         do {
             switch onboarding.step {
             case .installMacOS:
-                let spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
+                var spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
+                // The choice holds until the image is downloaded; a local image decides it in the installer.
+                if spec.stage == .created { spec.guestRelease = onboarding.guestRelease }
                 _ = try await MacOSInstaller(bundle: bundle).install(spec: spec, restoreImage: onboarding.restoreImage) { [weak self] progress in
                     self?.show(progress)
                 }
@@ -148,9 +184,16 @@ extension AppModel {
                 // Development: CC_GUEST_PASSWORD sets a known guest password instead of a random one.
                 let options = try GuestProvisioner(bundle: bundle, secrets: secrets)
                     .firstBootOptions(spec: vm.spec, password: ProcessInfo.processInfo.environment["CC_GUEST_PASSWORD"])
-                try options.validate()
-                onboarding.detail = "Starting the virtual Mac and creating the account…"
-                await vm.start(provisioning: options)
+                if vm.spec.release.supportsFirstBootProvisioning {
+                    try options.validate()
+                    onboarding.detail = "Starting the virtual Mac and creating the account…"
+                    await vm.start(provisioning: options)
+                } else {
+                    // macOS 26 ignores the first-boot account options: walk Setup Assistant from this Mac instead.
+                    onboarding.detail = "Starting the virtual Mac…"
+                    if vm.state != .running { await vm.start() }
+                    try await walkSetupAssistant(vm)
+                }
                 try vm.updateSpec { $0.stage = .provisioned }
                 onboarding.step = .installAgent
 
@@ -267,6 +310,9 @@ struct OnboardingPanel: View {
                     .buttonStyle(.link)
                     .disabled(model.onboarding.isWorking)
                 } else {
+                    if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
+                        ReleaseChoice(selection: Bindable(model).onboarding.guestRelease)
+                    }
                     Button(model.onboarding.isWorking ? "Working…" : "Continue") {
                         Task { await model.runOnboardingStep() }
                     }
@@ -297,5 +343,52 @@ struct OnboardingPanel: View {
     private func icon(for step: OnboardingState.Step) -> String {
         if step.rawValue < model.onboarding.step.rawValue { return "checkmark.circle.fill" }
         return step == model.onboarding.step ? "arrow.right.circle" : "circle"
+    }
+}
+
+/// The macOS release for the virtual Mac, as two cards: chosen once, before the download.
+private struct ReleaseChoice: View {
+    @Binding var selection: GuestRelease
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("macOS version").font(.headline)
+            card(.macOS27, title: "macOS 27", badge: "Recommended",
+                 detail: "The current release. About 27 GB to download, ready in about 10 minutes.")
+            card(.macOS26, title: "macOS 26", badge: nil,
+                 detail: "For testing on the previous release. About 20 GB, ready in about 14 minutes: Chat Computer walks through Setup Assistant for you.")
+        }
+    }
+
+    private func card(_ release: GuestRelease, title: String, badge: String?, detail: String) -> some View {
+        let selected = selection == release
+        return Button { selection = release } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selected ? Color.accentColor : .secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(title).font(.body.weight(.semibold))
+                        if let badge {
+                            Text(badge)
+                                .font(.caption2.weight(.medium))
+                                .padding(.horizontal, 6).padding(.vertical, 1)
+                                .background(Color.accentColor.opacity(0.15), in: Capsule())
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                    Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+            .background(selected ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(selected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: selected ? 1.5 : 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title + (badge.map { ", \($0)" } ?? ""))
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

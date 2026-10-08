@@ -2,6 +2,7 @@
 # Fresh-install test (STATUS.md 1.0, item 4): installs a release zip as a new user would, on this Mac.
 #
 #   scripts/fresh-install.sh build/release/ChatComputer.zip [deepseek:openAI:deepseek-flash]
+#   CC_GUEST_MACOS=26 scripts/fresh-install.sh …   installs macOS 26 instead of 27
 #
 # 1. Copies the zip with a quarantine flag (as a browser download has), unzips it and checks Gatekeeper.
 # 2. Moves your Chat Computer data (~/Library/Application Support/ChatComputer) and preferences aside.
@@ -67,7 +68,7 @@ EOF
 stage() { /usr/bin/python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['stage'])" "$SUPPORT/ChatComputer.vm/spec.json" 2>/dev/null || echo none; }
 
 STARTED=$(date +%s)
-open --env CC_AUTO_ONBOARD=1 --env CC_DEV_WINDOW_SHOTS=1 --env CC_DEV_LOG="$WORK/onboarding.log" "$APP"
+open --env CC_AUTO_ONBOARD=1 --env CC_DEV_WINDOW_SHOTS=1 --env CC_DEV_LOG="$WORK/onboarding.log" --env CC_GUEST_MACOS="${CC_GUEST_MACOS:-27}" "$APP"
 say "onboarding started"
 LAST=none
 while :; do
