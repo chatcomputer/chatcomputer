@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-08，对应 **0.9.9**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
+更新于 2026-10-08，对应 **0.9.10**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -249,6 +249,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.9.10 | 2026-10-08 | 提问卡片排版：「→ 目标」单独成段（之前单个换行在 Markdown 里是软换行，接在问题末尾）；`ask_user` 的说明要求给选择时每个选项一行、写成编号列表。测试：单元测试全部通过，Debug 版插入测试卡片截图确认 |
 | 0.9.9 | 2026-10-08 | 引导时可选 macOS 26 或 27（按钮上方两张卡片，默认 27）：macOS 26 由宿主读画面走完设置助理，再从终端打开 SSH 和自动登录；agent 拆到 `ChatComputerAgentKit` 按 macOS 26 编译（按 27 编译的 agent 在 26 上被 Launch Services 拒绝，隐私设置里看不到它）；26 的辅助功能面板开关位置也能找到。恢复镜像可以选「引导时下载」或「用我自己下的」（附苹果下载链接，选好后按镜像版本自动选卡片），菜单 Machine › Show Restore Image in Finder 找到镜像。测试：单元测试 138 个；发布包从零安装 macOS 26.6.2（454 秒，首个任务 45 秒）、macOS 27（292 秒，首个任务 30 秒）；0.9.8 升级（agent 自动更新到 0.9.9 (41)，读文字和截图正常） |
 | 0.9.8 | 2026-10-07 | 内置 agent 新增基于界面结构树的工具：`open_app` 一步打开应用或文件，`read_text` 直接读前台窗口的文字（含表格、滚动出屏幕的部分），`find_elements`/`click_element` 按名字找和点控件；同日对照（DeepSeek，各两轮 40/40）平均轮数 17.3→10.8（-38%）、计费输入 -39%、用时减半。模型输出流式显示在聊天里。新增 6 个长任务回归（`--suite long`）。命令行新增 `elements`、`text`。测试：单元测试 135 个、DeepSeek 短任务 20/20（中位 7.5 轮）、长任务 6/6（中位 15.5 轮）、0.9.7 升级（agent 18 秒自动更新） |
 | 0.9.7 | 2026-10-06 | 展开的过程改为小一号的紧凑排版；结果不再加「Result」标题和卡片背景，直接显示在过程下面（提问仍是卡片）；`report_result` 的 summary 明确为给用户的完整答复（要求表格时用表格），语言规则写明「英文任务用英文、中文任务用中文」（之前 DeepSeek 曾把英文任务的结果写成德语）。测试：单元测试 114 个、DeepSeek 回归 20/20、0.9.6 升级 |
