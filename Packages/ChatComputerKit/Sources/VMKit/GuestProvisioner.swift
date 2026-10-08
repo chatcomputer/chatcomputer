@@ -94,6 +94,10 @@ public struct GuestProvisioner: Sendable {
         mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents" "$SUPPORT"
         rm -rf "$HOME/Applications/ChatComputerAgent.app"
         ditto "$SRC/ChatComputerAgent.app" "$HOME/Applications/ChatComputerAgent.app"
+        # Privacy settings find an app through Launch Services, which may not have seen one copied over SSH yet
+        # (tccd logged kLSApplicationNotFoundErr for the agent on macOS 26). Register it right away.
+        /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+            -f "$HOME/Applications/ChatComputerAgent.app" || true
         install -m 600 "$SRC/pairing.json" "$SUPPORT/pairing.json"
         cp "$SRC/app.chatcomputer.agent.plist" "$HOME/Library/LaunchAgents/"
         # An SSH session is not in the Aqua session, so only root may bootstrap into gui/<uid>
@@ -105,8 +109,12 @@ public struct GuestProvisioner: Sendable {
         printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" pmset -a sleep 0 displaysleep 0 disksleep 0
         sysadminctl -screenLock off -password "$CC_GUEST_PASSWORD" 2>/dev/null || true
         defaults -currentHost write com.apple.screensaver idleTime -int 0
-        # Detached and delayed so this SSH session exits cleanly before sshd goes away.
-        nohup bash -c 'sleep 3; printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" systemsetup -f -setremotelogin off' >/dev/null 2>&1 &
+        # Detached and delayed so this SSH session exits cleanly before sshd goes away. On macOS 26 systemsetup
+        # needs Full Disk Access (and still exits 0), so launchctl turns it off too, as the Setup Assistant walk
+        # turned it on.
+        nohup bash -c 'sleep 3; printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" systemsetup -f -setremotelogin off; \
+            printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl disable system/com.openssh.sshd; \
+            printf "%s\n" "$CC_GUEST_PASSWORD" | sudo -S -p "" launchctl bootout system/com.openssh.sshd' >/dev/null 2>&1 &
         """#
 
     /// Finds the guest's DHCP lease by MAC address (vmnet shared mode serves leases through bootpd)

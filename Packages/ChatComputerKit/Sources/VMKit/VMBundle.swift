@@ -38,6 +38,8 @@ public struct VMBundle: Sendable {
     public var baseDiskURL: URL { diskDirectory.appendingPathComponent("base.asif") }
     public func overlayURL(_ index: Int) -> URL { diskDirectory.appendingPathComponent("overlay-\(index).asif") }
     public var savedStateURL: URL { url.appendingPathComponent("SavedState.vzvmsave") }
+    /// The macOS restore image the machine was installed from: downloaded, or a hard link to one the user chose.
+    public var restoreImageURL: URL { url.appendingPathComponent("RestoreImage.ipsw") }
     /// Guest password and pairing token (0600), shared by the app and `cc-harness`.
     public var secretsURL: URL { url.appendingPathComponent("secrets.json") }
     public var snapshotsDirectory: URL { url.appendingPathComponent("Snapshots", isDirectory: true) }
@@ -126,6 +128,8 @@ public struct VMSpec: Codable, Sendable, Equatable {
     public var macAddress: String
     public var guestUsername: String
     public var restoreImageBuild: String?
+    /// The macOS release chosen at setup. Missing in bundles made before 0.9.9, which are all macOS 27.
+    public var guestRelease: GuestRelease?
     /// Number of overlay layers on top of the base image; the last one is writable.
     public var overlayCount: Int
 
@@ -145,6 +149,34 @@ public struct VMSpec: Codable, Sendable, Equatable {
         self.guestUsername = guestUsername
         self.restoreImageBuild = nil
         self.overlayCount = 0
+    }
+
+    public var release: GuestRelease { guestRelease ?? .macOS27 }
+}
+
+/// The macOS release a virtual Mac runs. macOS 27 is the default; macOS 26 is offered for testing on the previous
+/// release.
+public enum GuestRelease: String, Codable, Sendable, CaseIterable {
+    case macOS27 = "27"
+    case macOS26 = "26"
+
+    public var title: String {
+        switch self {
+        case .macOS27: "macOS 27"
+        case .macOS26: "macOS 26"
+        }
+    }
+
+    /// macOS 27 creates the account on first boot (`VZMacGuestProvisioningOptions`); on macOS 26 the guest
+    /// ignores those options and starts Setup Assistant, which the host walks through instead.
+    public var supportsFirstBootProvisioning: Bool { self == .macOS27 }
+
+    /// A pinned image for releases the restore image catalog no longer offers; nil means the latest supported.
+    public var pinnedRestoreImage: URL? {
+        switch self {
+        case .macOS27: nil
+        case .macOS26: URL(string: "https://updates.cdn-apple.com/2026SummerFCS/fullrestores/140-75212/A2A24B94-1FC1-45A3-93F7-C51B02AF1F4D/UniversalMac_26.6.2_25G83_Restore.ipsw")
+        }
     }
 }
 #endif

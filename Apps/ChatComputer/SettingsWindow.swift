@@ -95,7 +95,7 @@ struct VirtualMacSettings: View {
                     if let problem = model.guestReadiness?.problem {
                         LabeledContent("Not ready") { Text(problem).foregroundStyle(.orange) }
                     }
-                    LabeledContent("macOS", value: spec.restoreImageBuild.map { "Build \($0)" } ?? "Unknown")
+                    LabeledContent("macOS", value: spec.release.title + (spec.restoreImageBuild.map { " (\($0))" } ?? ""))
                     LabeledContent("Agent in the virtual Mac", value: agentVersion ?? "Not connected")
                     LabeledContent("Agent in this app", value: AppModel.bundledAgentVersion ?? "Missing")
                 } header: {

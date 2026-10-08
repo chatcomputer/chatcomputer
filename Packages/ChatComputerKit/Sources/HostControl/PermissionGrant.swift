@@ -104,8 +104,7 @@ public struct PermissionGrant {
             // The pane itself: flip the agent's switch.
             if let row = screen.items.first(where: { $0.text == Self.agentName }) {
                 guard let image = display.capture(),
-                      let toggle = Self.switchCenter(in: image, guestSize: display.guestSize, row: row.rect,
-                                                     rightLimit: Self.paneRightEdge(screen, row: row.rect)) else {
+                      let toggle = Self.agentSwitch(in: image, guestSize: display.guestSize, screen: screen, row: row.rect) else {
                     // While the pane animates in, the row's text shows before its switch is drawn. Look again.
                     switchMisses += 1
                     guard switchMisses < 4 else { throw HostControlError.notFound("the switch next to \(Self.agentName)") }
@@ -157,6 +156,16 @@ public struct PermissionGrant {
     }
 
     // MARK: Locating the switch
+
+    /// The switch in the agent's row: up to the pane's text edge, else across a typical pane width. On macOS 26 the
+    /// pane's description is short and ends left of the switch.
+    nonisolated public static func agentSwitch(in image: CGImage, guestSize: CGSize, screen: ScreenText, row: CGRect) -> CGPoint? {
+        let edge = paneRightEdge(screen, row: row)
+        if let toggle = switchCenter(in: image, guestSize: guestSize, row: row, rightLimit: edge) { return toggle }
+        let typical = row.maxX + 330
+        guard typical > edge else { return nil }
+        return switchCenter(in: image, guestSize: guestSize, row: row, rightLimit: typical)
+    }
 
     /// Right edge of the list the row sits in: the widest text block of the pane that starts left of
     /// the row and ends right of it (the pane's description paragraph), else a typical pane width.

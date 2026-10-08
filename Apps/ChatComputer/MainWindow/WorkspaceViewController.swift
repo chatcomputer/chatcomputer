@@ -65,6 +65,10 @@ final class WorkspaceViewController: NSViewController {
             if rail != nil { rail?.removeFromSuperview(); rail = nil }
             if setup == nil {
                 let hosting = NSHostingView(rootView: OnboardingPanel().environment(model))
+                // The panel's width is fixed; its SwiftUI content must fit it, not push it. With the default sizing,
+                // long wrapping text reports a one-line ideal width, the constraints can't be met, and the whole
+                // window draws nothing.
+                hosting.sizingOptions = []
                 embed(hosting)
                 setup = hosting
             }

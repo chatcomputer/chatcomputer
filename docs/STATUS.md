@@ -31,12 +31,14 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 步骤 | 做法 | 实测 |
 |---|---|---|
-| 1. 安装 macOS | 下载恢复镜像（约 26 GB）后安装；苹果的镜像目录失败时改用苹果 CDN；也可选本地 `.ipsw` | 安装 173 秒，磁盘约 29 GB |
+| 1. 安装 macOS | 默认由引导下载恢复镜像（约 20–27 GB）后安装，苹果的镜像目录失败时改用苹果 CDN；也可以选「Use one I downloaded」，用浏览器或下载工具自己下（面板里有苹果的下载链接），再选这个 `.ipsw`，App 会读出它的版本并选中对应的卡片。镜像留在虚拟机目录里，菜单 Machine › Show Restore Image in Finder 可以找到它 | 安装 173 秒，磁盘约 29 GB |
 | 2. 创建账户 | `VZMacGuestProvisioningOptions` 自动建号、自动登录，不经过设置助理 | 开机即到桌面 |
 | 3. 安装 agent | 通过 SSH 装好 guest 里的 agent，关闭睡眠、关屏和锁屏，装完关闭 SSH | 开机后约 14 秒；从开始到装好 agent 共 188 秒 |
 | 4. 授权 | 宿主级控制：读取虚拟机画面、本机文字识别找到开关并打开，自动输入本机保存的 guest 密码；屏幕锁着时先解锁；录屏权限第一遍常不成功，自动再试一遍 | 两项权限自动完成（2026-10-03 全新安装复测） |
 | 5. 保存初始状态 | agent 从虚拟机内部干净关机，冻结磁盘为 base + overlay | 关机约 66 秒 |
 | 6. 连接模型 | 选厂商、协议、模型，填 Key，点「Save and test」 | DeepSeek 通过 |
+
+**也可以选 macOS 26**（第 1 步上方的两张卡片，默认 macOS 27）。macOS 26 不认 `VZMacGuestProvisioningOptions`，第 2 步改由宿主读画面、点完设置助理（`SetupAssistant`），再从终端打开 SSH 和自动登录。agent 单独放在 `ChatComputerAgentKit` 包里按 macOS 26 编译：按 27 编译的程序在 26 上会被 Launch Services 拒绝（-10825），隐私设置里就看不到 agent。2026-10-08 用 26.6.2 全新安装实测：引导 413 秒全部自动完成，第一个任务 45 秒通过。账户页的确认密码改为从密码框按 Tab 进入后一遍填好（之前点它的位置常落空，弹出"未提供全部信息"）；万一再弹出，会点 Go Back 重填。
 
 ### 2.2 执行任务
 

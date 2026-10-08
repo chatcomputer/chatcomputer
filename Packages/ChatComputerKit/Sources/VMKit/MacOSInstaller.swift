@@ -29,18 +29,22 @@ public final class MacOSInstaller {
         try checkHost(spec: spec)
         try bundle.create()
 
-        let ipswURL = bundle.url.appendingPathComponent("RestoreImage.ipsw")
+        let ipswURL = bundle.restoreImageURL
         if !FileManager.default.fileExists(atPath: ipswURL.path), let restoreImage {
             // Hard link when on the same volume: restore images are ~25 GB.
             do { try FileManager.default.linkItem(at: restoreImage, to: ipswURL) } catch { try FileManager.default.copyItem(at: restoreImage, to: ipswURL) }
         }
         if !FileManager.default.fileExists(atPath: ipswURL.path) {
             let remote: URL
-            do {
-                remote = try await Self.latestSupportedImage().url
-            } catch {
-                // The catalog can fail while Apple's CDN works; use the known image for this macOS release.
-                remote = Self.fallbackRestoreImage
+            if let pinned = spec.release.pinnedRestoreImage {
+                remote = pinned
+            } else {
+                do {
+                    remote = try await Self.latestSupportedImage().url
+                } catch {
+                    // The catalog can fail while Apple's CDN works; use the known image for this macOS release.
+                    remote = Self.fallbackRestoreImage
+                }
             }
             try await Self.download(remote, to: ipswURL) { onProgress(.downloading(fraction: $0)) }
         }
@@ -53,6 +57,8 @@ public final class MacOSInstaller {
         spec.cpuCount = max(spec.cpuCount, requirements.minimumSupportedCPUCount)
         spec.memoryBytes = max(spec.memoryBytes, requirements.minimumSupportedMemorySize)
         spec.restoreImageBuild = image.buildVersion
+        // A local image decides the release, whatever was chosen: macOS 26 builds are 25x.
+        spec.guestRelease = image.operatingSystemVersion.majorVersion == 26 ? .macOS26 : .macOS27
 
         try requirements.hardwareModel.dataRepresentation.write(to: bundle.hardwareModelURL)
         try VZMacMachineIdentifier().dataRepresentation.write(to: bundle.machineIdentifierURL)
@@ -99,6 +105,21 @@ public final class MacOSInstaller {
         guard free >= needed else {
             throw VMError.unsupportedHost("\(needed >> 30) GB of free disk space is needed, \(free >> 30) GB available")
         }
+    }
+
+    /// Where to download a release's restore image by hand, for people who would rather fetch it themselves
+    /// (a browser or download manager can resume) and then choose the file.
+    public static func downloadURL(for release: GuestRelease) -> URL {
+        release.pinnedRestoreImage ?? fallbackRestoreImage
+    }
+
+    /// The release and build of a local restore image, or an error if it isn't one this Mac can install.
+    public static func describeImage(at url: URL) async throws -> (release: GuestRelease, build: String) {
+        let image = try await loadImage(at: url)
+        guard image.mostFeaturefulSupportedConfiguration?.hardwareModel.isSupported == true else {
+            throw VMError.noSupportedConfiguration
+        }
+        return (image.operatingSystemVersion.majorVersion == 26 ? .macOS26 : .macOS27, image.buildVersion)
     }
 
     /// macOS 27.0.1 (26A434) from Apple's CDN, used when the restore image catalog is unavailable.

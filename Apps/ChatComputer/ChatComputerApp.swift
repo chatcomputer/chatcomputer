@@ -54,6 +54,8 @@ struct ChatComputerApp: App {
                 Button("Shared Folders…") { model.showingSharedFolders = true }
                     .keyboardShortcut("f", modifiers: [.command, .option])
                     .disabled(!model.isReady)
+                Divider()
+                Button("Show Restore Image in Finder") { model.revealRestoreImage() }
             }
             CommandMenu("Agent") {
                 // Emergency stop is handled by the host, independent of guest or model (proposal §04).
