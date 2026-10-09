@@ -1,6 +1,6 @@
 # 现状与规划
 
-更新于 2026-10-08，对应 **0.9.10**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
+更新于 2026-10-08，对应 **0.9.11**（1.0 候选版，[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。
 
 背景和长期计划见 [ROADMAP.md](ROADMAP.md)，界面与架构设计见 [DESIGN.md](DESIGN.md)，逐项清单见 [../TODO.md](../TODO.md)。
 
@@ -249,6 +249,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 
 | 版本 | 日期 | 内容 |
 |---|---|---|
+| 0.9.11 | 2026-10-08 | 数据文件夹可选：虚拟机、快照、API key、对话、任务和控制 socket 统一放在一个文件夹，默认 `~/.chatcomputer`（之前是 `~/Library/Application Support/ChatComputer`，不做迁移），引导第 1 步可改到别处（拒绝云盘同步目录、非 APFS 盘、过长路径；选的文件夹里已有虚拟机就直接接着用）。位置存在偏好 `DataDirectory`，命令行、`cc-harness` 和脚本都从那里读；`CC_DATA_DIR` 可覆盖。测试：单元测试 142 个；Debug 版切换位置（API key 跟着移、重启后保持、命令行能连上） |
 | 0.9.10 | 2026-10-08 | 提问卡片排版：「→ 目标」单独成段（之前单个换行在 Markdown 里是软换行，接在问题末尾）；`ask_user` 的说明要求给选择时每个选项一行、写成编号列表。测试：单元测试全部通过，Debug 版插入测试卡片截图确认 |
 | 0.9.9 | 2026-10-08 | 引导时可选 macOS 26 或 27（按钮上方两张卡片，默认 27）：macOS 26 由宿主读画面走完设置助理，再从终端打开 SSH 和自动登录；agent 拆到 `ChatComputerAgentKit` 按 macOS 26 编译（按 27 编译的 agent 在 26 上被 Launch Services 拒绝，隐私设置里看不到它）；26 的辅助功能面板开关位置也能找到。恢复镜像可以选「引导时下载」或「用我自己下的」（附苹果下载链接，选好后按镜像版本自动选卡片），菜单 Machine › Show Restore Image in Finder 找到镜像。测试：单元测试 138 个；发布包从零安装 macOS 26.6.2（454 秒，首个任务 45 秒）、macOS 27（292 秒，首个任务 30 秒）；0.9.8 升级（agent 自动更新到 0.9.9 (41)，读文字和截图正常） |
 | 0.9.8 | 2026-10-07 | 内置 agent 新增基于界面结构树的工具：`open_app` 一步打开应用或文件，`read_text` 直接读前台窗口的文字（含表格、滚动出屏幕的部分），`find_elements`/`click_element` 按名字找和点控件；同日对照（DeepSeek，各两轮 40/40）平均轮数 17.3→10.8（-38%）、计费输入 -39%、用时减半。模型输出流式显示在聊天里。新增 6 个长任务回归（`--suite long`）。命令行新增 `elements`、`text`。测试：单元测试 135 个、DeepSeek 短任务 20/20（中位 7.5 轮）、长任务 6/6（中位 15.5 轮）、0.9.7 升级（agent 18 秒自动更新） |

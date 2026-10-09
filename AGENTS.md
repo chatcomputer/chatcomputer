@@ -3,7 +3,7 @@
 Guidance for coding agents (Claude Code, Codex, and others) working in this repository. Read
 [README.md](README.md) for the layout and [docs/STATUS.md](docs/STATUS.md) for what works and what is next.
 
-The repository is public. The current release is 0.9.10, a 1.0 candidate: features are frozen until 1.0, so
+The repository is public. The current release is 0.9.11, a 1.0 candidate: features are frozen until 1.0, so
 prefer fixing, testing and documenting over adding capabilities.
 
 ## Workflow
@@ -58,7 +58,7 @@ Before claiming a change works, run the layer that exercises it:
    vendor fields such as `reasoning_content` and Gemini's `extra_content`. Don't rewrite earlier turns for
    Claude. Screenshot trimming applies only to non-Claude endpoints.
 4. **Secrets stay on the host, in 0600 files** (`HostSecretStore`): the guest password and pairing token in
-   the VM bundle's `secrets.json`, API keys in `~/Library/Application Support/ChatComputer/credentials.json`.
+   the VM bundle's `secrets.json`, API keys in `credentials.json` in the data folder.
    Never log them, print them, put them in a URL, or commit them. Don't go back to the login Keychain: its
    items are bound to the build that wrote them, so every other build prompts. For a sandboxed release, use the data-protection keychain, which needs a
    provisioning profile (without one, a Developer ID build gets -34018 on every call).
@@ -102,6 +102,7 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 
 | Variable | Effect |
 |---|---|
+| `CC_DATA_DIR` | Keep all data in this folder instead of the chosen one (hides the choice in setup) |
 | `CC_GUEST_PASSWORD` | Known guest password on first boot (at least 4 characters) |
 | `CC_AUTO_ONBOARD=1` | Run every setup step in turn |
 | `CC_GUEST_MACOS=26` | Choose macOS 26 for the virtual Mac during setup (default 27) |
@@ -110,10 +111,12 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_DEV_TASK` | Submit this task once the guest is ready |
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |
 | `CC_DEV_CONTINUE=1` | Continue a task restored from the last session once the guest is ready |
-| `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs and tests (`dev_ui` actions include `submit`, `cancel`, `continue`, `hostSleep`, `hostWake`, `diagnostics`, `snapshots`, `settings`, `appendChat` for test transcript content, `appearance` light/dark) |
+| `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs and tests (`dev_ui` actions include `submit`, `cancel`, `continue`, `hostSleep`, `hostWake`, `diagnostics`, `snapshots`, `settings`, `appendChat` for test transcript content, `appearance` light/dark, `dataDirectory` to choose the data folder in setup) |
 
-To drive the app's own VM from `cc-harness`, quit the app and set
-`CC_VM_BUNDLE="$HOME/Library/Application Support/ChatComputer/ChatComputer.vm"`; both read the bundle's `secrets.json`.
+All data lives in one folder, `~/.chatcomputer` unless another was chosen in setup (`DataDirectory`; saved as
+`DataDirectory` in the `app.chatcomputer.ChatComputer` preferences, which `cc-harness`, `chatcomputer` and the scripts
+read too). To drive the app's own VM from `cc-harness`, quit the app and set
+`CC_VM_BUNDLE="$HOME/.chatcomputer/ChatComputer.vm"`; both read the bundle's `secrets.json`.
 Only one process can run a VM bundle at a time (it is locked). Coding agents can also drive the running app with
 `chatcomputer` (see README).
 

@@ -164,7 +164,7 @@ struct VirtualMacSettings: View {
 struct PrivacySettings: View {
     @Environment(AppModel.self) private var model
 
-    private var support: URL { VMBundle.defaultLocation.deletingLastPathComponent() }
+    private var support: URL { model.dataDirectory }
 
     var body: some View {
         Form {
@@ -179,9 +179,10 @@ struct PrivacySettings: View {
                 Text("Chat Computer has no account, analytics or telemetry.")
             }
             Section("Stored on this Mac") {
+                location("Data folder", support, note: "Chosen during setup")
                 location("API keys", support.appendingPathComponent("credentials.json"), note: "Readable only by your account")
                 location("Tasks and chats", support.appendingPathComponent("Tasks"), note: nil)
-                location("Virtual Mac", VMBundle.defaultLocation, note: "Includes its password, readable only by your account")
+                location("Virtual Mac", model.bundle.url, note: "Includes its password, readable only by your account")
             }
             Section {
                 LabeledContent("Diagnostics") {

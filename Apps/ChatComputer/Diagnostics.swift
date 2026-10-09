@@ -53,7 +53,7 @@ enum Diagnostics {
     /// Every stored secret value, read only to be removed from the archive.
     private static func storedSecrets(_ model: AppModel) -> [String] {
         let files = [model.bundle.secretStore().url,
-                     VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json")]
+                     model.dataDirectory.appendingPathComponent("credentials.json")]
         return files.flatMap { url -> [String] in
             guard let data = try? Data(contentsOf: url),
                   let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
@@ -101,7 +101,7 @@ enum Diagnostics {
     }
 
     private static func recentTasks(_ model: AppModel) -> [URL] {
-        let root = VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("Tasks", isDirectory: true)
+        let root = model.dataDirectory.appendingPathComponent("Tasks", isDirectory: true)
         let folders = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         return folders
             .sorted { modified($0) > modified($1) }

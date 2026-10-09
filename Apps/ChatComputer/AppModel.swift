@@ -41,23 +41,21 @@ struct SavedSession: Codable {
     var inputTokens: Int
     var outputTokens: Int
 
-    static var url: URL {
-        VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("session.json")
-    }
+    static func url(in directory: URL) -> URL { directory.appendingPathComponent("session.json") }
 }
 
 /// App-wide state: the one VM, its bridge, and the current task.
 @MainActor
 @Observable
 final class AppModel {
-    let bundle = VMBundle(url: VMBundle.defaultLocation)
-    /// Secrets in files: the VM's in its bundle, API keys in Application Support (see `HostSecretStore`).
-    let secrets = HostSecretStore(
-        machineFile: VMBundle(url: VMBundle.defaultLocation).secretStore().url,
-        credentialsFile: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json"))
+    /// Where everything below is kept (`DataDirectory`): chosen in setup, fixed once the virtual Mac exists.
+    private(set) var dataDirectory: URL
+    private(set) var bundle: VMBundle
+    /// Secrets in files: the VM's in its bundle, API keys in the data folder (see `HostSecretStore`).
+    private(set) var secrets: HostSecretStore
     let lease = ControlLease()
-    /// Every task and its event log, in Application Support/ChatComputer/Tasks.
-    let store = FileTaskStore(root: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("Tasks", isDirectory: true))
+    /// Every task and its event log, in the data folder's Tasks.
+    private(set) var store: FileTaskStore
 
     private(set) var vm: VirtualMachineController?
     /// The on-screen VM view; host-level control (`HostDisplay`) reads and drives the guest through it.
@@ -183,6 +181,9 @@ final class AppModel {
     }
 
     init() {
+        let directory = DataDirectory.current
+        try? DataDirectory.create(directory)
+        (dataDirectory, bundle, secrets, store) = Self.storage(in: directory)
         isReady = (try? bundle.loadSpec().stage) == .ready
         if bundle.exists { loadVM() }
         applyDevelopmentModel()
@@ -192,6 +193,45 @@ final class AppModel {
         let external = ExternalControl(model: self)
         external.start()
         self.external = external
+    }
+
+    private static func storage(in directory: URL) -> (URL, VMBundle, HostSecretStore, FileTaskStore) {
+        let bundle = VMBundle(url: directory.appendingPathComponent("ChatComputer.vm", isDirectory: true))
+        let secrets = HostSecretStore(machineFile: bundle.secretStore().url,
+                                      credentialsFile: directory.appendingPathComponent("credentials.json"))
+        return (directory, bundle, secrets, FileTaskStore(root: directory.appendingPathComponent("Tasks", isDirectory: true)))
+    }
+
+    /// Setup, before the virtual Mac exists: keeps the app's data in another folder from now on. A folder that already
+    /// holds a virtual Mac (one the user moved there) is picked up as it is.
+    func useDataDirectory(_ directory: URL) throws {
+        guard vm == nil else { return }
+        try DataDirectory.check(directory)
+        try DataDirectory.create(directory)
+        let old = dataDirectory
+        DataDirectory.save(directory)
+        guard directory.standardizedFileURL.path != old.standardizedFileURL.path else { return }
+        external?.stop()
+        // A key or chat saved before the move comes along, unless the new folder has its own.
+        let fileManager = FileManager.default
+        for name in ["credentials.json", "session.json", "Tasks"] {
+            let from = old.appendingPathComponent(name), to = directory.appendingPathComponent(name)
+            if fileManager.fileExists(atPath: from.path), !fileManager.fileExists(atPath: to.path) {
+                try? fileManager.moveItem(at: from, to: to)
+            }
+        }
+        if (try? fileManager.contentsOfDirectory(atPath: old.path))?.isEmpty == true { try? fileManager.removeItem(at: old) }
+        (dataDirectory, bundle, secrets, store) = Self.storage(in: directory)
+        let external = ExternalControl(model: self)
+        external.start()
+        self.external = external
+        transcript = []
+        restoreSession()
+        isReady = (try? bundle.loadSpec().stage) == .ready
+        if bundle.exists {
+            loadVM()
+            resumeOnboarding()
+        }
     }
 
     // MARK: Development switches (environment variables, never set in normal use)
@@ -628,7 +668,7 @@ final class AppModel {
     /// Restores the chat and an unfinished task saved when the app last quit. The task comes back paused
     /// (or still waiting for an answer); the VM itself resumes from its saved memory, so the screen matches.
     private func restoreSession() {
-        guard let data = try? Data(contentsOf: SavedSession.url),
+        guard let data = try? Data(contentsOf: SavedSession.url(in: dataDirectory)),
               let saved = try? JSONDecoder().decode(SavedSession.self, from: data) else { return }
         transcript = saved.transcript
         tokens = (saved.inputTokens, saved.outputTokens)
@@ -658,7 +698,7 @@ final class AppModel {
             if !checkpoint.task.phase.isTerminal { saved.task = checkpoint }
         }
         guard let data = try? JSONEncoder().encode(saved) else { return }
-        let url = SavedSession.url
+        let url = SavedSession.url(in: dataDirectory)
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".session-\(UUID().uuidString).json")
         guard FileManager.default.createFile(atPath: temporary.path, contents: data, attributes: [.posixPermissions: 0o600]) else { return }
         if rename(temporary.path, url.path) != 0 { try? FileManager.default.removeItem(at: temporary) }

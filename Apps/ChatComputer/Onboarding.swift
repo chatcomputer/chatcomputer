@@ -43,6 +43,8 @@ struct OnboardingState {
         .flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
     /// The macOS release to install. Development: CC_GUEST_MACOS=26 chooses macOS 26 for unattended setup.
     var guestRelease: GuestRelease = ProcessInfo.processInfo.environment["CC_GUEST_MACOS"] == "26" ? .macOS26 : .macOS27
+    /// Why the folder chosen for the data can't be used.
+    var dataDirectoryProblem: String?
 }
 
 extension AppModel {
@@ -181,6 +183,8 @@ extension AppModel {
         do {
             switch onboarding.step {
             case .installMacOS:
+                // From here on the data stays in this folder, for every process that looks for it.
+                if !DataDirectory.isOverridden { DataDirectory.save(dataDirectory) }
                 var spec = (try? bundle.loadSpec()) ?? VMSpec(macAddress: VZMACAddress.randomLocallyAdministered().string)
                 // The choice holds until the image is downloaded; a local image decides it in the installer.
                 if spec.stage == .created { spec.guestRelease = onboarding.guestRelease }
@@ -326,6 +330,7 @@ struct OnboardingPanel: View {
                     if model.onboarding.step == .installMacOS, !model.onboarding.isWorking {
                         ReleaseChoice(selection: Bindable(model).onboarding.guestRelease)
                         ImageSourceChoice()
+                        if !model.bundle.exists, !DataDirectory.isOverridden { DataLocationChoice() }
                     }
                     Button(model.onboarding.isWorking ? "Working…" : "Continue") {
                         Task { await model.runOnboardingStep() }
@@ -384,6 +389,24 @@ extension AppModel {
         }
     }
 
+    /// Asks where to keep the app's data instead of the default folder.
+    func chooseDataDirectory() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.prompt = "Choose"
+        panel.message = "Choose where Chat Computer keeps the virtual Mac, its snapshots, your chats and API keys"
+        panel.directoryURL = dataDirectory.deletingLastPathComponent()
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try useDataDirectory(DataDirectory.folder(forChoice: url))
+            onboarding.dataDirectoryProblem = nil
+        } catch {
+            onboarding.dataDirectoryProblem = error.localizedDescription
+        }
+    }
+
     /// Machine › Show Restore Image in Finder: the image the machine was installed from (about 20–27 GB, kept for
     /// reinstalling), else the file chosen for setup, else the machine's folder.
     func revealRestoreImage() {
@@ -438,6 +461,30 @@ private struct ImageSourceChoice: View {
                         .font(.callout)
                     Text("Then choose the .ipsw file here.").font(.callout).foregroundStyle(.secondary)
                 }
+            }
+        }
+    }
+}
+
+/// Where the virtual Mac and the rest of the app's data are kept: `~/.chatcomputer` unless the user picks another
+/// folder, for instance on a bigger disk. Chosen once, before anything is downloaded.
+private struct DataLocationChoice: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let free = SnapshotStore.availableCapacity(for: model.dataDirectory) >> 30
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Location").font(.headline)
+            HStack(spacing: 8) {
+                Image(systemName: "folder").foregroundStyle(.secondary)
+                Text(abbreviated(model.dataDirectory.path)).font(.callout).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
+                Button("Change…") { model.chooseDataDirectory() }
+            }
+            Text("Holds the virtual Mac, its snapshots, your chats and API keys. Needs about 60 GB; \(free) GB free on this disk.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if let problem = model.onboarding.dataDirectoryProblem {
+                Text(problem).font(.callout).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

@@ -1,15 +1,14 @@
 #if os(macOS)
+import ChatCore
 import Darwin
 import Foundation
 
-/// The app's control socket: a Unix domain socket in the user's Application Support folder, 0600 and
+/// The app's control socket: a Unix domain socket in the data folder (`DataDirectory`), 0600 and
 /// checked against the peer's user ID, so only this user's processes can drive the virtual Mac.
 /// Each connection carries one JSON line each way: a `ControlRequest`, then a `ControlResponse`.
 public enum ControlSocket {
     public static var defaultPath: String {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ChatComputer", isDirectory: true)
-            .appendingPathComponent("control.sock").path
+        DataDirectory.current.appendingPathComponent("control.sock").path
     }
 
     static func address(_ path: String) throws -> sockaddr_un {

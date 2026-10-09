@@ -238,6 +238,15 @@ final class ExternalControl {
             case "handBack": model.returnControl()
             case "attach": model.pendingAttachments = (request.arguments["files"]?.arrayValue ?? []).compactMap(\.stringValue).map { URL(fileURLWithPath: $0) }
             case "submit": model.submit(request.arguments["text"]?.stringValue ?? "")
+            case "dataDirectory":
+                // Setup's Location › Change…, without the open panel: path is the folder the user would pick.
+                let path = request.arguments["path"]?.stringValue ?? ""
+                do {
+                    try model.useDataDirectory(DataDirectory.folder(forChoice: URL(fileURLWithPath: path, isDirectory: true)))
+                } catch {
+                    return .error(error.localizedDescription)
+                }
+                return ControlResponse(text: model.dataDirectory.path)
             case let other: return .error("unknown action \(other ?? "")")
             }
             return ControlResponse(text: "ok")

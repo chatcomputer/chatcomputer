@@ -13,12 +13,15 @@ says what goes where. It describes version 0.9 and later.
 
 ## What stays on your Mac
 
-- **API keys** are stored in `~/Library/Application Support/ChatComputer/credentials.json`, readable only by your
+Everything below is kept in one data folder: `~/.chatcomputer`, or the folder you chose during setup (Settings ›
+Privacy & Data shows it). The folder is readable only by your user.
+
+- **API keys** are stored in the data folder's `credentials.json`, readable only by your
   user (mode 0600). They are sent only to the provider they belong to, in the request header. They never enter the
   virtual Mac, the prompt, the logs or the diagnostics archive.
 - **The virtual Mac's password** is stored in its bundle (`ChatComputer.vm/secrets.json`, mode 0600). The app types it
   into the virtual Mac from the host when a permission or the lock screen asks for it; the model never sees it.
-- **Tasks and chats** are stored in `~/Library/Application Support/ChatComputer/Tasks` and `session.json`.
+- **Tasks and chats** are stored in the data folder's `Tasks` and `session.json`.
 - **Diagnostics** (Help › Export Diagnostics) are written to your Desktop and sent nowhere. Stored secrets are removed
   from them; the task logs in them do contain your chat with the agent, so read them before you share them.
 

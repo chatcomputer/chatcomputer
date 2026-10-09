@@ -24,10 +24,9 @@ public struct VMBundle: Sendable {
         self.url = url
     }
 
+    /// The app's virtual Mac, in the data folder (`DataDirectory`).
     public static var defaultLocation: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ChatComputer", isDirectory: true)
-            .appendingPathComponent("ChatComputer.vm", isDirectory: true)
+        DataDirectory.current.appendingPathComponent("ChatComputer.vm", isDirectory: true)
     }
 
     public var specURL: URL { url.appendingPathComponent("spec.json") }

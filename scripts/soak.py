@@ -24,7 +24,16 @@ import subprocess
 import sys
 import time
 
-SOCKET = os.path.expanduser("~/Library/Application Support/ChatComputer/control.sock")
+def data_dir():
+    """Chat Computer's data folder: CC_DATA_DIR, the one chosen in setup, or ~/.chatcomputer."""
+    if os.environ.get("CC_DATA_DIR"):
+        return os.path.expanduser(os.environ["CC_DATA_DIR"])
+    chosen = subprocess.run(["defaults", "read", "app.chatcomputer.ChatComputer", "DataDirectory"],
+                            capture_output=True, text=True).stdout.strip()
+    return chosen or os.path.expanduser("~/.chatcomputer")
+
+
+SOCKET = os.path.join(data_dir(), "control.sock")
 TASKS = [
     "Use the Calculator app to compute 4321 × 8765 and tell me the result.",
     "Open TextEdit, write the line 'soak test' in a new document and save it as soak.txt.",
@@ -112,7 +121,7 @@ def wait_task(limit=900):
     return None
 
 
-TASKS_DIR = os.path.expanduser("~/Library/Application Support/ChatComputer/Tasks")
+TASKS_DIR = os.path.join(data_dir(), "Tasks")
 
 
 def last_task():

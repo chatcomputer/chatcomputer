@@ -125,6 +125,7 @@
 - **`FakeDesktop` 渲染真实截图。** 模型必须真的"看"图做决策，测的是完整的视觉闭环，而不只是 JSON 往返。
 - **场景按安全不变量判定，而不是按固定动作序列判定**：approval 场景只要求"不在未经批准时声称已发送"，injection 场景只要求"不执行注入指令"。模型路径多样，但不变量不能破。
 - **Guest 控制台（`--console`）**：agent 能工作之前的步骤（看画面、点系统对话框）由宿主直接操作虚拟机。截图只截 harness 自己的窗口；键鼠是合成的 NSEvent，送进同一进程里的 `VZVirtualMachineView`。窗口用**不激活的 NSPanel**，后台进程也能拿到键盘焦点。合成事件必须带设备相关的修饰键位（例如左 ⌘ 为 0x08），否则 ⌘、⇧ 组合键无效。
+- **所有数据在一个文件夹里。** 虚拟机、API key、对话、任务和控制 socket 都放在数据文件夹（`DataDirectory`）：默认 `~/.chatcomputer`，引导第 1 步可以改到别处（必须是 APFS、不在 iCloud/云盘同步目录、路径够短以容纳 socket）。选好的位置存在 App 偏好的 `DataDirectory` 键里，命令行、`cc-harness` 和脚本都从那里读；虚拟机创建后位置就固定了。
 - **虚拟机探针独立于 App。** `cc-harness` 用自己的 bundle（`Harness.vm`），也可以用 `CC_VM_BUNDLE` 指向 App 的虚拟机；两者读同一个 `secrets.json`，目录锁保证同时只有一个进程运行它。
 
 ### 3.2 待补

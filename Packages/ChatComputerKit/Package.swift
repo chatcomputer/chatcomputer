@@ -47,7 +47,7 @@ let package = Package(
 
         // Host: the `chatcomputer` command line tool and MCP server that let coding agents outside the
         // app (Claude Code, Codex, …) operate the virtual Mac, and the control socket they reach the app on.
-        .target(name: "ComputerControl", dependencies: [bridgeProtocol, "ModelProxy"]),
+        .target(name: "ComputerControl", dependencies: [bridgeProtocol, "ChatCore", "ModelProxy"]),
 
         // Developer harness: live model loop against a simulated desktop, and VM probes (macOS only).
         .executableTarget(

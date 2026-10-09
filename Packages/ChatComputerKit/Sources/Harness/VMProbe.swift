@@ -30,14 +30,14 @@ import VMKit
 ///     cc-harness vm share-test                    change shared folders while the VM runs and watch the agent (ShareTest)
 ///     cc-harness vm status                        bundle stage and files
 ///
-/// The bundle lives at $CC_VM_BUNDLE or ~/Library/Application Support/ChatComputer/Harness.vm.
+/// The bundle lives at $CC_VM_BUNDLE or Harness.vm in the data folder (`DataDirectory`).
 /// Secrets are in the bundle's 0600 `secrets.json`, the same file the app uses.
 @MainActor
 enum VMProbe {
     static var bundle: VMBundle {
         let path = ProcessInfo.processInfo.environment["CC_VM_BUNDLE"]
-        return VMBundle(url: path.map { URL(fileURLWithPath: $0) } ?? VMBundle.defaultLocation
-            .deletingLastPathComponent().appendingPathComponent("Harness.vm", isDirectory: true))
+        return VMBundle(url: path.map { URL(fileURLWithPath: $0) }
+            ?? DataDirectory.current.appendingPathComponent("Harness.vm", isDirectory: true))
     }
 
     static func run(arguments: [String]) async -> Int32 {

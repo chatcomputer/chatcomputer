@@ -6,7 +6,7 @@
 #   CC_RESTORE_IMAGE=path.ipsw scripts/fresh-install.sh …   installs from a local restore image (no download)
 #
 # 1. Copies the zip with a quarantine flag (as a browser download has), unzips it and checks Gatekeeper.
-# 2. Moves your Chat Computer data (~/Library/Application Support/ChatComputer) and preferences aside.
+# 2. Moves your Chat Computer data folder (~/.chatcomputer, or the one chosen in setup) and preferences aside.
 # 3. Launches with CC_AUTO_ONBOARD=1: downloads macOS (~26 GB), installs it, creates the account, installs the agent,
 #    grants its permissions and saves the starting point. Times each step from the VM's spec.json.
 # 4. Relaunches with your stored API key and a model, and runs one task end to end.
@@ -15,15 +15,18 @@
 set -eu
 ZIP="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 MODEL="${2:-deepseek:openAI:deepseek-flash}"
-SUPPORT="$HOME/Library/Application Support/ChatComputer"
-BACKUP="$SUPPORT.fresh-install-backup"
 DOMAIN=app.chatcomputer.ChatComputer
+# Your data folder, put back at the end; the new install uses the default folder.
+SUPPORT="$(defaults read "$DOMAIN" DataDirectory 2>/dev/null || echo "$HOME/.chatcomputer")"
+BACKUP="$SUPPORT.fresh-install-backup"
+NEW="$HOME/.chatcomputer"
 WORK="/tmp/chatcomputer-fresh-install-$(date +%Y%m%d-%H%M%S)"
 LOG="$WORK/log.txt"
 mkdir -p "$WORK"
 say() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
 [ -e "$BACKUP" ] && { echo "A backup from an earlier run is still at $BACKUP. Put it back first."; exit 1; }
+[ "$SUPPORT" != "$NEW" ] && [ -e "$NEW" ] && { echo "$NEW exists but isn't your data folder ($SUPPORT). Move it first."; exit 1; }
 pgrep -f "ChatComputer.app/Contents/MacOS/ChatComputer" >/dev/null && { echo "Quit Chat Computer first."; exit 1; }
 pgrep -f "cc-harness" >/dev/null && { echo "cc-harness is using the virtual Mac."; exit 1; }
 
@@ -44,16 +47,14 @@ restore() {
   pkill -TERM -f "$APP/Contents/MacOS/ChatComputer" 2>/dev/null || true
   for _ in $(seq 1 120); do pgrep -f "$APP/Contents/MacOS/ChatComputer" >/dev/null || break; sleep 1; done
   pkill -KILL -f "$APP/Contents/MacOS/ChatComputer" 2>/dev/null || true
-  if [ -e "$BACKUP" ]; then
-    rm -rf "$SUPPORT"
-    mv "$BACKUP" "$SUPPORT"
-  fi
+  rm -rf "$NEW"
+  [ -e "$BACKUP" ] && mv "$BACKUP" "$SUPPORT"
   defaults delete "$DOMAIN" 2>/dev/null || true
   [ -f "$WORK/defaults.plist" ] && defaults import "$DOMAIN" "$WORK/defaults.plist"
   say "restored"
 }
 defaults export "$DOMAIN" "$WORK/defaults.plist" 2>/dev/null || true
-mv "$SUPPORT" "$BACKUP"
+[ -e "$SUPPORT" ] && mv "$SUPPORT" "$BACKUP"
 trap restore EXIT
 trap 'exit 1' INT TERM
 defaults delete "$DOMAIN" 2>/dev/null || true
@@ -61,12 +62,12 @@ defaults delete "$DOMAIN" 2>/dev/null || true
 shot() { python3 - "$WORK" "$1" <<'EOF' || true
 import json, os, socket, sys
 s = socket.socket(socket.AF_UNIX); s.settimeout(20)
-s.connect(os.path.expanduser("~/Library/Application Support/ChatComputer/control.sock"))
+s.connect(os.path.expanduser("~/.chatcomputer/control.sock"))
 s.sendall((json.dumps({"command": "dev_window_shot", "arguments": {"dir": sys.argv[1], "name": sys.argv[2]}, "client": "fresh"}) + "\n").encode())
 print(s.recv(65536).decode().strip())
 EOF
 }
-stage() { /usr/bin/python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['stage'])" "$SUPPORT/ChatComputer.vm/spec.json" 2>/dev/null || echo none; }
+stage() { /usr/bin/python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['stage'])" "$NEW/ChatComputer.vm/spec.json" 2>/dev/null || echo none; }
 
 STARTED=$(date +%s)
 open --env CC_AUTO_ONBOARD=1 --env CC_DEV_WINDOW_SHOTS=1 --env CC_DEV_LOG="$WORK/onboarding.log" --env CC_GUEST_MACOS="${CC_GUEST_MACOS:-27}" \
@@ -92,7 +93,7 @@ say "onboarding finished in $(( $(date +%s) - STARTED ))s"
 
 pkill -TERM -f "$APP/Contents/MacOS/ChatComputer"
 for _ in $(seq 1 120); do pgrep -f "$APP/Contents/MacOS/ChatComputer" >/dev/null || break; sleep 1; done
-cp "$BACKUP/credentials.json" "$SUPPORT/credentials.json"
+cp "$BACKUP/credentials.json" "$NEW/credentials.json"
 TASK_LOG="$WORK/task.log"
 open --env CC_DEV_WINDOW_SHOTS=1 --env CC_DEV_MODEL="$MODEL" --env CC_DEV_LOG="$TASK_LOG" \
   --env CC_DEV_TASK="Use the Calculator app to compute 12 × 12 and tell me the result." "$APP"

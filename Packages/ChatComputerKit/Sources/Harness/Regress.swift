@@ -83,7 +83,7 @@ enum Regress {
         let specs = suite.tasks.filter { only?.contains($0.id) ?? true }
 
         let settings = try modelSettings(modelSpec)
-        let stored = try FileSecretStore(url: VMBundle.defaultLocation.deletingLastPathComponent().appendingPathComponent("credentials.json"))
+        let stored = try FileSecretStore(url: DataDirectory.current.appendingPathComponent("credentials.json"))
             .read(settings.secretAccount)
         let key = ProcessInfo.processInfo.environment["CC_API_KEY"] ?? stored
         guard let key, !key.isEmpty else { throw ProbeError("no API key: set CC_API_KEY or store one in the app first") }

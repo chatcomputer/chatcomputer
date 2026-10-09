@@ -132,8 +132,8 @@ chatcomputer mcp                       # the same commands as an MCP server on s
 
 For Claude Code: `claude mcp add chatcomputer -- chatcomputer mcp`, or just tell it to use the command.
 Agents follow the built-in agent's rules: the first input command takes the input lease, clicking the screen takes
-it back, and an idle agent loses it after 2 minutes. The app listens on a 0600 Unix socket in
-`~/Library/Application Support/ChatComputer/`. The chat panel collapses to a rail of controls (⌃⌘S) while an agent works.
+it back, and an idle agent loses it after 2 minutes. The app listens on a 0600 Unix socket in its data folder
+(`~/.chatcomputer`, or the folder chosen during setup). The chat panel collapses to a rail of controls (⌃⌘S) while an agent works.
 
 ## Development
 

@@ -19,7 +19,16 @@ import sys
 import time
 
 HERE = pathlib.Path(__file__).resolve().parent
-OUTBOX = pathlib.Path.home() / "Library/Application Support/ChatComputer/ChatComputer.vm/Shared/outbox"
+def data_dir():
+    """Chat Computer's data folder: CC_DATA_DIR, the one chosen in setup, or ~/.chatcomputer."""
+    if os.environ.get("CC_DATA_DIR"):
+        return os.path.expanduser(os.environ["CC_DATA_DIR"])
+    chosen = subprocess.run(["defaults", "read", "app.chatcomputer.ChatComputer", "DataDirectory"],
+                            capture_output=True, text=True).stdout.strip()
+    return chosen or os.path.expanduser("~/.chatcomputer")
+
+
+OUTBOX = pathlib.Path(data_dir()) / "ChatComputer.vm/Shared/outbox"
 
 PREFACE = """A macOS virtual machine ("the virtual Mac") is available through the command line tool {cli}. \
 Run `{cli} help` first; screenshots are saved as PNG files you can Read. Inside the virtual Mac, the outbox for this \
