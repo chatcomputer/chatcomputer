@@ -1,0 +1,239 @@
+{
+  "recordedAt": "2026-11-04T20:09:58.265832+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "925a45be7c45edf41fcc192e23d021619ad9ec6e",
+  "sourceSHA256": "0e5baa601a614122462d5de8e7fa0b9402434a1db78be1ccf4fc4aeaba1ad484",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "72",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "a829d8ac45c582af16a3876067c7a817c30839a86631df5d546182e77eca98af"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "72",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "8cc5c90f9b6965dbdc6046ae0d4bf96c68108ab127f17899199c52de8a8a94d0"
+  },
+  "vm": {
+    "id": "C5677170-D259-4C4B-A165-12D8ABA4E3D4",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "702AB568-3268-4280-BCCB-BADBD0931776",
+  "suite": "short",
+  "model": "gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-72-codex-short-mcp.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "967f825e25d052bb51f4516c01e84bd66e7e01c0c285dc9c459be10b0046604d",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2",
+  "state": "finished",
+  "via": "mcp",
+  "expectedTasks": 20,
+  "beforeAfterComparisonComplete": false,
+  "rawTraceDirectory": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw",
+  "supervisorSHA256": "18e4d3eff85197a7c6848621e8b2416d5308621c8c6de73dee793b8f803accdb",
+  "finishedAt": "2026-11-04T20:35:37.310218+00:00",
+  "runnerExit": 0,
+  "completedTasks": 20,
+  "passedTasks": 20,
+  "suiteThresholdPassed": true,
+  "normalFinalSIGTERMExit": true,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp.jsonl",
+      "sha256": "6757e1b72f88d4afcb46f2507a288af6ba5027dba65aa5640656a43eb8fe6f81"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-calculator-1-1793823137.agent.jsonl",
+      "sha256": "4a28c5ff8aa74222c6734ce778cfde5197c75ae4cca4a3e388dfe3c8b7bd8e74"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-calculator-1-1793823137.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-copy-rename-1-1793823967.agent.jsonl",
+      "sha256": "0547f61642bf58dbe4eddee3d4d5b7121f9133bb8fd5f63ee59e4081c8e43b63"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-copy-rename-1-1793823967.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-csv-sum-1-1793823304.agent.jsonl",
+      "sha256": "ad1b341c905fd0594e1dec4e1897de0ed0f7eda03426f6b51c8f83f4b72b0d44"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-csv-sum-1-1793823304.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-dark-mode-1-1793824215.agent.jsonl",
+      "sha256": "8b09f74a942181ed7236bc81750c36d1db0c33ed63e1e5484cb5bd8b2327f953"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-dark-mode-1-1793824215.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-email-approval-1-1793823630.agent.jsonl",
+      "sha256": "6fd7a8664290ec07d549bf4b9a4662abe46d7d4d24cc3dfe3a946ac149923c7b"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-email-approval-1-1793823630.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-finder-folder-1-1793823234.agent.jsonl",
+      "sha256": "703160674fa5806c1dc247c1a829b8428396150b3cf3c3c8ae292418b2be7fa9"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-finder-folder-1-1793823234.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-image-size-1-1793824354.agent.jsonl",
+      "sha256": "9099bd26496a2dc766e157e85daae23afd709ad918722cf78530f59808928648"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-image-size-1-1793824354.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-injection-1-1793824017.agent.jsonl",
+      "sha256": "aaf9eeac419bf7f71d0a3c06a13f126d87e4206e99391f65598744604207e9c5"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-injection-1-1793824017.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-macos-version-1-1793823377.agent.jsonl",
+      "sha256": "0e05adfa7aad8c34d328cff948d9f7dea200d4e6c0a6911b0fdfd2eeca156307"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-macos-version-1-1793823377.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-pdf-export-1-1793823651.agent.jsonl",
+      "sha256": "3733bac7dbf00e93562f9beafa72d632345f8c2aea058670a1b8bcc97c161b3b"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-pdf-export-1-1793823651.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-poem-title-1-1793823561.agent.jsonl",
+      "sha256": "62bdfe1b6bef55fef12ebdc0d8f150a892e6c70d77918d01c01beff0ba4dd4e5"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-poem-title-1-1793823561.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-replace-text-1-1793824451.agent.jsonl",
+      "sha256": "c3f9dc1266060cfffd63cfb5e9399e7533b9365a7b718272e9c28097cd33de6b"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-replace-text-1-1793824451.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-shopping-list-1-1793823441.agent.jsonl",
+      "sha256": "d1bb676900cef55d5d220c7d8d971cac6bc7f6d2d0ca6badfe2125d69a5b0034"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-shopping-list-1-1793823441.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-table-to-file-1-1793823878.agent.jsonl",
+      "sha256": "c9e2681aa3d0ac1a93027e078299f0e1a75a68ca149a28a16367d8c4dfd1debd"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-table-to-file-1-1793823878.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-textedit-note-1-1793823024.agent.jsonl",
+      "sha256": "17738a79a0947e4322d7baa7657d9e1d9cad3532dc80787ae5d8eed0fbb67d9c"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-textedit-note-1-1793823024.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-trip-folder-1-1793824087.agent.jsonl",
+      "sha256": "65ade1dedeaf20ecc3c929c2adc1161ddfe182c62840f1f993ed26a895646fd1"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-trip-folder-1-1793824087.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-web-form-1-1793823729.agent.jsonl",
+      "sha256": "a93448a7bf432f708ca466d4086d323b0a500ed74eae5c828b53c9f1e4579dce"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-web-form-1-1793823729.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-web-heading-1-1793823077.agent.jsonl",
+      "sha256": "723fba465f50d8034de80b2e2283e9b6d6089f696cbc79ac4873c2ae1668b483"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-web-heading-1-1793823077.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-weekday-1-1793824257.agent.jsonl",
+      "sha256": "a0d970f5c0cf1e66fe7fc34b2d5fd19808844d50398ff446ea448372b9ea2a39"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-weekday-1-1793824257.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-wikipedia-1-1793823491.agent.jsonl",
+      "sha256": "ab34a551b9a05fe9948485139432571d548b15d644f9bfe180c44d4ef3e2aca9"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-raw/regress-wikipedia-1-1793823491.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-host.log",
+      "sha256": "d2158bd97e794908df307258b70f0e7f310c77816511fde8ecb0827d5e90c89f"
+    }
+  ]
+}
