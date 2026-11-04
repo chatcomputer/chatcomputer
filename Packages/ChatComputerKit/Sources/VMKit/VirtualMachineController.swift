@@ -23,6 +23,9 @@ public final class VirtualMachineController: NSObject {
     public private(set) var virtualMachine: VZVirtualMachine?
     /// Whether the last start resumed a suspended machine rather than booting it.
     public private(set) var resumedFromSavedState = false
+    /// Bounded metadata only: no guest input, credentials, paths or captured pixels.
+    public private(set) var lifecycleEvents: [String] = []
+    private var machineGeneration = 0
 
     /// Called with the vsock device once the VM starts, so the bridge can listen on it.
     public var onSocketDeviceReady: ((VZVirtioSocketDevice) -> Void)?
@@ -70,21 +73,27 @@ public final class VirtualMachineController: NSObject {
             let configuration = try VMConfigurationFactory(bundle: bundle, network: network)
                 .make(spec: spec, shares: shares, includeBootstrap: includesBootstrap)
             let machine = VZVirtualMachine(configuration: configuration)
+            machineGeneration += 1
             machine.delegate = self
             virtualMachine = machine
+            recordLifecycle("start-created", nativeState: machine.state.rawValue)
             if let socket = machine.socketDevices.first as? VZVirtioSocketDevice {
                 onSocketDeviceReady?(socket)
             }
 
             if provisioning == nil, FileManager.default.fileExists(atPath: bundle.savedStateURL.path) {
                 do {
+                    recordLifecycle("memory-restore-begin", nativeState: machine.state.rawValue)
                     try await machine.restoreMachineStateFrom(url: bundle.savedStateURL)
                     try await machine.resume()
                     try? FileManager.default.removeItem(at: bundle.savedStateURL)
                     resumedFromSavedState = true
                     state = .running
+                    recordLifecycle("memory-resume-succeeded", nativeState: machine.state.rawValue)
                     return
                 } catch {
+                    recordLifecycle("memory-restore-failed", nativeState: machine.state.rawValue,
+                                    error: Self.errorSignature(error))
                     // Saved state is tied to this Mac, account and OS build; fall back to a cold boot.
                     try? FileManager.default.removeItem(at: bundle.savedStateURL)
                 }
@@ -97,8 +106,11 @@ public final class VirtualMachineController: NSObject {
             }
             try await machine.start(options: options)
             state = .running
+            recordLifecycle("cold-start-succeeded", nativeState: machine.state.rawValue)
         } catch {
             state = .error(error.localizedDescription)
+            recordLifecycle("start-failed", nativeState: virtualMachine?.state.rawValue,
+                            error: Self.errorSignature(error))
         }
     }
 
@@ -107,18 +119,20 @@ public final class VirtualMachineController: NSObject {
         guard let machine = virtualMachine, state == .running else { throw VMError.notRunning }
         state = .saving
         do {
+            recordLifecycle("memory-save-begin", nativeState: machine.state.rawValue)
             try await machine.pause()
             try await machine.saveMachineStateTo(url: bundle.savedStateURL)
+            recordLifecycle("memory-save-succeeded", nativeState: machine.state.rawValue)
+            try await stopMachine(machine, reason: "suspend")
         } catch {
+            guard virtualMachine == nil || virtualMachine === machine else { throw error }
             // Keep the guest running rather than leaving it frozen, and drop a partial state file.
             try? FileManager.default.removeItem(at: bundle.savedStateURL)
             if machine.state == .paused { try? await machine.resume() }
+            guard virtualMachine == nil || virtualMachine === machine else { throw error }
             state = machine.state == .running ? .running : .error(error.localizedDescription)
             throw error
         }
-        try await machine.stop()
-        virtualMachine = nil
-        state = .stopped
     }
 
     /// Asks the guest to shut down cleanly.
@@ -152,9 +166,40 @@ public final class VirtualMachineController: NSObject {
 
     public func forceStop() async throws {
         guard let machine = virtualMachine else { return }
-        try await machine.stop()
+        try await stopMachine(machine, reason: "discard")
+    }
+
+    private func stopMachine(_ machine: VZVirtualMachine, reason: String) async throws {
+        recordLifecycle("\(reason)-stop-begin", nativeState: machine.state.rawValue)
+        let recovered: Error?
+        do {
+            recovered = try await VMStopOperation.run({ try await machine.stop() }, state: { machine.state })
+        } catch {
+            recordLifecycle("\(reason)-stop-failed-live", nativeState: machine.state.rawValue,
+                            error: Self.errorSignature(error))
+            throw error
+        }
+        guard virtualMachine == nil || virtualMachine === machine else { throw VMError.busy }
+        if let recovered {
+            recordLifecycle("\(reason)-stop-recovered-terminal-error", nativeState: machine.state.rawValue,
+                            error: Self.errorSignature(recovered))
+        } else {
+            recordLifecycle("\(reason)-stop-succeeded", nativeState: machine.state.rawValue)
+        }
         virtualMachine = nil
         state = .stopped
+    }
+
+    private static func errorSignature(_ error: Error) -> String {
+        let value = error as NSError
+        return "\(value.domain)#\(value.code)"
+    }
+
+    private func recordLifecycle(_ phase: String, nativeState: Int? = nil, error: String? = nil) {
+        let native = nativeState.map { " native=\($0)" } ?? ""
+        let failure = error.map { " error=\($0)" } ?? ""
+        lifecycleEvents.append("\(Date().ISO8601Format()) generation=\(machineGeneration) \(phase)\(native)\(failure)")
+        if lifecycleEvents.count > 64 { lifecycleEvents.removeFirst(lifecycleEvents.count - 64) }
     }
 
     // MARK: Shared folders
@@ -286,10 +331,13 @@ public final class VirtualMachineController: NSObject {
         }
         do {
             try recordInitialSnapshot()
+            recordLifecycle("snapshot-files-begin")
             let result = try body()
+            recordLifecycle("snapshot-files-succeeded")
             if wasRunning { await start() }
             return result
         } catch {
+            recordLifecycle("snapshot-files-failed", error: Self.errorSignature(error))
             if wasRunning { await start() }
             throw error
         }
@@ -321,6 +369,7 @@ extension VirtualMachineController: VZVirtualMachineDelegate {
         MainActor.assumeIsolated {
             // A retired VM must not overwrite the replacement's state.
             guard self.virtualMachine.map(ObjectIdentifier.init) == sender else { return }
+            self.recordLifecycle("delegate-stopped", nativeState: self.virtualMachine?.state.rawValue)
             self.virtualMachine = nil
             self.state = .stopped
         }
@@ -329,8 +378,10 @@ extension VirtualMachineController: VZVirtualMachineDelegate {
     nonisolated public func virtualMachine(_ virtualMachine: VZVirtualMachine, didStopWithError error: Error) {
         let sender = ObjectIdentifier(virtualMachine)
         let message = error.localizedDescription
+        let signature = "\((error as NSError).domain)#\((error as NSError).code)"
         MainActor.assumeIsolated {
             guard self.virtualMachine.map(ObjectIdentifier.init) == sender else { return }
+            self.recordLifecycle("delegate-stopped-error", nativeState: self.virtualMachine?.state.rawValue, error: signature)
             self.virtualMachine = nil
             self.state = .error(message)
         }

@@ -404,4 +404,18 @@ MCP模式另起固定20项回归，复用同一71测试VM和Regression base。�
 
 关键原始操作另行核对：邮件仅help/release后询问许可；注入16次命令无发信/外发收件人，两个错误兄弟路径仅返回127；本地表单确实从本次独立目录打开并由Safari读到ORDER-ADA-LX，不代表真实购买审批；PDF10959字节、文件头通过并保留，正文未单独提取。App和guest二进制指纹仍等于72签名构建，新的execution checkout包含测试工具修正，不冒充原编译源码指纹完全相同。
 
-监督器保存实际发送SIGTERM的GUI PID93227并观察退出。119条GUI资源样本按该PID另取不可变摘录，持续采样原文件不提前取整文件哈希；仍不代表VM总内存或4.3小时内置soak。收尾清单为 `2026-11-04-0.9.12-72-codex-short-cli-input-v2-acceptance.manifest.json`。MCP重跑已启动，新long和43比较仍待完成，整体发布门槛未通过。
+监督器保存实际发送SIGTERM的GUI PID93227并观察退出。119条GUI资源样本按该PID另取不可变摘录，持续采样原文件不提前取整文件哈希；仍不代表VM总内存或4.3小时内置soak。收尾清单为 `2026-11-04-0.9.12-72-codex-short-cli-input-v2-acceptance.manifest.json`。当时MCP重跑已启动，新long和43比较仍待完成，整体发布门槛未通过。
+
+## isolated-inputs-v2：72 MCP在10/20后恢复失败
+
+已完成的10项均通过，下一项调用模型前恢复Regression base时返回Internal Virtualization error，不能记为完整短任务通过。监督器停止后续long及43比较；finally恢复BeforeRegression后截图重验通过，GUI PID8143正常SIGTERM退出。原始结果、日志和系统记录封存在 `2026-11-04-0.9.12-72-codex-short-mcp-input-v2-incident.manifest.json`，整份资源曲线现已结束并取哈希。
+
+Virtualization服务14986的系统报告记录EXC_CRASH/SIGKILL、GUARD flags6 code20，与71原失败同类；不是监督器发出的信号，亦没有证据归因为磁盘不足、OOM或watchdog。服务14986的显示资源销毁、随后终止、新服务15281创建和恢复的时间线与stop/replace边界相符，但72没有原生操作级状态记录，不能断言唯一失败阶段或根因。
+
+## 73：显式停止的终态错误与生命周期诊断
+
+依本机Virtualization SDK头文件和[Apple的stop文档](https://developer.apple.com/documentation/virtualization/vzvirtualmachine/stop(completionhandler:))，stop可能因虚拟机已停止或内部错误终止而返回错误，应检查实际native state。73仅在显式stop抛错且native state为stopped/error时允许继续已请求的文件事务；运行或过渡状态仍失败，不自动重复模型任务。suspend停止失败也进入原有部分保存文件清理和恢复分支，并在等待后检查VM对象身份。增加最多64条生命周期元数据，记录恢复、保存、停止、快照文件操作和所属delegate，进入现有脱敏诊断；不记录guest输入、路径、密钥或像素。
+
+197项Swift（含两个终态及八个运行/过渡状态）、本机Mac构建/底层检查和原生回调归属探针通过。固定Developer ID签名、公证Accepted、staple及Gatekeeper通过，构建证据见 `2026-11-04-0.9.12-73-build.manifest.json`。缺CC_API_KEY的内置模型检查仍明确跳过。73并未证明修复Kernel GUARD的原因，72模型成绩也不转记为73通过。
+
+真实27.0.1隔离VM先恢复72内存基准并升级实际agent73，再保存73内存基准，连续30次恢复均观察到memory-resume-succeeded，无冷启动回退、无memory-restore-failed，恢复至ready中位10.01秒。72和73源内存哈希各自前后一致。随后实际CLI和MCP各保存一份文件、宿主内容/哈希一致、正常退出重开通过。本轮未观察到stop-recovered-terminal-error，因此只是正常路径重复通过及终态规则单元覆盖，不是故障根因已修复的证明。清单为 `2026-11-04-0.9.12-73-lifecycle.manifest.json`；此VM反复使用，不算新装、模型回归、双机或soak。已在VM停止时只改快照名称，将实际73基准命名Regression base，72基准保留，原元数据留档。

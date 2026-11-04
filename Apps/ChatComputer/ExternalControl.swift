@@ -244,6 +244,8 @@ final class ExternalControl {
                 }
             case "permissionState":
                 return ControlResponse(text: "step=\(model.onboarding.step) working=\(model.onboarding.isWorking) captureVerified=\(model.captureVerified) verifyingCapture=\(model.verifyingCapture)")
+            case "vmLifecycle":
+                return ControlResponse(text: model.vm?.lifecycleEvents.joined(separator: "\n") ?? "no virtual Mac")
             case "frameInfo":
                 guard let image = model.captureGuestScreen() else { return .error("no guest framebuffer") }
                 let view = model.guestView

@@ -1,0 +1,88 @@
+{
+  "recordedAt": "2026-11-04T22:39:35.839228+00:00",
+  "appBuild": "73",
+  "modelInvoked": false,
+  "newFreshInstall": false,
+  "scope": "Reuse isolated27 VM: restore72 once, capture actual73 clean memory base,30 sequential RAM restores,actual CLI/MCP files and normal app exit/reopen",
+  "passed": true,
+  "memoryRestoresPassed": 30,
+  "medianRestoreAndReadinessSeconds": 10.006437749500009,
+  "source72RAMUnchanged": true,
+  "source73RAMUnchanged": true,
+  "actual73SnapshotID": "D6811FB2-B563-4F23-9D55-5018AB2CFDEC",
+  "observedRecoveredTerminalStopErrors": 0,
+  "observedLoopGUIProcessIDs": [
+    28512
+  ],
+  "normalLoopGUIExit": true,
+  "actualCLIAndMCPFilesPassed": true,
+  "normalFileTestExitAndReopenPassed": true,
+  "kernelGuardRootCauseProven": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-files-monitor.log",
+      "sha256": "83ec5f46d0412a99a392eeefeabdcbe1319590c53ebaaf0a362b04f9969019da"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-files-result.json",
+      "sha256": "0dfbea4b492b924ed7f531f5074516b955c2bc98973121b5247c481c57e831f4"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-files.jsonl",
+      "sha256": "5becfbafe9bb765444858f2ec2d90fcb081330afc55a798d2fcedf12c2a459ec"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-first-desktop.png",
+      "sha256": "0f59cf53ad9fb430eed546cb68b56a5be7c7f572d2571479f78e564d9610973b"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-host.log",
+      "sha256": "daaa45ebfe891fc9fc052dc19caf22ea7e092414b6b6c5e964b19a8a7e6ca108"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-mcp-2-0.png",
+      "sha256": "a4e38c73e2668339dd1a8f69eadc896abdfcd0d5c481f24e16eee6c08fc96493"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-monitor.log",
+      "sha256": "c6b97ade18d0537146d9cc10093a952dd3da673c2d5c86232ebc944ff8af7298"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-result.json",
+      "sha256": "9a8b780d86471c396529346a5caedde2019db52a6d68e08b9c794d5579e7f2b1"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1.jsonl",
+      "sha256": "73afa7b5db64c68693df64d5802de0bbc937a44f1d1017e196358df62d73ffe9"
+    },
+    {
+      "path": "build/validation/probe-lifecycle-73.py",
+      "sha256": "f7e462ea1bd7f52817f3ef1b7bf02807aa47ce070584cc06ab36271bdb3f56e1"
+    },
+    {
+      "path": "build/validation/fresh-file-smoke-v2.py",
+      "sha256": "06b5d409ddb1d1bb3c395fba4eb5cfe347fb672828337255bb64f94f461fd534"
+    },
+    {
+      "path": "build/validation/dev-71.py",
+      "sha256": "e31be8b14a7470c4bed3f9be5007daeadf9220e13cb6306b727b2b4571a037d8"
+    },
+    {
+      "path": "build/validation/prepare-regression-base-73.py",
+      "sha256": "6ccb4450234c1a714d9d9579677ed5fa7715178d49af8f40d58dbe4e2c810700"
+    },
+    {
+      "path": "build/validation/prepare-regression-base-73-result.json",
+      "sha256": "d0cd9deb2e3052af00f6e9b3a1d2653979f247a12e0c1258e3e74c407c8f0237"
+    },
+    {
+      "path": "build/validation/prepare-regression-base-73-702AB568-3268-4280-BCCB-BADBD0931776-original.json",
+      "sha256": "87f65a67c6ddc4a0759f365d8c5d9c4c994683fea2f6cefc98a51fb1d66a05c1"
+    },
+    {
+      "path": "build/validation/prepare-regression-base-73-D6811FB2-B563-4F23-9D55-5018AB2CFDEC-original.json",
+      "sha256": "50cfa54a24a96b7e8f19462de440083a272541c3b6b2441701ac1cb3997e864c"
+    }
+  ]
+}

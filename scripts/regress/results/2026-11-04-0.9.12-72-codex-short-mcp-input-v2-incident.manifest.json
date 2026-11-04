@@ -1,0 +1,63 @@
+{
+  "recordedAt": "2026-11-04T22:23:15.696548+00:00",
+  "appBuild": "72",
+  "benchmarkRevision": "isolated-inputs-v2",
+  "completedTasks": 10,
+  "passedTasks": 10,
+  "shortSuiteThresholdPassed": false,
+  "failure": "Next Regression base snapshot restore failed before task11 model invocation: Internal Virtualization error, VM stopped unexpectedly",
+  "virtualizationServicePID": 14986,
+  "responsibleAppPID": 8143,
+  "termination": {
+    "namespace": "GUARD",
+    "flags": 6,
+    "code": 20
+  },
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    8143
+  ],
+  "baseline43Executed": false,
+  "automaticComparisonStopped": true,
+  "phaseEvidence": "Old service PGDisplay destroyed14:00:57, old service terminated14:01:05; next service15281 created14:01:05 and resumed14:01:15. Consistent with the stop/replace boundary, but native operation-level trace was not available in72; no sole cause asserted.",
+  "73Plan": "Handle explicit-stop errors only when native VM state is stopped/error; preserve all live/transitional errors; add bounded lifecycle metadata for phase-level proof. Kernel GUARD cause not claimed fixed.",
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-input-v2.manifest.json",
+      "sha256": "f9da38d43c641924e44a7612fe2f1a47fe4e2fd3fb234082e95aafb58b6e5dd8"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-input-v2.jsonl",
+      "sha256": "885b346b6bf2d0e167e89efdd6b45f06f4c8bf7196cbf7f8ed688178d94c9fdc"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-input-v2-monitor.log",
+      "sha256": "d08f2aa0df08ad4c6da1f2e60f75ff429c5d192d89c3385bea95582be7ffdd74"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-mcp-input-v2-host.log",
+      "sha256": "dbbfb240a67633080e53d9b828e23e84d69642e2864ff8cbdb2e0f82fcd9a295"
+    },
+    {
+      "path": "build/validation/mcp-input-v2-72-vz-incident.ips",
+      "sha256": "b6f9e1aeb1bbb0301ac077ca420df3ad230ee16b8aa995d81a5920f5628494d3"
+    },
+    {
+      "path": "build/validation/mcp-input-v2-72-vz-system.json",
+      "sha256": "ee15c8f23cd368ba303c930f55569bd771809f12f73c0f4a9ed1a5170a4cc7ca"
+    },
+    {
+      "path": "build/validation/mcp-input-v2-72-all-vz-system.json",
+      "sha256": "e3ee7ac9b8b63a2d7bafd31e533882c16ea2ddfcd6b8ba1b8825a83bd1ca4e3a"
+    },
+    {
+      "path": "build/validation/sequence-input-isolated-comparison-v2-monitor.log",
+      "sha256": "746cff18ae12cc1eef6f75b994bd9659ec8d5fa93f0abb7a55067f3687cd74d5"
+    },
+    {
+      "path": "build/validation/input-isolated-v2-resources.jsonl",
+      "sha256": "a4aff86ef66a67f535c93979eb4ac3f93996c4c62ea47eef2cc39429780f7f31"
+    }
+  ]
+}

@@ -97,6 +97,10 @@ enum Diagnostics {
             "  \(spec.cpuCount) CPUs, \(spec.memoryBytes >> 30) GB memory, \(spec.diskBytes >> 30) GB disk, \(spec.displayWidth)×\(spec.displayHeight), \(spec.overlayCount) overlay(s)",
             "  Readiness: \(model.guestReadiness.map { $0.problem ?? "ready" } ?? "unknown")",
         ]
+        if !vm.lifecycleEvents.isEmpty {
+            lines.append("  Recent VM lifecycle (bounded metadata):")
+            lines += vm.lifecycleEvents.map { "    " + $0 }
+        }
         if vm.state == .running, let bridge = model.bridge, await bridge.isConnected,
            case .health(let report)? = try? await bridge.send(.init(vmID: spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                                     deadline: Date().addingTimeInterval(5), command: .health)) {

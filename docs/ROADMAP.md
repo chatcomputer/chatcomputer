@@ -196,6 +196,8 @@ Policy 层与审批卡片；提示注入对抗用例；DiskImageKit 检查点与
 
 ### 5.1 探针结果（2026-09-30，宿主 macOS 27.0 / Xcode 27，guest macOS 27.0.1 26A434，M 系列 32 GB）
 
+2026-11-04补充（Mac18,5，host/guest27.0.1 /26A434）：72修正输入后的MCP只完成10/20，下一次模型前快照恢复遇到Virtualization服务GUARD终止；原生操作阶段和唯一根因未证明。73按SDK只容许显式stop错误后的stopped/error终态继续，并加入有界阶段记录。197项Swift、本机检查、签名公证通过；真实内存恢复30/30及CLI/MCP文件/正常重开通过，未观察到终态错误恢复分支。故不能以正常循环通过宣布Kernel问题修复；也不算新装、模型回归或4.3小时soak。逐项证据见 [当前矩阵](VALIDATION-0.9.12-MATRIX.md)。
+
 | 探针 | 结果 | 数据与发现 |
 |---|---|---|
 | P1 安装 | ✅ | IPSW → 已安装 **173 秒**，磁盘占用 28.6 GB。`VZMacOSRestoreImage.fetchLatestSupported` 在宿主 27.0 上报 VZErrorDomain 10001，安装器已支持传入本地 IPSW |

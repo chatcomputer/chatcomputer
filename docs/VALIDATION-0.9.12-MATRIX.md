@@ -1,6 +1,12 @@
 # 0.9.12 当前候选验收矩阵
 
-本表按 [NEXT-RELEASE.md](NEXT-RELEASE.md) 的完整范围核对，当前构建为 **72**。日期：2026-11-04。旧构建成绩保留在 [验证流水记录](VALIDATION-0.9.12.md)，不转记为72通过。未验证不等于失败，也不等于通过；本表不是发布批准。
+本表按 [NEXT-RELEASE.md](NEXT-RELEASE.md) 的完整范围核对，当前构建为 **73**。日期：2026-11-04。未验证不等于失败，也不等于通过；本表不是发布批准。
+
+73当前已通过197项Swift、本机Mac构建/接口检查、原生回调探针、固定Developer ID签名、公证与Gatekeeper；内置模型检查缺配置而跳过。真实73内存快照连续恢复30/30，两份CLI/MCP文件及正常退出重开通过；源72/73内存哈希不变，本轮没有触发终态错误恢复分支，不能宣布原偶发故障修复。见 [73构建](../scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json)、[73生命周期](../scripts/regress/results/2026-11-04-0.9.12-73-lifecycle.manifest.json)。下面保留72的完整逐项记录作为历史，不将72成绩转记为73通过；73其余完整矩阵尚未完成。
+
+72修正输入后的MCP重跑只完成10/20（已完成10项通过），下一项调用模型前恢复快照失败，比较监督器停止，43尚未执行。系统记录为Virtualization服务GUARD终止，唯一根因未证明。73增加显式stop终态错误处理和有界生命周期元数据，并非已证明修复Kernel终止。证据见 [72中断记录](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-input-v2-incident.manifest.json)。
+
+## 72历史矩阵（已结束）
 
 环境：一台 Apple Silicon Mac（Mac18,5），host 27.0.1 / 26A434；现有隔离 guest 27.0.1 / 26A434。用户反馈的“27.2”属于 host 还是 guest、具体 build 均未确认。第二台Mac不可用；内置模型测试配置尚不可用。
 
@@ -18,7 +24,7 @@
 | 26.x、27.x原生输入，各3/3 | 待执行 | 必须实际72 guest，不能只核对健康状态 |
 | 实际签名43升级到72、旧43内存快照恢复 | 待执行 | 71快照恢复不能代替43；保留原签名43二进制 |
 | 外部Codex CLI short20 | 修正后20/20，审批/注入通过 | [isolated-inputs-v2审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-input-v2-acceptance.manifest.json)；43比较未完成 |
-| 外部Codex MCP short20 | 修正后完整重跑中 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-acceptance.manifest.json)不计新比较 |
+| 外部Codex MCP short20 | 修正后10/20即恢复失败中断，未通过 | [中断记录](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-input-v2-incident.manifest.json)；原规则成绩不计新比较 |
 | 外部长任务6项及43同环境对照 | 原程序6/6，但整理项独立复核失败；新规则待重跑 | [误报复核](../scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-verification-review.manifest.json)；43尚未执行 |
 | 内置DeepSeek short三轮、每轮至少19/20 | 未验证：缺配置 | 保留原门槛，不以Codex替代 |
 | 内置Anthropic short两轮40/40 | 未验证：缺配置 | 审批/注入必须通过；不要求Claude Code登录 |
@@ -41,4 +47,4 @@
 | 诊断：未连接、未授权、截图失败 | 待执行 | 待执行 | 用预设故障和秘密值核对脱敏文本；能判断失败阶段 |
 | 诊断画面选择 | 待执行 | 待执行 | 默认无PNG，显式选择后仅预期的一张；不自动上传 |
 
-尚未关闭的问题：71首次模型前恢复内存快照时Virtualization服务终止；随后同源快照及72五次检查通过，不能据此宣布原问题已修复。旧26会话两次恢复不应答的唯一根因亦未确认。原错误及资源条件混杂保留，发布验收仍未通过。
+尚未关闭的问题：71首次模型前恢复内存快照时Virtualization服务终止，72完整MCP重跑再次出现；不能以中间成功的恢复宣布根因已修复。旧26会话两次恢复不应答的唯一根因亦未确认。原错误及资源条件混杂保留，发布验收仍未通过。
