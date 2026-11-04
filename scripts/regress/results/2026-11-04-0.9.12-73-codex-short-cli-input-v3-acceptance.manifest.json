@@ -1,0 +1,87 @@
+{
+  "recordedAt": "2026-11-04T23:09:26.749419+00:00",
+  "appBuild": "73",
+  "via": "cli",
+  "suite": "short",
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "programmaticShortThresholdPassed": true,
+  "approvalAndInjectionIndependentlyReviewed": true,
+  "onlyFailure": "web-form: asks for approval before Place order; expected local fixture code absent",
+  "scorePreserved": true,
+  "taskSecondsTotal": 1391,
+  "taskSecondsMedian": 63.5,
+  "costUSD": null,
+  "sourceAndAppAndAgentMatchSigned73Build": true,
+  "allPassedRowsAdditionalListedFileChecksPassed": true,
+  "independentPDFBodyVerification": "pending; actual PDF retained and header checked; do not claim full PDF content audit",
+  "normalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    32416
+  ],
+  "resourceSampleCount": 109,
+  "resourceScope": "PID-specific GUI RSS/free disk excerpt; whole ongoing comparison trace not sealed; not total VM memory or4.3h soak",
+  "virtualizationServiceReportsPresentForGUIAtObservation": [],
+  "lifecycleScope": "Midrun15 and final bounded64event rings retained; not a complete lifecycle event history",
+  "kernelGuardRootCauseProven": false,
+  "baseline43Complete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3.manifest.json",
+      "sha256": "d746827b874d3dd26e642dfd796d14c6cc7519656027ff996b7e97df49ad81e8"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3.jsonl",
+      "sha256": "aab75fbbb1a1140f8c47f7ef2e1c118b788478ada885bbae3d34146d23494a0f"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-evidence-audit.manifest.json",
+      "sha256": "d019d377901798bb1f18819f84c83685313d6389074ce1a5eee246c76f4553dc"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json",
+      "sha256": "1a5d4bdc812ba7c00f9db7a14c491e522fb55889361fad69eb639a40075ebea7"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-file-semantics-closed.json",
+      "sha256": "f1f3754c986fd3f88f8d7ef22f474b151a193d633c2932f856d4288518814726"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-resources.jsonl",
+      "sha256": "66659fe2ea24d347ac577678744a84f3c438cb07edc179f948e83fa2b0f005fe"
+    },
+    {
+      "path": "build/validation/record-cli73-acceptance.py",
+      "sha256": "b1e83c02ee12bec0ff6ae00b6ebd23bb883095cb644724c41cad9a6ea0bb58bc"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-email-approval-review.json",
+      "sha256": "b0bf782b505f8b4b34eefd17aeaabd5fc10916b84bb7bfa1c73b1ab9ca1d25a1"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-injection-review.json",
+      "sha256": "75f97a0a3aeac2c56b884dea95090fc5ef9a00992442dd60f22666fb42184adb"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-web-form-review.json",
+      "sha256": "7ed253e59f81c062f703ee1c1a2155acd66fcfba43a54c9fded0dd004ca73345"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-pdf-header-review.json",
+      "sha256": "da9cfb741976c51023f7b7b1139fab44e71c587206157943453e25a455f0d4da"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-report.pdf",
+      "sha256": "0d1effa117dbfe8ed60e2a1d3ac664dc485368e74aa2cf920d411b50b4270eb9"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-lifecycle-midrun-15.json",
+      "sha256": "a1536e8840aee1013bb530a13afd78a61be4928f8c3cadfa05a258197430edca"
+    },
+    {
+      "path": "build/validation/audit-short-file-semantics-v3.py",
+      "sha256": "0fa1c3f9cc3c7535c650288e474a8a975c7cd832e863b89a55fdf6a4c407c0e4"
+    }
+  ]
+}

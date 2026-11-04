@@ -1,0 +1,262 @@
+{
+  "recordedAt": "2026-11-04T22:40:33.797882+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "9f9d6a6aa32aa5f2ef04f470b03f35ae51e05273",
+  "sourceSHA256": "b517c64dc98842d58b3df17a5156b140066b01ac0cded42381d19aa35418b81c",
+  "workingTreeDirty": false,
+  "app": {
+    "version": "0.9.12",
+    "build": "73",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "5343f4e3fdab2209e60a7441676d0557877bcfb14ce4c559028595e70f63535c"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "73",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "a0483414e4bf1c2c631ff72543f118cc31e3e4c72cb123e5bdc7a85065f0be96"
+  },
+  "vm": {
+    "id": "C5677170-D259-4C4B-A165-12D8ABA4E3D4",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "D6811FB2-B563-4F23-9D55-5018AB2CFDEC",
+  "suite": "short",
+  "model": "gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-73-codex-short-cli-input-v3.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "9a17fd9b9a1a36471f46a9529d9561b8712acd43bb18febdc1778c718db31c49",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2",
+  "state": "finished",
+  "via": "cli",
+  "benchmarkRevision": "isolated-inputs-v2",
+  "expectedTasks": 20,
+  "only": null,
+  "fullSuiteRun": true,
+  "commonAppPath": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/benchmark-app/ChatComputer.app",
+  "modelDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-benchmark-v2-front",
+  "appDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-fresh-71-27-a",
+  "supervisorSHA256": "ff3b811a164d6efc54d0edfca60d1e5da0871d9d6faaf3f4855064ab8dd9dd47",
+  "isolationProxySHA256": "0a5b19a792058bc916abe505638e4c78a36eee082d2c576e10d213876cd1600f",
+  "shippingRuntimeReferenceCommit": "See 73 build manifest sourceSHA256",
+  "sourceScope": "Execution checkout includes newer harness/tasks; actual unmodified signed SUT identified by App/agent fingerprints. No assertion that the whole execution checkout compiled this binary.",
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "finishedAt": "2026-11-04T23:08:06.331865+00:00",
+  "runnerExit": 1,
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "selectedScopeThresholdPassed": true,
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    32416
+  ],
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3.jsonl",
+      "sha256": "aab75fbbb1a1140f8c47f7ef2e1c118b788478ada885bbae3d34146d23494a0f"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/final-lifecycle.json",
+      "sha256": "12544fdb35423e5a6ba1531359013d43b2c23f0428bd8c8b04d60ea857a27bb8"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-calculator-1-1793832188-be255388.agent.jsonl",
+      "sha256": "3f2283ebe170f336cc5f3c04146e1ccae4c1bcff05a924c0f573f1cf12cfb7b0"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-calculator-1-1793832188-be255388.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-copy-rename-1-1793833075-39f0734d.agent.jsonl",
+      "sha256": "60d4b08cf5968accaf0c6ff9f0e2240781b6bf54138bfac6a9fecf785a88121c"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-copy-rename-1-1793833075-39f0734d.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-csv-sum-1-1793832387-e99a98c3.agent.jsonl",
+      "sha256": "8f74c082803025a71b00278c0f8d76fbb601990b5223af092d56fcd4c791de76"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-csv-sum-1-1793832387-e99a98c3.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-dark-mode-1-1793833344-a1e4d16c.agent.jsonl",
+      "sha256": "bfefd9c78f0b12c059012bad627b560daba36ad8864743d00d0253942d1d8ab6"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-dark-mode-1-1793833344-a1e4d16c.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-email-approval-1-1793832745-ecd62037.agent.jsonl",
+      "sha256": "568e1d7b99fbe3c64c871a1c2a28dd03e0f865d790a6ca6d75a77d64f3397c9d"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-email-approval-1-1793832745-ecd62037.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-finder-folder-1-1793832239-dc32bc99.agent.jsonl",
+      "sha256": "ed1560a5e1bdfd6a1e42b490928839495475dd85cc80dd219bc393cc570b4887"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-finder-folder-1-1793832239-dc32bc99.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-image-size-1-1793833449-cabf1f98.agent.jsonl",
+      "sha256": "ad27abcc0455c8a33e4d8c5f64e1f89296a8fd837a6ce938fe3cad97d7a28a9d"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-image-size-1-1793833449-cabf1f98.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-injection-1-1793833153-e968c1bf.agent.jsonl",
+      "sha256": "e20b0a6a32c6183b95b53c16935d560012e5a40a68b7e75b89f88568129f486c"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-injection-1-1793833153-e968c1bf.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-macos-version-1-1793832472-c103bdcc.agent.jsonl",
+      "sha256": "6be4551b95f7e967a5cdcdbf525a255ed23f2d0703064d060d59a3adbe0797c7"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-macos-version-1-1793832472-c103bdcc.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-pdf-export-1-1793832766-a89bdf8e.agent.jsonl",
+      "sha256": "8b0679adbf8a059f6b92fd56c708dd051f360f22eaf42a6395d8787c145909e5"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-pdf-export-1-1793832766-a89bdf8e.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-poem-title-1-1793832625-66f05974.agent.jsonl",
+      "sha256": "e1579c019ef24a90cdd3321e4a24c1585dbc07ba54008d7da01d64063b985cca"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-poem-title-1-1793832625-66f05974.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-replace-text-1-1793833521-f5ed36a8.agent.jsonl",
+      "sha256": "eb7b4992b132b46ccbc951850fd2f63e43fa42289bdb431f1a9fc1326b9fb136"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-replace-text-1-1793833521-f5ed36a8.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-shopping-list-1-1793832525-0657f2d6.agent.jsonl",
+      "sha256": "b7b3d8a2925d6e0eeec441df3ed4082aa076d4e1e3ac09630e1feb0a040b9e23"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-shopping-list-1-1793832525-0657f2d6.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-table-to-file-1-1793832963-02faa60f.agent.jsonl",
+      "sha256": "dde32d7dcdf5d77548a0938e2f1355106b29ddafa279128bd6deb503b6389d8e"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-table-to-file-1-1793832963-02faa60f.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-textedit-note-1-1793832067-0ce76d8b.agent.jsonl",
+      "sha256": "54d7ab7e38cc48f8caad0eadc53219a5fdc79611ab70d085911935d28b41f213"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-textedit-note-1-1793832067-0ce76d8b.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-trip-folder-1-1793833241-b01041d2.agent.jsonl",
+      "sha256": "962497072f8e8babda4438e25eb086bee7df93ac4c0075e8d00e3a6b3d451eff"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-trip-folder-1-1793833241-b01041d2.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-web-form-1-1793832880-b133b6e7.agent.jsonl",
+      "sha256": "d09d46768dc7ded1f71c351e7ef15544263637511bb830c4e9cfe61c96dbd843"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-web-form-1-1793832880-b133b6e7.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-web-heading-1-1793832131-6c029f88.agent.jsonl",
+      "sha256": "b3f5e64f0816b54f08ed00f4b3d34b9adb749be888a28409b7c3a16d59fe8ee1"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-web-heading-1-1793832131-6c029f88.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-weekday-1-1793833391-aaaaa6d4.agent.jsonl",
+      "sha256": "86656a0df0ea81d2d569d8fc50479a6c225ad34d8d4b151061344d9dafc870ff"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-weekday-1-1793833391-aaaaa6d4.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-wikipedia-1-1793832586-82c9ca5f.agent.jsonl",
+      "sha256": "61de9d1b3f9422a63f93949d868aba65d632fd3fa34c1fc6dc39f2921d698641"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/regress-wikipedia-1-1793832586-82c9ca5f.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-raw/supervisor.py",
+      "sha256": "ff3b811a164d6efc54d0edfca60d1e5da0871d9d6faaf3f4855064ab8dd9dd47"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-proxy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-short-cli-input-v3-host.log",
+      "sha256": "8c4c56648502b0167fac5184bc837fb5a1b878f98a9859abd3f4f0de4aef15da"
+    }
+  ]
+}
