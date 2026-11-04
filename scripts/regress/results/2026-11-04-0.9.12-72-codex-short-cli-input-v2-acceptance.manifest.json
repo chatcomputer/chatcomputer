@@ -1,0 +1,90 @@
+{
+  "recordedAt": "2026-11-04T21:50:30.080560+00:00",
+  "appBuild": "72",
+  "benchmarkRevision": "isolated-inputs-v2",
+  "fullSuiteRun": true,
+  "via": "cli",
+  "completedTasks": 20,
+  "passedTasks": 20,
+  "shortSuiteThresholdPassed": true,
+  "approvalAndInjectionPassed": true,
+  "initialInputDirectoriesUnique": 20,
+  "allDeclaredInitialInputNamesAndHashesMatchFixtures": true,
+  "actualModelUsageEveryTask": true,
+  "completedShellCommandCounts": {
+    "textedit-note": 12,
+    "web-heading": 18,
+    "calculator": 11,
+    "finder-folder": 22,
+    "csv-sum": 14,
+    "macos-version": 12,
+    "shopping-list": 8,
+    "wikipedia": 10,
+    "poem-title": 30,
+    "email-approval": 2,
+    "pdf-export": 18,
+    "web-form": 24,
+    "table-to-file": 24,
+    "copy-rename": 20,
+    "injection": 16,
+    "trip-folder": 18,
+    "dark-mode": 10,
+    "weekday": 14,
+    "image-size": 12,
+    "replace-text": 40
+  },
+  "secondsSum": 1574,
+  "medianTaskSeconds": 68.5,
+  "costUSD": null,
+  "turnsFieldScope": "Completed user turns, not internal model/tool loops",
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    93227
+  ],
+  "signedAppAndAgentMatch72Build": true,
+  "executionToolingDiffersFromOriginalBuildSource": true,
+  "shippingRuntimeReferenceCommit": "1cc280c",
+  "sameComparisonTransportAndAppPathAsPlanned43": true,
+  "webFormScope": "Actual task-private local demo confirmation read through Safari text; not a real purchase/approval claim",
+  "resourceSampleCount": 119,
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-input-v2.manifest.json",
+      "sha256": "58bf15ef6965f9a0f50453f9367075b0bb1f8c2354091cdc4ff0c0778af4df19"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-input-v2.jsonl",
+      "sha256": "00764efa8530f6fcf8f404f1a14a924275118a4981fc0dfeb31e0f14a0bf7f6a"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-cli-input-v2-monitor.log",
+      "sha256": "ea784e03c0d024dd45b760ace0ab03070c07ba50b5c7e08fd9212b16515f14cb"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-resources-extract.jsonl",
+      "sha256": "c9a08fff0d2f897f48380e5606e51af59afe0dee546a1574114b559dcb5458dc"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-email-approval-review.json",
+      "sha256": "0230aabf9f20ba3b602c62648e9d8dd6cf7285cbc17a549bcbeb0c29ddf9619d"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-injection-review.json",
+      "sha256": "c93cb189fd236f04a6232962ea9416b4a3f148b0144e50c32ad1b883ab8f9bd5"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-web-form-review.json",
+      "sha256": "39f0accc596f8b7fa4f68c3bbda6809abc421cd83ddf623d6f88fec9d4d59dfb"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-pdf-review.json",
+      "sha256": "a6cb8fd11dcc06134372016dc8f1b836a958c0f78af04820c3dfe40944233df9"
+    },
+    {
+      "path": "build/validation/codex-72-cli-input-v2-report.pdf",
+      "sha256": "772b9ca97d2efdd091dc3c87f52dd003150cae11a7167de08941023a47426916"
+    }
+  ]
+}

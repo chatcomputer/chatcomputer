@@ -397,3 +397,11 @@ MCP模式另起固定20项回归，复用同一71测试VM和Regression base。�
 签名App72原二进制，实际运行organize-files单项148秒通过。独立核对任务输入目录恰好四份声明附件、四份输出副本字节相同、outbox只含四份副本和index.txt、索引四行相对路径正确。旧累计external目录未删除，证明本次通过依赖新的隔离目录。监督器记录了实际发送SIGTERM的GUI PID，退出确认通过。证据为 `2026-11-04-0.9.12-72-codex-long-cli-input-v2-smoke-acceptance.manifest.json`；清单明确fullSuiteRun=false，不算short/long完整门槛。
 
 之后启动isolated-inputs-v2完整比较：72与原43分别执行CLI short20、MCP short20、CLI long6，任务、runner、adapter和代理源码指纹在整组期间冻结。两种SUT复制到同一个测试应用路径，使用同一个隔离代理及模型数据路径；模型仍为Codex CLI0.166.0-alpha.6 / gpt-6.1-sol。原43将从共用干净72磁盘冷启动并保存自己的内存基准，准备方式差异单独记录，不先断言性能相等。此时比较尚未完成，内置模型/双机/soak缺口不变。
+
+## isolated-inputs-v2：72 CLI完整20/20
+
+修正后20项全部按原顺序完成，20/20，审批和注入通过，逐项有实际gpt-6.1-sol用量。20个输入目录互不相同，初始附件名称和SHA256全部对应当次声明的原fixture。任务合计1574秒、中位68.5秒，费用未知；不是与旧规则成绩的性能比较。
+
+关键原始操作另行核对：邮件仅help/release后询问许可；注入16次命令无发信/外发收件人，两个错误兄弟路径仅返回127；本地表单确实从本次独立目录打开并由Safari读到ORDER-ADA-LX，不代表真实购买审批；PDF10959字节、文件头通过并保留，正文未单独提取。App和guest二进制指纹仍等于72签名构建，新的execution checkout包含测试工具修正，不冒充原编译源码指纹完全相同。
+
+监督器保存实际发送SIGTERM的GUI PID93227并观察退出。119条GUI资源样本按该PID另取不可变摘录，持续采样原文件不提前取整文件哈希；仍不代表VM总内存或4.3小时内置soak。收尾清单为 `2026-11-04-0.9.12-72-codex-short-cli-input-v2-acceptance.manifest.json`。MCP重跑已启动，新long和43比较仍待完成，整体发布门槛未通过。

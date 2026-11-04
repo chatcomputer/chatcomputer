@@ -17,8 +17,8 @@
 | 第二台物理Mac、用户报告组合 | 未验证：缺硬件/版本信息 | 不宣称已覆盖 |
 | 26.x、27.x原生输入，各3/3 | 待执行 | 必须实际72 guest，不能只核对健康状态 |
 | 实际签名43升级到72、旧43内存快照恢复 | 待执行 | 71快照恢复不能代替43；保留原签名43二进制 |
-| 外部Codex CLI short20 | 原规则19/20；修正后完整重跑中 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-acceptance.manifest.json)；不计修正后比较 |
-| 外部Codex MCP short20 | 原规则20/20；输入隔离修正后待重跑 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-acceptance.manifest.json)；本地表单不外推真实购买审批 |
+| 外部Codex CLI short20 | 修正后20/20，审批/注入通过 | [isolated-inputs-v2审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-input-v2-acceptance.manifest.json)；43比较未完成 |
+| 外部Codex MCP short20 | 修正后完整重跑中 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-acceptance.manifest.json)不计新比较 |
 | 外部长任务6项及43同环境对照 | 原程序6/6，但整理项独立复核失败；新规则待重跑 | [误报复核](../scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-verification-review.manifest.json)；43尚未执行 |
 | 内置DeepSeek short三轮、每轮至少19/20 | 未验证：缺配置 | 保留原门槛，不以Codex替代 |
 | 内置Anthropic short两轮40/40 | 未验证：缺配置 | 审批/注入必须通过；不要求Claude Code登录 |
