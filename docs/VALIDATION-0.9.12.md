@@ -391,3 +391,9 @@ MCP模式另起固定20项回归，复用同一71测试VM和Regression base。�
 修正external.py：仍经产品put上传，核对入站字节，再将当次声明附件放进唯一命名的任务目录，提示只使用该目录；不删除重建旧共享目录。输出目录也使用唯一名称。整理任务仍为四附件/三目录，只明确索引每行一个相对路径、不含其他文件。两个runner新增复制字节、完整文件集和索引行检查；统一读取UTF8/UTF16文本。59项Python测试、9项原生文件检查、cc-harness构建通过。原生检查开发中曾暴露/var路径别名的枚举错误，修正为相对路径枚举后通过；失败日志保留，这不是App或VM崩溃。
 
 修改仅限回归工具、任务定义、测试和文档，签名App72/guest未重建、实际App指纹未变。真实隔离任务和同一修正版本的当前/43全套比较仍待执行。证据为 `2026-11-04-0.9.12-72-codex-long-cli-verification-review.manifest.json` 与 `2026-11-04-benchmark-input-isolation-fix.manifest.json`，不把新规则追溯套用为旧成绩通过。
+
+## 修正输入隔离后的真实整理单项通过
+
+签名App72原二进制，实际运行organize-files单项148秒通过。独立核对任务输入目录恰好四份声明附件、四份输出副本字节相同、outbox只含四份副本和index.txt、索引四行相对路径正确。旧累计external目录未删除，证明本次通过依赖新的隔离目录。监督器记录了实际发送SIGTERM的GUI PID，退出确认通过。证据为 `2026-11-04-0.9.12-72-codex-long-cli-input-v2-smoke-acceptance.manifest.json`；清单明确fullSuiteRun=false，不算short/long完整门槛。
+
+之后启动isolated-inputs-v2完整比较：72与原43分别执行CLI short20、MCP short20、CLI long6，任务、runner、adapter和代理源码指纹在整组期间冻结。两种SUT复制到同一个测试应用路径，使用同一个隔离代理及模型数据路径；模型仍为Codex CLI0.166.0-alpha.6 / gpt-6.1-sol。原43将从共用干净72磁盘冷启动并保存自己的内存基准，准备方式差异单独记录，不先断言性能相等。此时比较尚未完成，内置模型/双机/soak缺口不变。

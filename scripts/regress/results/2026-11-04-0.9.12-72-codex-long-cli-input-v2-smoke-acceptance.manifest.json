@@ -1,0 +1,54 @@
+{
+  "recordedAt": "2026-11-04T21:15:01.691492+00:00",
+  "appBuild": "72",
+  "benchmarkRevision": "isolated-inputs-v2",
+  "scope": "One real organize-files preflight only, not a full short/long gate or a completed before/after comparison",
+  "passed": true,
+  "actualOutputFiles": [
+    "Data/expenses.csv",
+    "Images/gradient.png",
+    "Text/letter.txt",
+    "Text/poem.txt",
+    "index.txt"
+  ],
+  "actualIndex": "Data/expenses.csv\nImages/gradient.png\nText/letter.txt\nText/poem.txt",
+  "allFourCopiesByteExact": true,
+  "isolatedInputFiles": [
+    {
+      "name": "poem.txt",
+      "sha256": "d09a86391c9c15b1fcb88e8cae0396aa3d8eb83dc009e7d354ce94335c7dad83"
+    },
+    {
+      "name": "letter.txt",
+      "sha256": "6647164960423c2890d7a9b2f52880e98249358a3539c60a5026d8b4e6d7163d"
+    },
+    {
+      "name": "gradient.png",
+      "sha256": "ee98bb8bbb3602b210d3df46dc6797d19dfba3e462c360cc031e4cad355255be"
+    },
+    {
+      "name": "expenses.csv",
+      "sha256": "78779cc0f2a453cb70463b5bbea4ca1486752ce75a78486334c8452150b20a86"
+    }
+  ],
+  "originalCumulativeInboxLeftIntact": true,
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    91551
+  ],
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-input-v2-smoke.manifest.json",
+      "sha256": "5351caa141914328c3d924fae5396b95f947009d9e1cc026baf4566efa03465a"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-input-v2-smoke.jsonl",
+      "sha256": "ec531558c3af1b75979a92ba331060acf88d046d2264b99f58b03ecbe62fa79f"
+    },
+    {
+      "path": "build/validation/input-v2-organize-smoke-monitor.log",
+      "sha256": "5af7da784ba7fe32e998219c2f867d8d3e12379250754144b1f8f06ad684113a"
+    }
+  ]
+}

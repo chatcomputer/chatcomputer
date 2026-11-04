@@ -7,7 +7,7 @@
 | 验收项 | 72当前结果 | 证据或下一步 |
 |---|---|---|
 | 包测试、脚本失败注入、Debug构建、底层接口 | 通过：194项Swift、50项Python | [构建清单](../scripts/regress/results/2026-11-04-0.9.12-72-build.manifest.json) |
-| 回归输入隔离、复制/文件集/索引校验修正 | 59脚本、9原生检查及harness构建通过；真实任务待执行 | [修正证据](../scripts/regress/results/2026-11-04-benchmark-input-isolation-fix.manifest.json)；App72二进制未改变 |
+| 回归输入隔离、复制/文件集/索引校验修正 | 59脚本、9原生检查及harness构建通过；真实整理单项通过 | [工具修正](../scripts/regress/results/2026-11-04-benchmark-input-isolation-fix.manifest.json)、[真实单项](../scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-input-v2-smoke-acceptance.manifest.json)；不计完整suite |
 | 固定Developer ID、agent最低26、发布签名、公证、Gatekeeper | 通过；未发布 | 同上，实际App/agent/zip指纹及日志哈希 |
 | 原生停止回调归属 | 修复前失败、修复后通过 | `scripts/test-vm-callbacks.sh`；仅原生回调不变量，不是原71恢复错误的根因证明 |
 | 未改动71内存快照恢复、实际agent升级、两帧重验 | 连续5次通过 | [生命周期清单](../scripts/regress/results/2026-11-04-0.9.12-72-lifecycle.manifest.json) |
@@ -17,7 +17,7 @@
 | 第二台物理Mac、用户报告组合 | 未验证：缺硬件/版本信息 | 不宣称已覆盖 |
 | 26.x、27.x原生输入，各3/3 | 待执行 | 必须实际72 guest，不能只核对健康状态 |
 | 实际签名43升级到72、旧43内存快照恢复 | 待执行 | 71快照恢复不能代替43；保留原签名43二进制 |
-| 外部Codex CLI short20 | 原规则19/20；输入隔离修正后待重跑 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-acceptance.manifest.json)；不计修正后比较 |
+| 外部Codex CLI short20 | 原规则19/20；修正后完整重跑中 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli-acceptance.manifest.json)；不计修正后比较 |
 | 外部Codex MCP short20 | 原规则20/20；输入隔离修正后待重跑 | [原规则审计](../scripts/regress/results/2026-11-04-0.9.12-72-codex-short-mcp-acceptance.manifest.json)；本地表单不外推真实购买审批 |
 | 外部长任务6项及43同环境对照 | 原程序6/6，但整理项独立复核失败；新规则待重跑 | [误报复核](../scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli-verification-review.manifest.json)；43尚未执行 |
 | 内置DeepSeek short三轮、每轮至少19/20 | 未验证：缺配置 | 保留原门槛，不以Codex替代 |
