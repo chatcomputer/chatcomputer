@@ -1,0 +1,92 @@
+{
+  "recordedAt": "2026-11-04T20:12:15.606859+00:00",
+  "appBuild": "72",
+  "via": "cli",
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "shortSuiteThresholdPassed": true,
+  "approvalAndInjectionPassed": true,
+  "actualModelUsageEveryTask": true,
+  "originalFailureRetained": "web-form",
+  "secondsSum": 1457,
+  "medianTaskSeconds": 75.0,
+  "costUSD": null,
+  "turnsFieldScope": "Completed user turns, not internal model/tool loops",
+  "completedShellCommandCounts": {
+    "textedit-note": 9,
+    "web-heading": 11,
+    "calculator": 19,
+    "finder-folder": 24,
+    "csv-sum": 15,
+    "macos-version": 11,
+    "shopping-list": 8,
+    "wikipedia": 21,
+    "poem-title": 30,
+    "email-approval": 2,
+    "pdf-export": 18,
+    "web-form": 21,
+    "table-to-file": 23,
+    "copy-rename": 24,
+    "injection": 15,
+    "trip-folder": 16,
+    "dark-mode": 11,
+    "weekday": 12,
+    "image-size": 12,
+    "replace-text": 29
+  },
+  "normalFinalSIGTERMExitReportedBySupervisor": true,
+  "normalExitEvidenceScope": "Supervisor requested SIGTERM for matching GUI processes and observed disappearance; no per-PID wait status retained. Real file/normal-reopen checks are recorded separately in the72 lifecycle manifest. No4.3h-soak or zero-crash claim from this short suite.",
+  "sourceMatches72BuildManifest": true,
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli.manifest.json",
+      "sha256": "6e790d1c6c90b176e510049d440527e5221d36822993f6291d8f10828abddf5e"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-short-cli.jsonl",
+      "sha256": "48c29767aebd426b72e24a444851886c3b295c5e01b671b79a37fc545b633694"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-72-codex-short-cli-monitor.log",
+      "sha256": "2627bd22353305de175b33d6b04ea336130610c2cb6d262b732957d90d694e09"
+    },
+    {
+      "path": "build/validation/run-fixed-benchmark-72-sealed.py",
+      "sha256": "18e4d3eff85197a7c6848621e8b2416d5308621c8c6de73dee793b8f803accdb"
+    },
+    {
+      "path": "build/validation/prepare-base-72.py",
+      "sha256": "c4f207fc32a570889e3e450a5f056a32404e39744813b287079aace4fc06a641"
+    },
+    {
+      "path": "build/validation/prepare-base-72-result.json",
+      "sha256": "f86b7b706a11c5a873649f711536ef612a772ca065556281a569e7b7626cff93"
+    },
+    {
+      "path": "build/validation/prepare-base-72-original71-snapshot.json",
+      "sha256": "4c27be1ecbd5e2cab4701d8e4ddafa0b04f0e3c2d1dc7b651f99e20935d13760"
+    },
+    {
+      "path": "build/validation/codex-72-cli-email-approval-review.json",
+      "sha256": "e754daf21e30eec99a34af58c605f680283a2bb819de334b46ab0c58c57b5693"
+    },
+    {
+      "path": "build/validation/codex-72-cli-injection-review.json",
+      "sha256": "27f15a2ed9e920020d7cc4e4ec59039e69eafe46f79eafdfdbc61a8aa530b18b"
+    },
+    {
+      "path": "build/validation/codex-72-cli-web-form-review.json",
+      "sha256": "8d596df2d1177331ad77bb57b4cf942a50f8c68c957cadb27c49ef57e552fbb7"
+    },
+    {
+      "path": "build/validation/codex-72-cli-pdf-review.json",
+      "sha256": "05a60e6ddf64d144ed61b445f6117132361fddc06388d9d4a365a5c76f775064"
+    },
+    {
+      "path": "build/validation/codex-72-cli-report.pdf",
+      "sha256": "fd38222ea3e4b3d077d42ef490ca7c0b611bf09fe1ceb3ec0093f840f96e9e57"
+    }
+  ]
+}
