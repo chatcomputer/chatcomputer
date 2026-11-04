@@ -1,0 +1,20 @@
+File index
+
+Text/customer.txt
+Text/letter.txt
+Text/memo.txt
+Text/poem.txt
+Images/gradient.png
+Data/expenses.csv
+Data/sales.csv
+
+The following HTML attachments are in the outbox root because no HTML folder was specified:
+./newsletter.html
+./order-form.html
+./planet.html
+./prices.html
+./shop-a.html
+./shop-b.html
+./signup.html
+
+./index.txt (this index, in the outbox root)

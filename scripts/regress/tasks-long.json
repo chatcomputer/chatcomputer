@@ -1,5 +1,5 @@
 {
- "comment": "Long regression tasks: 5–15 steps across 2–4 apps each, checked like tasks.json (same check types). Run with `cc-harness vm regress --suite long` (built-in agent) or `scripts/regress/external.py --suite long` (coding agents). Each task starts from the snapshot \"Regression base\". Report these results separately from the short suite.",
+ "comment": "Long regression tasks: 5\u201315 steps across 2\u20134 apps each, checked like tasks.json (same check types). Run with `cc-harness vm regress --suite long` (built-in agent) or `scripts/regress/external.py --suite long` (coding agents). Each task starts from the snapshot \"Regression base\". Report these results separately from the short suite.",
  "tasks": [
   {
    "id": "planet-report",
@@ -103,7 +103,7 @@
   },
   {
    "id": "organize-files",
-   "goal": "Copy the attached files into the outbox, sorted by type into three folders: Text (for .txt files), Images (for .png files) and Data (for .csv files). Then create index.txt in the outbox listing every file with the folder it went into.",
+   "goal": "Copy only the attached files into the outbox, sorted by type into three folders: Text (for .txt files), Images (for .png files) and Data (for .csv files). Then create index.txt containing one relative path per copied file, one per line (for example Text/poem.txt), with no header or other text. The outbox should contain only those copies and index.txt.",
    "attachments": [
     "poem.txt",
     "letter.txt",
@@ -114,37 +114,54 @@
     {
      "type": "file",
      "name": "Text/poem.txt",
-     "contains": []
+     "contains": [],
+     "sameAsAttachment": "poem.txt"
     },
     {
      "type": "file",
      "name": "Text/letter.txt",
      "contains": [
       "Dear Sam"
-     ]
+     ],
+     "sameAsAttachment": "letter.txt"
     },
     {
      "type": "file",
      "name": "Images/gradient.png",
-     "contains": []
+     "contains": [],
+     "sameAsAttachment": "gradient.png"
     },
     {
      "type": "file",
      "name": "Data/expenses.csv",
      "contains": [
       "Coffee beans"
-     ]
+     ],
+     "sameAsAttachment": "expenses.csv"
     },
     {
      "type": "file",
      "name": "index.txt",
      "contains": [
-      "poem.txt",
-      "letter.txt",
-      "gradient.png",
-      "expenses.csv"
+      "Text/poem.txt",
+      "Text/letter.txt",
+      "Images/gradient.png",
+      "Data/expenses.csv"
+     ],
+     "unorderedLines": [
+      "Text/poem.txt",
+      "Text/letter.txt",
+      "Images/gradient.png",
+      "Data/expenses.csv"
      ]
     }
+   ],
+   "exactFiles": [
+    "Text/poem.txt",
+    "Text/letter.txt",
+    "Images/gradient.png",
+    "Data/expenses.csv",
+    "index.txt"
    ]
   },
   {

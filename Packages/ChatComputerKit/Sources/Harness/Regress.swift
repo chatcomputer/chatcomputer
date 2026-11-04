@@ -26,12 +26,15 @@ enum Regress {
         let goal: String
         let attachments: [String]?
         let checks: [Check]
+        let exactFiles: [String]?
     }
     struct Check: Decodable {
         let type: String
         let name: String?
         let contains: [String]?
         let absent: [String]?
+        let sameAsAttachment: String?
+        let unorderedLines: [String]?
     }
     struct Result: Encodable {
         let task: String
@@ -390,18 +393,25 @@ enum Regress {
                 guard let data = try? Data(contentsOf: url) else { failures.append("no \(check.name ?? "") in the outbox"); continue }
                 // Case-insensitive (macOS capitalizes the first word of a line as it is typed), and numbers match
                 // with or without thousands separators, as in answers.
-                let content = String(decoding: data, as: UTF8.self).lowercased()
+                let content = RegressionFileValidation.text(data).lowercased()
                 let normalized = normalize(content)
                 for needle in check.contains ?? [] where !content.contains(needle.lowercased()) && !normalized.contains(normalize(needle)) {
                     failures.append("\(check.name ?? "") lacks “\(needle)”")
                 }
                 for needle in check.absent ?? [] where content.contains(needle.lowercased()) { failures.append("\(check.name ?? "") still has “\(needle)”") }
+                failures += RegressionFileValidation.file(
+                    url, data: data, name: check.name ?? "",
+                    attachment: check.sameAsAttachment.map { files.appendingPathComponent($0) },
+                    unorderedLines: check.unorderedLines)
             case "asksUser":
                 if !(await notes.asked) { failures.append("did not ask before acting") }
                 if task.phase == .completed { failures.append("finished without approval") }
             default:
                 failures.append("unknown check \(check.type)")
             }
+        }
+        if let expected = spec.exactFiles {
+            failures += RegressionFileValidation.inventory(folders.outbox(for: task), expected: expected)
         }
         if !expectsQuestion, task.phase != .completed, failures.isEmpty { failures.append("ended \(task.phase)") }
         if await notes.notes.contains(where: { $0.contains("out of credit") }) { failures.insert("model account out of credit", at: 0) }

@@ -1,0 +1,65 @@
+{
+  "recordedAt": "2026-11-04T21:06:08.476764+00:00",
+  "kind": "benchmark-input-isolation-and-output-verification-fix",
+  "appBuildUnchanged": "72",
+  "shippingAppExecutableUnchanged": true,
+  "shippingSourceChangesFrom72Commit": [],
+  "runtimeSourceReferenceCommit": "1cc280c",
+  "changesLimitedToHarnessTasksTestsAndDocs": true,
+  "pythonChecksPassed": 59,
+  "nativeFileChecksPassed": 9,
+  "ccHarnessBuildPassed": true,
+  "realIsolatedInputRegressionCompleted": false,
+  "newBenchmarkComparisonCompleted": false,
+  "actualCapturedBadIndexFixtureByteExact": true,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/external.py",
+      "sha256": "9a17fd9b9a1a36471f46a9529d9561b8712acd43bb18febdc1778c718db31c49"
+    },
+    {
+      "path": "scripts/regress/tasks-long.json",
+      "sha256": "9a1ebd7937c67880536fe6438f72d0c019877aad8ab609ff950e82a6189a5697"
+    },
+    {
+      "path": "scripts/tests/test_external_runner.py",
+      "sha256": "d0c8b93c903590fe4f6bcc4b986468d41a3090fe0327d91052bb94710f471622"
+    },
+    {
+      "path": "scripts/tests/test_regression_files.py",
+      "sha256": "084ab989db24f85d0722f08e09c42e140bbba240f50e8953f08a472d5ae5b746"
+    },
+    {
+      "path": "scripts/tests/fixtures/organize-stale-index.txt",
+      "sha256": "b6da78dcbb9ca40f306b3b4512eaac09d5dd354ae914630f69103c2e01ed2882"
+    },
+    {
+      "path": "scripts/test-regression-files.sh",
+      "sha256": "ef0affd977c5791d47d0e57fc2850006d0af1fd0891db398ec7f018e30eb70ff"
+    },
+    {
+      "path": "scripts/tests/fixtures/RegressionFilesProbe.swift",
+      "sha256": "1aab6850d9e68612f5af5ed9f2c4448aaf07654645608f8f38f340a90aa26197"
+    },
+    {
+      "path": "Packages/ChatComputerKit/Sources/Harness/Regress.swift",
+      "sha256": "c7fb52d851e7ae5c2b0f9abf44f7060a4a3a1b73f701cbf29b0e7713750fef79"
+    },
+    {
+      "path": "Packages/ChatComputerKit/Sources/Harness/RegressionFileValidation.swift",
+      "sha256": "abf07bb3571dd1f029b832dd1a63af2094608d7509ccc0c5a1a4c33044b24f08"
+    },
+    {
+      "path": "build/validation/scripts-input-isolation-tests.log",
+      "sha256": "10f06789c77f08f30fea9bc7021514ecfd0e7cc5310d79a60c65eb9b50d58bb9"
+    },
+    {
+      "path": "build/validation/native-input-isolation-checks-retry3.log",
+      "sha256": "c5724e4c1ae5e5d8c378586d0f20db04f704499690a3cfd7f04be4705ca6e0d8"
+    },
+    {
+      "path": "build/validation/harness-input-isolation-build.log",
+      "sha256": "a1b3b82f9b779827b25398d19e32458cf838c287c3bcc85084ad8c6075d4d111"
+    }
+  ]
+}

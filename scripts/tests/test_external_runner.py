@@ -50,7 +50,8 @@ class ExternalRunner(unittest.TestCase):
         task = {'id': 'test', 'goal': 'read a label',
                 'checks': [{'type': 'answer', 'contains': ['expected answer']}]}
         with tempfile.TemporaryDirectory() as tmp, \
-                patch.object(module, 'OUTBOX', Path(tmp)), \
+                patch.object(module, 'OUTBOX', Path(tmp) / 'outbox'), \
+                patch.object(module, 'INBOX', Path(tmp) / 'inbox'), \
                 patch.object(module, 'cli'), patch.object(module, 'wait_ready'), \
                 patch.object(module.subprocess, 'run', side_effect=process if isinstance(process, Exception) else None,
                              return_value=process):

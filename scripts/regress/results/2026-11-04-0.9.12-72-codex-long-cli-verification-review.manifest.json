@@ -1,0 +1,60 @@
+{
+  "recordedAt": "2026-11-04T21:06:08.457901+00:00",
+  "appBuild": "72",
+  "originalRunnerCompletedTasks": 6,
+  "originalRunnerPassedTasks": 6,
+  "independentReviewPassedTasks": 5,
+  "longGatePassed": false,
+  "benchmarkInputIsolationValid": false,
+  "reason": "Actual organize-files case copied stale attachments from other tasks, and contains-only checks accepted an incorrect full index. Original score6/6 is retained, not a release pass.",
+  "baseline43Executed": false,
+  "originalResultsUnmodified": true,
+  "requiresNewFixedHarnessCurrentAndBaselineComparison": true,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli.manifest.json",
+      "sha256": "b015eab65e32e0d8ce8f816408d78864f7b019e966d86bedd6ee15b9905262b0"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-72-codex-long-cli.jsonl",
+      "sha256": "5be08dfae98fec5f18541b67d85eebcecafd4edad39095d41586c6d5874845d1"
+    },
+    {
+      "path": "build/validation/external-before-input-isolation.py",
+      "sha256": "967f825e25d052bb51f4516c01e84bd66e7e01c0c285dc9c459be10b0046604d"
+    },
+    {
+      "path": "build/validation/tasks-long-before-input-isolation.json",
+      "sha256": "3e39dd77cffc60261618d1eb3b428ac2bf31793211ed43ec7a5ddd28c5393fac"
+    },
+    {
+      "path": "build/validation/baseline43-sequence-cancelled-for-input-isolation.json",
+      "sha256": "e9c1890e12d1afc14ef0d183dcc7a035b5f492d520b77734e0147235db95e1ff"
+    },
+    {
+      "path": "build/validation/codex-72-long-calendar-to-file-review.json",
+      "sha256": "e9e82a6371168554691f0b4ca72a6473d2bdced0d472276fdc5f58c37d082d7b"
+    },
+    {
+      "path": "build/validation/codex-72-long-compare-shops-review.json",
+      "sha256": "4dc3684052c97109f6b125763b296743987f97ff5d69faf1c928ac48266b5c1c"
+    },
+    {
+      "path": "build/validation/codex-72-long-organize-files-review.json",
+      "sha256": "0d553ecac49281d2e55ce7afd5b29b81fe4a9e6d77ea3ca346a387c1ae6753f1"
+    },
+    {
+      "path": "build/validation/codex-72-long-planet-report-review.json",
+      "sha256": "0c870358428c4096cda02065cd5d03db3bc19aa7be141646b65d96cab0665e56"
+    },
+    {
+      "path": "build/validation/codex-72-long-sales-summary-review.json",
+      "sha256": "08ab460b54635bbc6db8023ed6b0150002687446c6c00dca84cf7b4374ecb063"
+    },
+    {
+      "path": "build/validation/codex-72-long-signup-from-file-review.json",
+      "sha256": "7f2b2a81cb29ce31b087e13ab2a2389194eb0b6371b3d51219804bfcda2fabd4"
+    }
+  ]
+}

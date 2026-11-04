@@ -50,6 +50,11 @@ Documentation-only edits need link and command checks. Script edits need the fai
 `scripts/tests/`. For a retained, isolated install run, set `CC_DATA_DIR` to a new directory before
 `scripts/fresh-install.sh`; existing files, directories and symlinks are refused. Without that switch, the
 script temporarily moves the selected data folder and restores it on exit.
+Regression checker or fixture changes also need `scripts/test-regression-files.sh` and a `cc-harness`
+build. Each external task gets a new input directory containing only its declared attachments; the
+product's cumulative `inbox/external` must not define the task's input set. Keep copy, inventory and
+index checks consistent between the native and external runners. A changed harness or task contract
+starts a separate current/baseline comparison; preserve original scores and raw events.
 Report unavailable hardware, missing keys and skipped scenarios explicitly. Candidate
 regression JSONL files should have a companion manifest from `scripts/regress/run-manifest.py`.
 Use `--external-agent codex` in that manifest when testing Codex. Keep its raw events with
