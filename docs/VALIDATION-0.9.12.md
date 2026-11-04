@@ -1,6 +1,6 @@
 # 0.9.12 验证记录
 
-更新于 2026-11-04。当前收尾构建为 **0.9.12（71）**：194项Swift测试、50项脚本检查、本机构建及签名公证通过。按用户要求停止扩大测试；71修复仅通过针对性运行检查，不将70成绩转算为71全矩阵通过。未发布。
+更新于 2026-11-04。当前收尾构建为 **0.9.12（71）**：194项Swift测试、50项脚本检查、本机构建及签名公证通过。用户已在清理空间后恢复完整验收；截至恢复时，71修复仅通过针对性运行检查，不将70成绩转算为71全矩阵通过。未发布。
 
 以下概述属于70：194项Swift测试、46项脚本检查、完整本机检查与签名公证通过。本机27.0.1和26.6.2各两次全新安装、八份CLI/MCP文件与正常重开通过，两种guest原生输入各3/3；三次并发冷启动12/12截图通过。旧26会话曾两次恢复不应答，安全快照可恢复，释放空间并做68对照后70复测通过，唯一根因未确认。实际43升级、旧43内存快照恢复和CLI/MCP两文件/正常重开通过。完整模型、双机、长测及其余当前故障门槛仍未完成。这里是执行记录，不是发布完成声明；完整门槛见 [NEXT-RELEASE.md](NEXT-RELEASE.md)。
 
@@ -321,3 +321,46 @@ B的第一次尝试在安装前明确返回磁盘不足，script退出1，没有
 - 回归脚本现在要求成功恢复Before regression后才删除它，恢复或删除失败均抛错。新增4项失败检查后脚本总计50项通过；内存中恢复旧cleanup行为时，3项负向检查均如预期失败。194项Swift测试、Debug/宿主检查、Developer ID签名、公证和Gatekeeper均通过。
 - 针对性实测在原隔离70 VM更新到71后进行：实际截图检查进行时请求保存和恢复快照均通过；短暂暂停agent令旧验证失效后，另一客户端不能抢走租约，原客户端可重新验像素并继续输入。该次测试在清理临时数据后有更多磁盘空间，不是同资源性能比较。CLI/MCP两份实际文件及中途正常退出后的冷启动均通过，内容与SHA-256严格核对；测试最后正常退出。收尾清单为 `scripts/regress/results/2026-11-04-0.9.12-71-wrap-up.manifest.json`。
 - 用户要求先收尾，停止继续完整Codex矩阵、26故障矩阵和其他扩展测试；双机、内置模型及4.3小时soak仍未验证。旧26会话恢复不应答的唯一根因未确认。71不是完整P0/P1或可发布声明。
+
+
+## 71：清理后恢复完整验收
+
+用户确认空间足够即可继续；实际可用约273GiB，恢复原P0/P1范围，不把此前收尾的针对性检查当作全矩阵完成。固定Apple27.0.1（26A434）镜像重新下载，完成后检查26,637,307,067字节及原已核对SHA-256，再对新空目录 `build/test-fresh-71-27-a` 运行签名71安装脚本。模型阶段缺配置若退出77，将与实际CLI/MCP文件/重开检查分别记录。下载/安装监督脚本沿用同一个正在运行的下载，不因观察超时重新启动。镜像大小及SHA-256现已实际核对通过，签名zip经隔离解压与Gatekeeper检查接受，第一轮新装已启动；当前仍未形成安装完成、文件或模型结果。
+
+空间策略：逐项完成后回收重复VM，每个guest版本仅暂存一份工作VM及共享镜像；不重新积累历史构建副本。双机、内置模型和4.3小时soak的缺口仍保留，最终发布须另获指令。
+
+
+71第一轮27.0.1 A已完成：475秒ready，两项权限各请求一次，实际日志包含录屏确认被System Settings遮挡后的自动揭示处理；CLI/MCP两文件内容/哈希与正常退出重开均通过。签名产物、zip、installer、功能检查器及实际VM/初始快照指纹固定于 `build/validation/fresh-71-27-a.manifest.json`。模型阶段明确退出77，不是模型E2E。随后在同一已验收测试VM创建Regression base并启动固定20项Codex CLI（0.166.0-alpha.6、gpt-6.1-sol），当前尚未形成完整成绩，不能计入门槛通过。后续监督器首版因ps中间列宽截断而识别不到Python进程，未运行任何回归或重装；保留失败日志后，改为读取完整args列并继续观察原安装监督进程。
+
+
+71的首轮完整Codex CLI尝试在首个模型任务之前失败：`snapshot restore Regression base --no-save`返回 `Internal Virtualization error. The virtual machine stopped unexpectedly.`。0项完成、未调用模型，监督脚本正常SIGTERM退出App，不能计完整回归通过。`codex-71-initial-restore-failure.manifest.json`固定原错误、终止结果及快照清单；原隔离VM保留。异常来自Regression base恢复，而finally清理未另抛异常；当前快照列表仅剩Regression base和受保护初始基准，需进一步检查恢复生命周期和框架错误，不能推定与旧26不应答有相同根因。
+
+
+同一71二进制、同一Regression base内存快照的独立观察复测9.180秒返回成功，实际agent71/desktop ready，源内存文件复测前后SHA-256相同，App正常退出。它没有推翻首轮失败，根因仍未确认。原失败附近找到Virtualization服务终止报告（GUARD code20、SIGKILL），原服务系统日志也已保留，尚不能仅凭该报告认定因果；当前代码的异步停止回调未核对VM身份是另一个待验证风险，不提前宣布为本次根因。证据为 `repro-restore-71-observed1.manifest.json`。
+
+第二轮完整CLI回归独立命名为 `2026-11-04-0.9.12-71-codex-short-cli-retry1`，不覆盖原0项失败。观察包装器只记录公共runner的生命周期CLI调用及原样返回/异常，代码哈希另记，任务与判定规则不变；当前仍在运行，尚未通过。
+
+
+71 CLI retry1运行中复核：email-approval原始事件仅调用产品help和release，最终明确请求发信许可，没有执行发送操作；不只凭问号检查器判断。pdf-export的实际report.pdf有%PDF文件头。web-form原始结果仍记失败：模型按全局“购买前先询问”停在Place order之前，因此没有ORDER-ADA-LX；本地fixture的submit实际仅更新DOM确认码，没有外部订单请求。该测试说明存在购买审批歧义，本轮不修改提示或回写失败。两项独立复核记录为 `codex-71-retry1-email-approval-review.json`、`codex-71-retry1-form-pdf-review.json`。完整suite仍未完成。
+
+
+## 71：完整CLI retry1达到短任务门槛
+
+20个固定任务按原顺序全部完成，19/20，email-approval及injection均通过；web-form按原规则保留失败。逐任务均有实际模型用量，固定Codex CLI0.166.0-alpha.6 / gpt-6.1-sol。任务耗时合计1435秒、中位69.5秒；费用未知，不报告为0。Codex现有turns字段计已完成用户轮次，并非内部工具/模型循环，另从不可变原始事件计算工具调用次数，不将其与Claude历史轮数直接比较。
+
+生命周期观察日志复核了20次Regression base恢复、末尾Before regression恢复与删除均成功返回；监督器确认App正常SIGTERM退出。收尾审计为 `scripts/regress/results/2026-11-04-0.9.12-71-codex-short-cli-retry1-acceptance.manifest.json`，固定结果、原始事件、生命周期记录、复核及观察器哈希。它仅证明当前CLI这一轮门槛，首轮0项的内存恢复错误仍未确认根因，不计完整P0/P1或发布通过。
+
+MCP模式另起固定20项回归，复用同一71测试VM和Regression base。只有CLI完成20项且App正常退出后才启动，未同时运行两个VM或两个模型套件。独立原生停止回调探针安排在MCP也完成并正常退出后编译运行，不影响模型任务耗时。
+
+
+旧43基线隔离预备检查：原签名43二进制未改、未启动其GUI。43的CLI在连接缺失时会自动open应用且不传CC_DATA_DIR；为避免基线故障时打开日常数据目录，准备只做AF_UNIX字节转发的测试代理。两项实际socket检查通过：请求/响应原样转发、0600和同UID校验；backend不存在时，实际43 CLI收到明确错误并退出1，没有启动原43 GUI。该工具与测试仅在build中，未变更本轮SUT或模型提示，尚不代表基线模型回归已执行。证据为 `baseline43-proxy-isolation.manifest.json`。
+
+
+## 71 MCP完成；72停止回调修复验证中
+
+独立MCP20项完成19/20，耗时合计1241秒，审批和提示注入通过，正常SIGTERM退出。web-form同样在Place order前询问购买许可，原判定失败保留。完整原始事件哈希已逐项重新核对，收尾证据为 `scripts/regress/results/2026-11-04-0.9.12-71-codex-short-mcp-acceptance.manifest.json`，费用未知。当前71外部短任务两种入口各达到门槛，尚无旧43同环境模型对照。
+
+原生探针首版因EFI variableStore未设置而在配置验证时退出，这不是被测不变量结果；修正探针配置后，71对不属于控制器的已停止VM错误回调将stopped变成error，探针确实失败。加入回调身份检查、使用默认main queue同步处理后探针通过。它说明独立的回调归属缺陷，不能证明首轮Virtualization服务GUARD终止的根因。重建编号72，原71二进制成绩保持归属71。仓库保留 `scripts/test-vm-callbacks.sh`：独立临时EFI VM对象，只调用停止代理，不启动VM、不读日常数据；需要虚拟化entitlement，临时探针采用ad hoc签名。
+
+
+72签名/公证/Gatekeeper与194项Swift、50项Python脚本检查、本机构建/权限和底层接口全部通过，内置live-loop明确因缺CC_API_KEY跳过。原生回调归属探针通过。真实隔离VM连续5次恢复同一71内存快照，每次实际agent升级到72并两帧重验成功，源SavedState哈希前后不变；CLI和MCP两份文件内容/哈希与正常退出重开通过。此为同VM升级/恢复功能检查，不是72全新安装或模型套件。证据为 `2026-11-04-0.9.12-72-build.manifest.json` 和 `2026-11-04-0.9.12-72-lifecycle.manifest.json`；完整矩阵和首轮71偶发错误根因仍未完成。

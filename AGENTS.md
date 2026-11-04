@@ -43,7 +43,7 @@ Before claiming a change works, run the layer that exercises it:
 | The guest driver (`AgentCore`) | `scripts/harness.sh vm up --update-agent --input-test 3` |
 | Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code by default; `--agent codex --model MODEL` for Codex CLI), before and after with the same external agent/model; add `--suite long` for multi-step, multi-app work (`tasks-long.json`) |
 | The guest agent's version or driver, for regression | `vm regress --rebuild-base --agent <ChatComputerAgent.app>`: the base snapshot keeps the agent it was made with |
-| Lifecycle: quit, sleep, snapshots, long runs | `scripts/soak.py`; a release's install path: `scripts/fresh-install.sh` |
+| Lifecycle: quit, sleep, snapshots, long runs | `scripts/test-vm-callbacks.sh` (native delegate ownership, no guest boot), `scripts/soak.py`; a release's install path: `scripts/fresh-install.sh` |
 | Apps, onboarding, signing | `scripts/release.sh`, then launch `build/release/ChatComputer.app` |
 
 Documentation-only edits need link and command checks. Script edits need the failure-injection tests in

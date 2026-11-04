@@ -1,0 +1,113 @@
+{
+  "recordedAt": "2026-11-04T19:36:36.941484+00:00",
+  "gitCommit": "38c6f935332fc3b26ad3cd1aa2f7c9bef0d1b29d",
+  "workingTreeDirty": true,
+  "sourceSHA256": "0e5baa601a614122462d5de8e7fa0b9402434a1db78be1ccf4fc4aeaba1ad484",
+  "app": {
+    "version": "0.9.12",
+    "build": "72",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "a829d8ac45c582af16a3876067c7a817c30839a86631df5d546182e77eca98af"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "72",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "8cc5c90f9b6965dbdc6046ae0d4bf96c68108ab127f17899199c52de8a8a94d0"
+  },
+  "zipSHA256": "8f65ab649613e6d873e0ab361937e86d6a76637197224de17630bd9afe0db9e4",
+  "swiftTests": 194,
+  "pythonScriptTests": 50,
+  "testMacPassed": true,
+  "nativeForeignCallbackProbePassed": true,
+  "preFixNativeForeignCallbackProbePassed": false,
+  "notarizationStatus": "Accepted",
+  "gatekeeperAccepted": true,
+  "builtInLiveModelLoop": "skipped: CC_API_KEY unavailable",
+  "fullP0P1Passed": false,
+  "original71RestoreFailureRootCauseProven": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/test-mac-72-monitor.log",
+      "sha256": "2c2c95e6dc28a7b3dc6056eb1ef3bebd1f6d5eaca3e0bd94825d4cdeab828723"
+    },
+    {
+      "path": "build/test-logs/unit.log",
+      "sha256": "088bd136de957b967d3f23822c6166ca411faec10b019a5bf8f1b42c1859d038"
+    },
+    {
+      "path": "build/test-logs/build.log",
+      "sha256": "06dd3c7aa7ecc07bb70e05c1be4e32d1c6e429d26ec3edbd0724192c31613ab8"
+    },
+    {
+      "path": "build/test-logs/entitlements.xml",
+      "sha256": "35e4d88fb18754ff96d2fc042f6808d621fd83cc2f47b11d0f0cd1dfac8a72b7"
+    },
+    {
+      "path": "build/test-logs/selftest.log",
+      "sha256": "7590c2477812b1b00a3e62d83c824f3038d073273fefbfd10321a4938172af86"
+    },
+    {
+      "path": "build/validation/scripts-72-tests.log",
+      "sha256": "baf11874f546ead625a5c2092ca92bfe0277b0e24bbf941f194658ba80359f88"
+    },
+    {
+      "path": "build/validation/callback-probe-72-repository.log",
+      "sha256": "a3c00b2dc0ddeb6f56594fdd59353b43314e6a5d6241118c06967b4fe435ccaa"
+    },
+    {
+      "path": "build/validation/callback-probe-71-retry1-runtime.log",
+      "sha256": "99a94b976df3b1b685b0917961d2e42706920a7393f7ebc1032211300b7d3b55"
+    },
+    {
+      "path": "build/validation/callback-probe-fixed3-runtime.log",
+      "sha256": "434a9b06755a15c47276ebf4bf7d891f5e7b2c17be859e1dc55ad3f33a431988"
+    },
+    {
+      "path": "build/validation/release-72-monitor.log",
+      "sha256": "dfdf2d1e76c50694a2108d748db356d8729e13cb3cd39768b498d92c79caad4e"
+    },
+    {
+      "path": "build/release/notary.json",
+      "sha256": "aae299427524de0c226a5aaeec233ec376462241ed9393c1310a5bee9de63a04"
+    },
+    {
+      "path": "build/release/build.log",
+      "sha256": "7f29f6e1f1d3dd8c7e7b7bd4f64b1a5704a75731cb42626dcc79486959537ae9"
+    },
+    {
+      "path": "scripts/test-vm-callbacks.sh",
+      "sha256": "53716910048d0c953fa80c761849bef55c331b4fe7873c06927672e23d36361f"
+    },
+    {
+      "path": "scripts/tests/vm-callback-probe/Package.swift",
+      "sha256": "0b125f54728966cfee5081772f00f2992aaa1dd39e193c43ed361d945f6879f6"
+    },
+    {
+      "path": "scripts/tests/vm-callback-probe/Sources/VMCallbackProbe/VMCallbackProbe.swift",
+      "sha256": "4796c11acfb69183c0ef3cf0203ddd69508ade25cb00e94e0674eab9638ecf61"
+    },
+    {
+      "path": "Packages/ChatComputerKit/Sources/VMKit/VirtualMachineController.swift",
+      "sha256": "2043afca37b3d8b0994842f5a5642f70753c146841160a3d113a56d1ff51084e"
+    },
+    {
+      "path": "project.yml",
+      "sha256": "0cd037b6d3dc1224fc8fc757682fd3d80535727b84ad408404ba94a6a7acfd2c"
+    }
+  ]
+}

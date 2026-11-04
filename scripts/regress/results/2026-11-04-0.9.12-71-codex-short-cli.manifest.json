@@ -1,0 +1,72 @@
+{
+  "recordedAt": "2026-11-04T18:25:38.692267+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "38c6f935332fc3b26ad3cd1aa2f7c9bef0d1b29d",
+  "sourceSHA256": "66e42f1cdc4ea3121dc3dc557ef0d153162da802fca6463862e6685f64975064",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "71",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "f5796882e36dd76959f2acfcb82c73ed01b2f6551198070f9165673b7ec2549e"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "71",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "8ec4a6d6200e623cafc67669dbb88f0ea3842c5f3f32a29cdf81811e63c4f61d"
+  },
+  "vm": {
+    "id": "C5677170-D259-4C4B-A165-12D8ABA4E3D4",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "3E38AB77-6EA6-41EC-BC3B-831CC6168856",
+  "suite": "short",
+  "model": "gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-71-codex-short-cli.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "967f825e25d052bb51f4516c01e84bd66e7e01c0c285dc9c459be10b0046604d",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2",
+  "state": "finished",
+  "via": "cli",
+  "expectedTasks": 20,
+  "rawTraceDirectory": "build/validation/codex-71-short-cli-raw",
+  "origin": {
+    "scope": "Reusing the completed isolated71 fresh install; no clone, not another installation",
+    "freshManifestSHA256": "6ec19dee5afcd97fcb231077153affc2cbcb91701a78c78fc776ebbf1ec9de4c"
+  },
+  "beforeAfterComparisonComplete": false,
+  "finishedAt": "2026-11-04T18:26:13.694855+00:00",
+  "runnerExit": 1,
+  "completedTasks": 0,
+  "passedTasks": 0,
+  "shortSuiteThresholdPassed": false,
+  "normalFinalSIGTERMExit": true,
+  "evidenceFiles": []
+}

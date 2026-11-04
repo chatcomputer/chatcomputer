@@ -1,0 +1,63 @@
+{
+  "recordedAt": "2026-11-04T19:40:27.939680+00:00",
+  "appBuild": "72",
+  "passed": true,
+  "scope": "Reuse71 isolated VM; actual upgrade on each restore of unchanged71 memory snapshot",
+  "freshInstall": false,
+  "nativeForeignCallbackFix": true,
+  "memorySnapshotRestores": 5,
+  "sourceMemorySHA256Before": "e3290c23b06d66006b2f4cf3083d9bf5e83d264d7fa8ee59ebf386bc0cd6a7d2",
+  "sourceMemorySHA256After": "e3290c23b06d66006b2f4cf3083d9bf5e83d264d7fa8ee59ebf386bc0cd6a7d2",
+  "actualAgentBuildEveryRestore": "72",
+  "cliAndMcpFilesAndNormalReopenPassed": true,
+  "modelInvoked": false,
+  "normalFinalAppExit": true,
+  "original71RestoreFailureRootCauseProven": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/lifecycle-72-observed1-result.json",
+      "sha256": "8f285a06380d3a06d1b8d0ec48cba88daf64ba38633110f3cb3d9495b055a0fd"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1-monitor.log",
+      "sha256": "65ae998eb736cef57a34b24c4aae3731b4fa947027c22cece6fa7d69208c2e6a"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1.jsonl",
+      "sha256": "c83b516b41cdc787e15271047b3193f630624b536d708143bc5d25c52dca23b0"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1-host.log",
+      "sha256": "22f401e42378bfb7d58bdff2457718a736045d14636a59a1a45ea9cd9b32feff"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1-files.jsonl",
+      "sha256": "5b7f1e4c5fcf725a4ce784cc1ed6a33a3f6af89a3dbca439b7253cce10c81c94"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1-files-result.json",
+      "sha256": "3f7f3df5481886292dd7d12613449cb942cdae8f3622e5b5f78b5c0bbbcaa107"
+    },
+    {
+      "path": "build/validation/lifecycle-72-observed1-files-monitor.log",
+      "sha256": "83ec5f46d0412a99a392eeefeabdcbe1319590c53ebaaf0a362b04f9969019da"
+    },
+    {
+      "path": "build/validation/validate-lifecycle-72.py",
+      "sha256": "9fc3a46946c2e784d7d1eecc157cd7a9645dc9abb5f9b375c055139424a8a2b2"
+    },
+    {
+      "path": "build/validation/fresh-file-smoke-v2.py",
+      "sha256": "06b5d409ddb1d1bb3c395fba4eb5cfe347fb672828337255bb64f94f461fd534"
+    },
+    {
+      "path": "build/validation/dev-71.py",
+      "sha256": "e31be8b14a7470c4bed3f9be5007daeadf9220e13cb6306b727b2b4571a037d8"
+    },
+    {
+      "path": "build/validation/VMController-71-before-callback-fix.swift",
+      "sha256": "2be6a09753e1872d7d68c6ec00d3ba8bbb4d57722ea9ebc1aef686c714cf412e"
+    }
+  ]
+}

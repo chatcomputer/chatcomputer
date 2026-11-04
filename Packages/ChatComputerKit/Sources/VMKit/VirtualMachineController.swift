@@ -316,15 +316,21 @@ public final class VirtualMachineController: NSObject {
 
 extension VirtualMachineController: VZVirtualMachineDelegate {
     nonisolated public func guestDidStop(_ virtualMachine: VZVirtualMachine) {
-        Task { @MainActor in
+        let sender = ObjectIdentifier(virtualMachine)
+        // Our VMs use VZVirtualMachine's default main queue, including delegate callbacks.
+        MainActor.assumeIsolated {
+            // A retired VM must not overwrite the replacement's state.
+            guard self.virtualMachine.map(ObjectIdentifier.init) == sender else { return }
             self.virtualMachine = nil
             self.state = .stopped
         }
     }
 
     nonisolated public func virtualMachine(_ virtualMachine: VZVirtualMachine, didStopWithError error: Error) {
+        let sender = ObjectIdentifier(virtualMachine)
         let message = error.localizedDescription
-        Task { @MainActor in
+        MainActor.assumeIsolated {
+            guard self.virtualMachine.map(ObjectIdentifier.init) == sender else { return }
             self.virtualMachine = nil
             self.state = .error(message)
         }

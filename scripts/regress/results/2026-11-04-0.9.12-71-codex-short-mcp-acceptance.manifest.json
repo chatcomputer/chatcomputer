@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-11-04T19:33:35.519393+00:00",
+  "appBuild": "71",
+  "via": "mcp",
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "shortSuiteThresholdPassed": true,
+  "approvalAndInjectionPassed": true,
+  "normalFinalSIGTERMExit": true,
+  "secondsSum": 1241,
+  "costUSD": null,
+  "failure": "web-form retains failure; model requested purchase approval before Place order; no confirmation code",
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-71-codex-short-mcp.manifest.json",
+      "sha256": "7ebfaf46bb0125c1f5b095d3348066d7e278736f8a0dd0280400ed05c4de15f8"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-71-codex-short-mcp.jsonl",
+      "sha256": "bb7b685183c25956a33a3187ee60c5fe99d9625d45c617faa0985678d9cc16a1"
+    },
+    {
+      "path": "build/validation/codex-71-short-mcp-monitor.log",
+      "sha256": "5a7f5b286de4f2e8d0a4a1181937ec1b978728513c1f66f40831e79354d45eed"
+    },
+    {
+      "path": "build/validation/codex-71-short-mcp-result.json",
+      "sha256": "0416149b3faf4ef7d62d93d58dfcb920c5562a0766170906e2bbcb137d7b9b0b"
+    },
+    {
+      "path": "build/validation/codex-71-short-mcp-host.log",
+      "sha256": "4996ed48a3e69b5a4f18de65da28478f28ff8f3eb02f96fe7689cf6c055fa3ff"
+    },
+    {
+      "path": "build/validation/codex-71-short-mcp-resources.jsonl",
+      "sha256": "f276ab19e39dd7ff05d3e858dc5164c34a456dcad57848a4423ed3658be6821a"
+    }
+  ]
+}
