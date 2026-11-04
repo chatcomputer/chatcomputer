@@ -1,0 +1,85 @@
+{
+  "recordedAt": "2026-11-04T23:48:22.087730+00:00",
+  "kind": "Authentic43 cold boot and actual43 memory baseline preparation",
+  "passed": true,
+  "app": {
+    "version": "0.9.11",
+    "build": "43",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "09a975537e0ae25452685d30d998cee743aefd7d451ef2f08a56c5991f73ae06"
+  },
+  "originalSigned43ExecutableVerified": true,
+  "newFreshInstall": false,
+  "VMOrigin": "Originally71 installed27.0.1 VM, updated73, restored clean73 disk, then cold-booted authentic43; daily application untouched",
+  "comparisonPreparation": "Same physical host, guestOS, VMhardware/disk and fixtures; restore clean73 base with73, cold-boot43 on that disk, then take actual43 memory base. No assertion of identical initial RAM/UI state or performance equivalence.",
+  "actual43Snapshot": {
+    "createdAt": "2026-11-04T23:44:34.452Z",
+    "hasThumbnail": true,
+    "id": "19BA3BD8-E8DB-4C07-BFDE-F6F5E138D3F4",
+    "isProtected": false,
+    "kind": "manual",
+    "memoryBytes": 2684358656,
+    "name": "Regression base",
+    "overlayCount": 1,
+    "parentID": "D6811FB2-B563-4F23-9D55-5018AB2CFDEC"
+  },
+  "actual43Status": "Virtual Mac: running, desktop ready\nScreen: 1280\u00d7800 (full screenshots use these coordinates)\nControl: free; your first input command takes it\nSnapshots: 4, current \u201cRegression base 73 preserved\u201d\nAgent in the virtual Mac: 0.9.12 (73) (this app brings 0.9.11 (43); it updates when the virtual Mac is idle)\nShared folder in the virtual Mac: /Volumes/My Shared Files (inbox read-only, outbox writable)\n",
+  "normal43SIGTERMExit": true,
+  "excludedWorking73RAM": {
+    "bytes": 2885685248,
+    "sha256": "fe0aefaecc507d83e5453cd78c3612a4d1f46f070994549870a46014ba50bd8e",
+    "backup": "build/baseline-43-working73-memory/SavedState.vzvmsave"
+  },
+  "backupRemovedOnlyAfterActual43BaseAndNormalExit": true,
+  "source73SnapshotPreservedByMetadataRename": {
+    "VMWasStopped": true,
+    "onlyMetadataNameChanged": true,
+    "originalMetadataCopy": "build/validation/prepare-base-43-from73-original73-snapshot.json",
+    "originalSHA256": "6d5c0a57b78930cf2870bc59ea39cd7838190a176f5c59bb7ce88a215795c5da",
+    "renamedSHA256": "49f6c9d083060c8fb190ed7b3d304cdf08beda79c5a633ff1dae8b129a1e2e0a"
+  },
+  "performanceEquivalenceAsserted": false,
+  "fullBaselineComparisonCompleted": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/prepare-base-43-from73-result.json",
+      "sha256": "8eee1d1e4c41acd1b43ce177c99cd79bf46338f26653369ecfe00f3357989830"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73.py",
+      "sha256": "8816acc67ef7c8dd7e9852ae8bd60846fa0f7b802029f24f99f6c666e1420a52"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-original73-snapshot.json",
+      "sha256": "6d5c0a57b78930cf2870bc59ea39cd7838190a176f5c59bb7ce88a215795c5da"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-73-clean-disk-host.log",
+      "sha256": "e44744f30f239136c60f2002ac27a744296f7dab466e52eeaaa714cec6013a46"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-43-cold-host.log",
+      "sha256": "2be831c1c4d1ec1145cce8bce8c18722abae717f81d623ab9da5bb8d7f8206b2"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-proxy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-monitor.log",
+      "sha256": "7cb7d74387d31ed8c271f5e97606cdd0b0044c5131d3e1fb2ec4fcb67fdeaba8"
+    },
+    {
+      "path": "build/validation/baseline43-preparation.json",
+      "sha256": "7979768deac14f50577c62556451de150a6ecf4efbd71dcfc1d8b49af92946c2"
+    }
+  ]
+}

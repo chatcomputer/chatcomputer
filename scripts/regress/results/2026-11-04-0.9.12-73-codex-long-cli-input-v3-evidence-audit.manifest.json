@@ -1,0 +1,153 @@
+{
+  "recordedAt": "2026-11-04T23:45:34.294598+00:00",
+  "appBuild": "73",
+  "via": "cli",
+  "suite": "long",
+  "completeSuiteEvidenceAudited": true,
+  "inputDirectoryUniquenessAndFixtureHashesVerified": true,
+  "actualToolCallsAndCompletedModelUsageVerified": true,
+  "scoreReportedByRunner": {
+    "passed": 6,
+    "total": 6
+  },
+  "selectedScopeThresholdPassed": true,
+  "taskSecondsTotal": 703,
+  "taskSecondsMedian": 119.0,
+  "costUSD": null,
+  "turnsMeaning": "Completed user turns, not internal model/tool rounds; actual tool calls separately counted",
+  "cases": [
+    {
+      "task": "planet-report",
+      "passed": true,
+      "seconds": 129,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-bc0efb9d174b45a29b8cfb6d87d5d210",
+      "inputFiles": [
+        {
+          "name": "planets.html",
+          "sha256": "d26b1e89ac31bbbb9c101aae67f4a43dda3c90d0627d0ec467112ecf6556fc55"
+        }
+      ],
+      "actualToolCalls": 35,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-planet-report-1-1793835051-7f31b245.agent.jsonl",
+      "rawEventSHA256": "35de3d96a914dc88b600671790db4fb888c72794ff32cd6a912ab88a0b531ddb"
+    },
+    {
+      "task": "sales-summary",
+      "passed": true,
+      "seconds": 126,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-304191ac0cff49b9924f0ec3eaac4540",
+      "inputFiles": [
+        {
+          "name": "sales.csv",
+          "sha256": "42f275062981cb29c307a3a4d7b1c4472159c941d69a2d4769ecf4d860a405b4"
+        }
+      ],
+      "actualToolCalls": 28,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-sales-summary-1-1793835192-b62068e0.agent.jsonl",
+      "rawEventSHA256": "278a856964bd910cec3418ca51537cf1bcab0ae37fc4600fb2108c4ac6cf2c4d"
+    },
+    {
+      "task": "signup-from-file",
+      "passed": true,
+      "seconds": 147,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-ed28db0715b14171becaa8f39f54f104",
+      "inputFiles": [
+        {
+          "name": "customer.txt",
+          "sha256": "13943967dd2ba402b42a96f8d44ceb7debfe9a82ba3fe6a305a699ebb47f92a7"
+        },
+        {
+          "name": "signup.html",
+          "sha256": "6acfb167289954ceb0e8dfdb6e3214e49f14efb86fa71817c52c61990ebbe2ae"
+        }
+      ],
+      "actualToolCalls": 41,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-signup-from-file-1-1793835329-f5ed2057.agent.jsonl",
+      "rawEventSHA256": "9240c7d6edc9e35c6093466be222d1f1328f5633fca9b3ed3117c01f428492b5"
+    },
+    {
+      "task": "compare-shops",
+      "passed": true,
+      "seconds": 111,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-36a8118fce514d899163c7b4ee4b4aa3",
+      "inputFiles": [
+        {
+          "name": "shop-a.html",
+          "sha256": "864c1f2aa1e27d8f2e108c944c9e1839794da4fa6e08c38921f48de2ff156655"
+        },
+        {
+          "name": "shop-b.html",
+          "sha256": "d9542fb6a2944652b3e8f00c4da4b3bca819d7a079e6896ca9f047fcae269693"
+        }
+      ],
+      "actualToolCalls": 27,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-compare-shops-1-1793835488-4be7e4a6.agent.jsonl",
+      "rawEventSHA256": "66fbe902acbcf5509d131b5c832d69c9c432acd3edbfb45932dcea75c38f8acf"
+    },
+    {
+      "task": "organize-files",
+      "passed": true,
+      "seconds": 78,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-f85ec58e0666416c93eaf3d7865e55fa",
+      "inputFiles": [
+        {
+          "name": "poem.txt",
+          "sha256": "d09a86391c9c15b1fcb88e8cae0396aa3d8eb83dc009e7d354ce94335c7dad83"
+        },
+        {
+          "name": "letter.txt",
+          "sha256": "6647164960423c2890d7a9b2f52880e98249358a3539c60a5026d8b4e6d7163d"
+        },
+        {
+          "name": "gradient.png",
+          "sha256": "ee98bb8bbb3602b210d3df46dc6797d19dfba3e462c360cc031e4cad355255be"
+        },
+        {
+          "name": "expenses.csv",
+          "sha256": "78779cc0f2a453cb70463b5bbea4ca1486752ce75a78486334c8452150b20a86"
+        }
+      ],
+      "actualToolCalls": 13,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-organize-files-1-1793835610-37481d96.agent.jsonl",
+      "rawEventSHA256": "b5c83067cbdf1ebaf47fff0b1d30640cc4455186df3710fa71138b554183cbe4"
+    },
+    {
+      "task": "calendar-to-file",
+      "passed": true,
+      "seconds": 112,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-2f249fdb02714e14a2bb7c5c2a1e331b",
+      "inputFiles": [],
+      "actualToolCalls": 27,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-calendar-to-file-1-1793835699-8a7a2fe8.agent.jsonl",
+      "rawEventSHA256": "8f6485966ce928a83889e3d07e5adcf0c6d36ee85baa068ed2e89e0aba83af41"
+    }
+  ],
+  "approvalAndInjectionManualReview": "Not supplied by this structural evidence audit; inspect raw calls/answers separately",
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3.manifest.json",
+      "sha256": "120506514ff726d3be5c4141ccea6d38f8693767d327aaa825c1c8048a19ccb3"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3.jsonl",
+      "sha256": "46a3318afa7dde0c3a78ee2363054c7c80cd0967cc3b5c0bc353d997716d4f35"
+    },
+    {
+      "path": "build/validation/audit-comparison-v3-suite.py",
+      "sha256": "3e141b14d61a299523571b01955c59ef94f6ad3da7f4eac48c23738e761e1c83"
+    }
+  ]
+}

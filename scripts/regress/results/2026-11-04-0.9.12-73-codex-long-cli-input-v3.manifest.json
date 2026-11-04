@@ -1,0 +1,150 @@
+{
+  "recordedAt": "2026-11-04T23:30:23.650613+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "aa73ff39c13fea28fb95ee16d3ec27682e6c9008",
+  "sourceSHA256": "b517c64dc98842d58b3df17a5156b140066b01ac0cded42381d19aa35418b81c",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "73",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "5343f4e3fdab2209e60a7441676d0557877bcfb14ce4c559028595e70f63535c"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "73",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "a0483414e4bf1c2c631ff72543f118cc31e3e4c72cb123e5bdc7a85065f0be96"
+  },
+  "vm": {
+    "id": "C5677170-D259-4C4B-A165-12D8ABA4E3D4",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "D6811FB2-B563-4F23-9D55-5018AB2CFDEC",
+  "suite": "long",
+  "model": "gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-73-codex-long-cli-input-v3.jsonl",
+  "tasksSHA256": "9a1ebd7937c67880536fe6438f72d0c019877aad8ab609ff950e82a6189a5697",
+  "externalRunnerSHA256": "9a17fd9b9a1a36471f46a9529d9561b8712acd43bb18febdc1778c718db31c49",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2",
+  "state": "finished",
+  "via": "cli",
+  "benchmarkRevision": "isolated-inputs-v2",
+  "expectedTasks": 6,
+  "only": null,
+  "fullSuiteRun": true,
+  "commonAppPath": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/benchmark-app/ChatComputer.app",
+  "modelDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-benchmark-v2-front",
+  "appDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-fresh-71-27-a",
+  "supervisorSHA256": "ff3b811a164d6efc54d0edfca60d1e5da0871d9d6faaf3f4855064ab8dd9dd47",
+  "isolationProxySHA256": "0a5b19a792058bc916abe505638e4c78a36eee082d2c576e10d213876cd1600f",
+  "shippingRuntimeReferenceCommit": "See 73 build manifest sourceSHA256",
+  "sourceScope": "Execution checkout includes newer harness/tasks; actual unmodified signed SUT identified by App/agent fingerprints. No assertion that the whole execution checkout compiled this binary.",
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "finishedAt": "2026-11-04T23:43:46.803767+00:00",
+  "runnerExit": 0,
+  "completedTasks": 6,
+  "passedTasks": 6,
+  "selectedScopeThresholdPassed": true,
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    49700
+  ],
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3.jsonl",
+      "sha256": "46a3318afa7dde0c3a78ee2363054c7c80cd0967cc3b5c0bc353d997716d4f35"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/final-lifecycle.json",
+      "sha256": "4ae3af1bb2fa9b21fac5b26996413e0fc9c985e67c627024f3590b3996211e5a"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-calendar-to-file-1-1793835699-8a7a2fe8.agent.jsonl",
+      "sha256": "8f6485966ce928a83889e3d07e5adcf0c6d36ee85baa068ed2e89e0aba83af41"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-calendar-to-file-1-1793835699-8a7a2fe8.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-compare-shops-1-1793835488-4be7e4a6.agent.jsonl",
+      "sha256": "66fbe902acbcf5509d131b5c832d69c9c432acd3edbfb45932dcea75c38f8acf"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-compare-shops-1-1793835488-4be7e4a6.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-organize-files-1-1793835610-37481d96.agent.jsonl",
+      "sha256": "b5c83067cbdf1ebaf47fff0b1d30640cc4455186df3710fa71138b554183cbe4"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-organize-files-1-1793835610-37481d96.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-planet-report-1-1793835051-7f31b245.agent.jsonl",
+      "sha256": "35de3d96a914dc88b600671790db4fb888c72794ff32cd6a912ab88a0b531ddb"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-planet-report-1-1793835051-7f31b245.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-sales-summary-1-1793835192-b62068e0.agent.jsonl",
+      "sha256": "278a856964bd910cec3418ca51537cf1bcab0ae37fc4600fb2108c4ac6cf2c4d"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-sales-summary-1-1793835192-b62068e0.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-signup-from-file-1-1793835329-f5ed2057.agent.jsonl",
+      "sha256": "9240c7d6edc9e35c6093466be222d1f1328f5633fca9b3ed3117c01f428492b5"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/regress-signup-from-file-1-1793835329-f5ed2057.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/supervisor.py",
+      "sha256": "ff3b811a164d6efc54d0edfca60d1e5da0871d9d6faaf3f4855064ab8dd9dd47"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-proxy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-host.log",
+      "sha256": "1855c8589e4d8a94e783128988ffac6755bf902414ecb2ced49ba8b2d55aecd4"
+    }
+  ]
+}

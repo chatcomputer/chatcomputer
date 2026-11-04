@@ -20,10 +20,10 @@
 | 26.x全新安装A/B、两帧、首任务/重开 | 待执行 | 固定26.6.2 /25G83镜像；文件功能与模型首任务分别记录 |
 | 第二台Mac、用户反馈的27.2组合 | 未验证：缺硬件及具体版本信息 | 用户已确认没有第二台Mac |
 | 26.x、27.x原生输入各3/3 | 待执行 | 必须实际73 guest和真实文件 |
-| 签名43升级到73、旧43内存快照 | 待执行 | 保留原签名43应用；72/71恢复不替代43 |
+| 签名43升级到73、旧43内存快照 | 升级待执行；实际43内存基准已就绪 | [43准备记录](../scripts/regress/results/2026-11-04-0.9.11-43-input-v3-preparation.manifest.json)；基线准备不等于升级通过 |
 | Codex CLI short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)；唯一失败是下单前要求许可；PDF正文仍待独立提取 |
 | Codex MCP short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json)；表单要求许可未生成验证码；PDF正文仍待独立提取 |
-| 外部6项long与同环境43比较 | 73 CLI long运行中；43待执行 | 两边原始分数保留，逐项核对新增失败及性能变化；运行中结果不提前封存 |
+| 外部6项long与同环境43比较 | 73程序6/6；43 CLI已开始，其余待执行 | [73收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-acceptance.manifest.json)；额外文本/文件/UI核对通过，PDF正文待提取；完整前后比较未关闭 |
 | 内置DeepSeek三轮、Anthropic两轮、内置long比较 | 未验证：缺模型配置 | 保留原门槛，不用Codex代替 |
 | 4.3小时真实模型soak、任务中退出/继续、快照与内存 | 未验证：缺模型配置 | 不用30次无模型恢复或外部回归代替 |
 | 两种guest的权限故障和诊断矩阵 | 待执行 | 遮挡/合并/取消/拒绝重授/身份失效/截图超时；三类无图诊断、显式一图和秘密扫描 |

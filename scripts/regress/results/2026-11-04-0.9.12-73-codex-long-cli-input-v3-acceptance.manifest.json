@@ -1,0 +1,102 @@
+{
+  "recordedAt": "2026-11-04T23:48:22.022572+00:00",
+  "appBuild": "73",
+  "suite": "long",
+  "via": "cli",
+  "completedTasks": 6,
+  "passedTasks": 6,
+  "programmaticLongThresholdPassed": true,
+  "sixTaskTextOrFileGoalChecksIndependentlyReviewed": true,
+  "actualSignupRenderedConfirmationVerified": true,
+  "compareBothPricesVerifiedIncludingOriginalScreenshot": true,
+  "organizeExactFourByteCopiesAndIndexVerified": true,
+  "calendarThreeDatesIndependentlyChecked": true,
+  "independentPlanetPDFBodyVerification": "pending; original PDF retained and header checked, not a full PDF content audit",
+  "taskSecondsTotal": 703,
+  "taskSecondsMedian": 119,
+  "costUSD": null,
+  "normalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    49700
+  ],
+  "sourceAppAndAgentMatchSigned73Build": true,
+  "finalLifecycleEvents": 61,
+  "finalLifecycleRecoveryOrRestoreFailureEvents": 0,
+  "virtualizationServiceReportsPresentForGUIAtObservation": [],
+  "resourceSampleCount": 53,
+  "resourceScope": "Owned GUI RSS/free disk excerpt; ongoing whole comparison trace not sealed; not total VM memory or4.3h soak",
+  "reviewerPrototypeCorrection": "Initial independent confirmation formula was wrong; corrected from actual signup.html, old helper preserved; frozen benchmark and original score unchanged",
+  "baseline43Complete": false,
+  "kernelGuardRootCauseProven": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3.manifest.json",
+      "sha256": "120506514ff726d3be5c4141ccea6d38f8693767d327aaa825c1c8048a19ccb3"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3.jsonl",
+      "sha256": "46a3318afa7dde0c3a78ee2363054c7c80cd0967cc3b5c0bc353d997716d4f35"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-evidence-audit.manifest.json",
+      "sha256": "94220331091f0d97dfe894a0341996c686f7409cf5e7af28b0b367964d21790c"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-long-first3-review.json",
+      "sha256": "85aed759d15a322ef6dc2981512c4cc863ebd9f64174ea8bea601dd5b31cfa98"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-long-last3-review.json",
+      "sha256": "6c3198417e581335284cbaee291ab1156ad9b376a2d1fba6a9f6ad6d65d0db6d"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-planets.pdf",
+      "sha256": "c223657698c3840d9f49ced7a547d07ea2a018e3e274f75b5d09e886d5a1c0ac"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-compare-shop-screenshots.json",
+      "sha256": "d6beb0275387ffb995716404954d4a58eea88b9d2bd143ae1dc5e9a7a0828b58"
+    },
+    {
+      "path": "build/validation/review-long-first3-v3.py",
+      "sha256": "e38876e916c5303296cd194a1a9bbae0c5cee22ea124b68c0a3ced7984a4ee59"
+    },
+    {
+      "path": "build/validation/review-long-last3-v3.py",
+      "sha256": "81e561a789e83a976c6241e4d3040ac5712745b90226b7f99ebc75335f5509c2"
+    },
+    {
+      "path": "build/validation/review-long-first3-v3-before-confirmation-code-fix.py",
+      "sha256": "9c281eee8a78b017bc38e69d647b1a0b46248ce19e8c8cd82f07e6ae661cf91f"
+    },
+    {
+      "path": "build/validation/long-first3-review-checker-correction.json",
+      "sha256": "e12c176971eedc01c26a4de017082f6a0add2b2a6c0e0767156a21e1bd2c739e"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.12-73-codex-long-cli-input-v3-raw/final-lifecycle.json",
+      "sha256": "4ae3af1bb2fa9b21fac5b26996413e0fc9c985e67c627024f3590b3996211e5a"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-long-resources.jsonl",
+      "sha256": "7da416e5735490d6d5b66a2a412bc3d0c8b04ea11e2617fdfcca127b60517b7c"
+    },
+    {
+      "path": "build/validation/record-long73-and-baseline43.py",
+      "sha256": "1ea3ffbb8d0596e3aece52be2ec38830678c2e27a12f3008f24070d8ddf0090b"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-compare-shop-screenshots/frame-1.png",
+      "sha256": "808004dce6b85e2d474fdff07f520ebbfbbc9c269e24fddfe68803e2b9b6915e"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-compare-shop-screenshots/frame-2.png",
+      "sha256": "58a1b6e50e08da70b5d0c72729608a6be22f9994f74403f1e1ff6bb01e27adc1"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-compare-shop-screenshots/frame-3.png",
+      "sha256": "807e9511c936d79487108e6cc580c896cb41b7bc8923fffeb1ba7df0af318fef"
+    }
+  ]
+}
