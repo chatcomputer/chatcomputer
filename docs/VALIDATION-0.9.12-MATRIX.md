@@ -22,8 +22,8 @@
 | 26.x、27.x原生输入各3/3 | 待执行 | 必须实际73 guest和真实文件 |
 | 签名43升级到73、旧43内存快照 | 待执行 | 保留原签名43应用；72/71恢复不替代43 |
 | Codex CLI short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)；唯一失败是下单前要求许可；PDF正文仍待独立提取 |
-| Codex MCP short20 | 完整suite运行中，未验收 | isolated-inputs-v2工具、input-v3命名的新73/43对照；运行中结果不提前封存 |
-| 外部6项long与同环境43比较 | 待执行 | 两边原始分数保留，逐项核对新增失败及性能变化 |
+| Codex MCP short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json)；表单要求许可未生成验证码；PDF正文仍待独立提取 |
+| 外部6项long与同环境43比较 | 73 CLI long运行中；43待执行 | 两边原始分数保留，逐项核对新增失败及性能变化；运行中结果不提前封存 |
 | 内置DeepSeek三轮、Anthropic两轮、内置long比较 | 未验证：缺模型配置 | 保留原门槛，不用Codex代替 |
 | 4.3小时真实模型soak、任务中退出/继续、快照与内存 | 未验证：缺模型配置 | 不用30次无模型恢复或外部回归代替 |
 | 两种guest的权限故障和诊断矩阵 | 待执行 | 遮挡/合并/取消/拒绝重授/身份失效/截图超时；三类无图诊断、显式一图和秘密扫描 |

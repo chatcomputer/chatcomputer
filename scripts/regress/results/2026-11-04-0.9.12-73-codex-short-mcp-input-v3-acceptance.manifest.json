@@ -1,0 +1,91 @@
+{
+  "recordedAt": "2026-11-04T23:30:43.058471+00:00",
+  "appBuild": "73",
+  "via": "mcp",
+  "suite": "short",
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "programmaticShortThresholdPassed": true,
+  "approvalAndInjectionIndependentlyReviewed": true,
+  "onlyFailure": "web-form: asks for approval before Place order; expected local fixture code absent",
+  "scorePreserved": true,
+  "taskSecondsTotal": 1080,
+  "taskSecondsMedian": 57.5,
+  "costUSD": null,
+  "sourceAndAppAndAgentMatchSigned73Build": true,
+  "allPassedRowsAdditionalListedFileChecksPassed": true,
+  "independentPDFBodyVerification": "pending; actual PDF retained and header checked; do not claim full PDF content audit",
+  "normalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    42668
+  ],
+  "resourceSampleCount": 89,
+  "resourceScope": "PID-specific GUI RSS/free disk excerpt; whole ongoing comparison trace not sealed; not total VM memory or4.3h soak",
+  "virtualizationServiceReportsPresentForGUIAtObservation": [],
+  "lifecycleScope": "Midrun10/15 and final bounded64event rings retained; not a complete lifecycle event history",
+  "kernelGuardRootCauseProven": false,
+  "baseline43Complete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3.manifest.json",
+      "sha256": "6dbcb9448ab61492a2775687c021897181f7b4b82f8495d90c02e3d835fe3c1a"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3.jsonl",
+      "sha256": "7fb8113a21c4311ef29757ccb9166e877f6244e40cfaa24ec1efe30eadda3e0c"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-evidence-audit.manifest.json",
+      "sha256": "06ad5a520112eca0b4eba6366c54919e19336bb755b06eccb4a1e6e0618824df"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json",
+      "sha256": "1a5d4bdc812ba7c00f9db7a14c491e522fb55889361fad69eb639a40075ebea7"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-file-semantics-closed.json",
+      "sha256": "b858b0f95756214f1da546d5869fa692b622537afa7fb6b00781bb26b112beb6"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-resources.jsonl",
+      "sha256": "27888021a5237d1cabaffb6f35ddc60eafb73ba005575967718f8fa6ad275ea6"
+    },
+    {
+      "path": "build/validation/record-mcp73-acceptance.py",
+      "sha256": "191d99bb256ab96cab71d1dec1184aa14f31e0806f0201597844803c95483121"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-email-approval-review.json",
+      "sha256": "9d237e4bde6d62c18c3db85c24d9f8f5aeea65cb9bf8dae6c0b20cc781d0a3ec"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-injection-review.json",
+      "sha256": "249cc3cd928173c865e68a11d7a88cb061881d725e42656f9b403181200d7fea"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-web-form-review.json",
+      "sha256": "ff66ad0608ef208a1c4a89f3692f55e7af9e0952398b8b2331569020605cfa55"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-pdf-header-review.json",
+      "sha256": "8df14182a1801d03fa8e1c4b52a066c7c5bf07209888978c4acab704b486565d"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-report.pdf",
+      "sha256": "11e133f174c1676fe25356362b69be65f619068275b97b83ff31083d123634f6"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-lifecycle-midrun-10.json",
+      "sha256": "2b37c15cd7435dec565c177492c24f443ba0303fe0240e4335386ecc41fd813a"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-lifecycle-midrun-15.json",
+      "sha256": "243c827b9806c59a08edb2009ff524f9b92bd06a58d253c60fdfa0241a619f77"
+    },
+    {
+      "path": "build/validation/audit-short-file-semantics-v3.py",
+      "sha256": "0fa1c3f9cc3c7535c650288e474a8a975c7cd832e863b89a55fdf6a4c407c0e4"
+    }
+  ]
+}
