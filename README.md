@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A second Mac that does the work while you chat.</b><br>
-  A private macOS virtual machine on your Mac, operated by an AI agent. Every result is checked by the host.
+  A private macOS virtual machine on your Mac, operated by an AI agent. Delivered files are checked by the host.
 </p>
 
 <p align="center">
@@ -31,13 +31,18 @@ them. You can pause, cancel, or click the virtual Mac to take over at any moment
 Coding agents get the same Mac: the app is also a command line tool and an MCP server, so Claude Code, Codex and
 others can test GUI apps, installers and websites in a disposable macOS.
 
+The latest published release is **0.9.11**. `main` is preparing **0.9.12**: its permission verification and
+recovery changes below are still being validated. See the [candidate validation record](docs/VALIDATION-0.9.12.md)
+for passed checks and unavailable test environments.
+
 ## Highlights
 
 - **Isolated.** A full macOS in Apple's Virtualization framework. The agent never touches your own apps or files;
   it sees only what you attach or share, read-only by default.
 - **The host keeps the rules.** Task phase, input control, budgets and delivery checks run outside the model.
-  Before anything irreversible (sending, paying, deleting, installing) the agent must ask you.
-- **Undo anything.** Snapshots save the running machine, open windows included, in seconds.
+  The agent is instructed to ask before irreversible actions (sending, paying, deleting, installing).
+- **Restore the virtual Mac.** Snapshots save the running machine, open windows included, in seconds.
+  They do not undo sent messages, remote changes, or writes to writable folders shared from your Mac.
 - **Survives real life.** Quit mid-task, let your Mac sleep, lose the network or run out of API credit: the task
   pauses and continues where it stopped.
 - **Bring your own model.** Claude, OpenAI, Gemini, DeepSeek, xAI, Mistral, Qwen, Kimi, GLM, Doubao, or any
@@ -47,16 +52,17 @@ others can test GUI apps, installers and websites in a disposable macOS.
 
 20 fixed tasks (web forms, PDF export, spreadsheets, file organisation, Calendar, a planted prompt injection, an
 email that must be confirmed first) run from the same snapshot every time, and a program checks each result.
-Results (every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
+Historical baseline from 2026-10-04, not a verification of the next release
+(every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
 
 | Agent | Passed | Median turns per task |
 |---|---|---|
-| Built-in agent · DeepSeek flash (3 runs) | 59 / 60 | 14 |
-| Built-in agent · Claude Opus 5.5 (2 runs) | 40 / 40 | 7 |
-| Claude Code through the CLI | 20 / 20 | 11 |
-| Claude Code through MCP | 20 / 20 | 19 |
+| [Built-in agent 0.9.0 · DeepSeek flash (3 runs)](scripts/regress/results/2026-10-04-builtin-deepseek-agent090.jsonl) | 59 / 60 | 14 |
+| [Built-in agent · Claude Opus 5.5 (2 runs)](scripts/regress/results/2026-10-04-builtin-claude-opus.jsonl) | 40 / 40 | 7 |
+| [Claude Code through the CLI](scripts/regress/results/2026-10-04-claude-code-cli.jsonl) | 20 / 20 | 11 |
+| [Claude Code through MCP](scripts/regress/results/2026-10-04-claude-code-mcp.jsonl) | 20 / 20 | 19 |
 
-A 4.3-hour soak test (161 tasks, 53 quits mid-task, 30 snapshot restores) had no crashes and no memory growth.
+A historical 4.3-hour soak test (161 tasks, 53 quits mid-task, 30 snapshot restores) had no crashes and no memory growth.
 
 ## Install
 
@@ -82,6 +88,20 @@ The first launch sets everything up by itself in about 10 minutes: it downloads 
 virtual machine (about 26 GB), creates its account, installs the guest agent, grants the agent its permissions,
 saves a clean starting point, and asks for your model. Later versions update the agent inside the virtual Mac
 on their own.
+
+If automatic permission setup stops, finish any dialog hidden behind System Settings in the virtual Mac.
+Grant **ChatComputerAgent** Device Control (Accessibility on macOS 26) and Screen Recording, then choose
+**I granted them myself**. Repeatedly requesting permission is unnecessary. The 0.9.12 candidate verifies two
+real captures before completing setup; **Machine › Verify Screen Capture** can check again after an update or restore.
+**Export Diagnostics** is available from the setup panel. Its optional guest image can contain your screen content;
+nothing is uploaded automatically. The candidate's validation status is in [docs/VALIDATION-0.9.12.md](docs/VALIDATION-0.9.12.md).
+
+### Your first task
+
+1. Complete setup and save and test a model API key.
+2. Ask: “Open TextEdit, write `Hello from Chat Computer`, and save it as `hello.txt` in the outbox.”
+3. Open the delivered file from the result card. The host checks the output's location, regular-file type,
+   existence and size; it does not guarantee the document's content is correct.
 
 What goes to the model provider, what stays on your Mac and what the virtual Mac can reach is in
 [PRIVACY.md](PRIVACY.md), together with the macOS licence terms for virtual machines (development, testing,
@@ -116,6 +136,8 @@ Moonshot Kimi, Zhipu GLM and ByteDance Doubao, plus any custom compatible endpoi
 
 Claude Code, Codex and other agents on your Mac can operate the virtual Mac too. The app's executable doubles
 as the `chatcomputer` command line tool (Settings › Coding agents installs it on your PATH):
+
+Choose the client you already use; Claude Code is not required by the app.
 
 ```sh
 chatcomputer help                      # usage and guidance for agents
@@ -180,7 +202,8 @@ belong to the agent's signing identity.
 
 ```sh
 scripts/test-mac.sh                                  # unit tests, build, host API checks, live scenarios if CC_API_KEY is set
-cd Packages/ChatComputerKit && swift test            # unit tests only
+swift test --package-path Packages/ChatComputerKit   # unit tests only; keep the shell at the repository root
+python3 -m unittest discover -s scripts/tests -v     # test-script failure injection, no VM or API key
 scripts/harness.sh live-loop --scenario notes        # real model against a simulated desktop
 scripts/harness.sh vm up --input-test 3              # typing and save-dialog check through the guest agent
 scripts/test-linux.sh                                # portable modules in Docker, without a Mac
@@ -188,11 +211,28 @@ scripts/harness.sh vm regress --runs 3 --out new.jsonl  # the fixed task set wit
 scripts/regress/external.py --cli chatcomputer       # the same tasks with Claude Code through the CLI
 scripts/regress/report.py new.jsonl --baseline scripts/regress/results/<old>.jsonl   # pass rate and medians vs a baseline
 scripts/regress/external.py --via mcp                # Claude Code through MCP instead of the CLI
+CC_DATA_DIR=/path/to/test-data scripts/regress/external.py --agent codex --model MODEL --via mcp --trace-dir /tmp/cc-regress-traces
 scripts/fresh-install.sh build/release/ChatComputer.zip   # install a release as a new user would, then put your data back
-scripts/soak.py --app build/release/ChatComputer.app --hours 24   # tasks, quits mid-task, snapshots; memory and crashes
+CC_DATA_DIR=/path/to/test-data scripts/soak.py --app build/release/ChatComputer.app --hours 24
+                                                       # real model tasks, quits mid-task, snapshots; memory and crashes
 ```
 
 `docs/STATUS.md` §3 lists the test layers and the development environment variables.
+Capture a candidate's environment and source fingerprint next to its regression results:
+
+```sh
+python3 scripts/regress/run-manifest.py --app build/release/ChatComputer.app \
+  --vm-bundle /path/to/ChatComputer.vm --suite short --model provider:protocol:model --results new.jsonl
+```
+
+Run this against the actual app and snapshot being tested; preserve the JSONL and its `.manifest.json` together.
+For Codex results, use the same explicit model and add `--external-agent codex` to the manifest command.
+Compare runs using the same external agent and model; changing the test agent does not replace built-in model checks.
+Unavailable API keys or hardware are recorded as skipped, never counted as passed.
+The soak runner requires an isolated `CC_DATA_DIR` and configured model. It binds each submission to
+its new persisted task, requires completion with model usage, and exits nonzero if tasks, recovery,
+snapshots, or the requested duration are unproven. A quick task that finished before a planned quit
+does not count as a quit during a task.
 
 ### Release
 

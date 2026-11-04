@@ -60,7 +60,7 @@ let package = Package(
         .testTarget(name: "ModelProxyTests", dependencies: ["ModelProxy"]),
         .testTarget(name: "OrchestratorTests", dependencies: ["Orchestrator"]),
         .testTarget(name: "AgentCoreTests", dependencies: [agentCore]),
-        .testTarget(name: "VMKitTests", dependencies: ["VMKit"]),
+        .testTarget(name: "VMKitTests", dependencies: ["VMKit", "ChatCore"]),
         .testTarget(name: "ComputerControlTests", dependencies: ["ComputerControl"]),
         .testTarget(name: "HostControlTests", dependencies: ["HostControl"], resources: [.copy("SetupAssistantScreens"), .copy("PermissionPanes")]),
     ]

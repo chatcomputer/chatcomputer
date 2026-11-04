@@ -3,6 +3,7 @@ import BridgeProtocol
 import ChatCore
 import Foundation
 import VMKit
+import HostControl
 
 /// Help › Export Diagnostics: a zip on the Desktop for a bug report. It holds versions, the virtual Mac's
 /// configuration and state, the agent's health, the last few tasks and the app's recent log. It never includes the
@@ -11,7 +12,7 @@ import VMKit
 enum Diagnostics {
     static let taskCount = 5
 
-    static func export(_ model: AppModel) async {
+    static func export(_ model: AppModel, includeGuestScreen: Bool = false) async {
         let stamp = DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .short)
             .replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: ".")
         let name = "Chat Computer Diagnostics \(stamp)"
@@ -27,6 +28,15 @@ enum Diagnostics {
                 try Data(redactor.redact(text).utf8).write(to: url)
             }
             try write(await summary(model), "summary.txt")
+            let permissionLog = PermissionJournal(directory: model.dataDirectory).url
+            if let text = try? String(contentsOf: permissionLog, encoding: .utf8) {
+                try write(text, "permission-events.jsonl")
+            }
+            if includeGuestScreen, let image = model.captureGuestScreen(),
+               let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {
+                // Only an explicit user choice can persist a guest screenshot.
+                try data.write(to: staging.appendingPathComponent("guest-screen.png"))
+            }
             for task in recentTasks(model) {
                 for file in ["task.json", "events.jsonl"] {
                     if let text = try? String(contentsOf: task.appendingPathComponent(file), encoding: .utf8) {
@@ -71,7 +81,14 @@ enum Diagnostics {
             "Free disk: \(SnapshotStore.availableCapacity(for: model.bundle.url) >> 30) GB",
             "Model: \(model.modelSettings.providerID) · \(model.modelSettings.protocolKind) · \(model.modelSettings.model) · \(model.modelSettings.baseURL)",
             "Task phase: \(model.phase)",
+            "Capture pixels verified in this session: \(model.captureVerified)",
+            "Setup step: \(model.onboarding.step), working \(model.onboarding.isWorking)",
         ]
+        // Before model configuration this is setup status, not a credential
+        // input field. The archive writer redacts stored secrets from it too.
+        if !model.isReady, model.onboarding.step != .apiKey {
+            lines.append("Setup detail: \(model.onboarding.detail)")
+        }
         guard let vm = model.vm else { return (lines + ["Virtual Mac: not set up"]).joined(separator: "\n") + "\n" }
         let spec = vm.spec
         lines += [
@@ -84,6 +101,10 @@ enum Diagnostics {
            case .health(let report)? = try? await bridge.send(.init(vmID: spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                                     deadline: Date().addingTimeInterval(5), command: .health)) {
             lines.append("  Agent: \(report.agentVersion), driver \(report.driver), desktop \(report.hasAquaSession ? "yes" : "no"), locked \(report.screenLocked), accessibility \(report.accessibilityGranted), screen recording \(report.screenRecordingGranted), shared folders \(report.sharedFoldersMounted)")
+            if let diagnostics = report.permissionDiagnostics {
+                lines.append("  Guest OS: \(diagnostics.osVersion), build \(diagnostics.osBuild)")
+                lines.append("  Permission identity: PID \(diagnostics.processID), bundle \(diagnostics.bundleID), team \(diagnostics.teamID ?? "none")")
+            }
         } else {
             lines.append("  Agent: not connected")
         }

@@ -10,8 +10,8 @@ import Foundation
 /// through the agent's own health report.
 @MainActor
 public struct PermissionGrant {
-    public let display: HostDisplay
-    /// Asks the guest agent to register itself for the permission and open its settings pane.
+    public let display: any PermissionDisplay
+    /// Starts one guest permission request. Opening Settings is a separate operation.
     public let prepare: (PermissionKind) async throws -> Void
     /// Whether the agent reports the permission as granted.
     public let isGranted: (PermissionKind) async throws -> Bool
@@ -19,17 +19,23 @@ public struct PermissionGrant {
     public let restartAgent: () async throws -> Void
     public let password: () throws -> String
     public let log: (String) -> Void
+    public let openSettings: (PermissionKind) async throws -> Void
+    public let sleep: (Duration) async throws -> Void
 
-    public init(display: HostDisplay, prepare: @escaping (PermissionKind) async throws -> Void,
+    public init(display: any PermissionDisplay, prepare: @escaping (PermissionKind) async throws -> Void,
                 isGranted: @escaping (PermissionKind) async throws -> Bool,
                 restartAgent: @escaping () async throws -> Void,
-                password: @escaping () throws -> String, log: @escaping (String) -> Void = { _ in }) {
+                password: @escaping () throws -> String, log: @escaping (String) -> Void = { _ in },
+                openSettings: @escaping (PermissionKind) async throws -> Void = { _ in },
+                sleep: @escaping (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.restartAgent = restartAgent
         self.display = display
         self.prepare = prepare
         self.isGranted = isGranted
         self.password = password
         self.log = log
+        self.openSettings = openSettings
+        self.sleep = sleep
     }
 
     nonisolated public static let agentName = "ChatComputerAgent"
@@ -37,8 +43,62 @@ public struct PermissionGrant {
     public func run() async throws {
         for kind in [PermissionKind.accessibility, .screenRecording] {
             try await grant(kind)
+            // A true health flag does not dismiss the original system alert.
+            // Finish it before asking macOS for a different permission.
+            try await finishGrantedPermission(kind)
         }
         try await quitSystemSettings()
+    }
+
+    private func finishGrantedPermission(_ kind: PermissionKind) async throws {
+        var clearFrames = 0
+        for _ in 0..<8 {
+            try Task.checkCancellation()
+            let screen = try read().text
+            if let open = Self.initialConsentButton(in: screen, kind: kind) {
+                log("\(kind): finishing its already-granted consent dialog")
+                display.click(open, count: 1)
+                clearFrames = 0
+                try await sleep(.seconds(2.5))
+                continue
+            }
+            if kind == .screenRecording, let allow = ConsentPrompt.allowButton(in: screen) {
+                display.click(allow, count: 1)
+                clearFrames = 0
+                try await sleep(.seconds(1.5))
+                continue
+            }
+            if screen.contains("Wi-Fi"), (screen.first("Bluetooth") ?? screen.first("Network")) != nil {
+                clearFrames = 0
+                try await quitSystemSettings()
+                continue
+            }
+            guard Self.initialConsentButton(in: screen, kind: .accessibility) == nil,
+                  Self.initialConsentButton(in: screen, kind: .screenRecording) == nil else {
+                throw HostControlError.gaveUp("Finish the pending permission dialog in the virtual Mac before continuing setup.")
+            }
+            // Do not interpret an empty transition frame as a dismissed alert.
+            clearFrames = screen.items.isEmpty ? 0 : clearFrames + 1
+            if clearFrames == 2 { return }
+            try await sleep(.milliseconds(500))
+        }
+        throw HostControlError.gaveUp("The earlier permission dialog did not close. Finish it in the virtual Mac and retry.")
+    }
+
+    /// The agent's initial request alert, rather than its row in System Settings.
+    nonisolated public static func initialConsentButton(in screen: ScreenText, kind: PermissionKind) -> CGPoint? {
+        guard let request = screen.items.first(where: {
+            $0.text.lowercased().contains(agentName.lowercased()) && $0.text.lowercased().contains("would like")
+        }) else { return nil }
+        let nearby = screen.items.filter {
+            abs($0.rect.midY - request.rect.midY) < 80 && abs($0.rect.midX - request.rect.midX) < 300
+        }.map(\.text).joined(separator: " ").lowercased()
+        guard nearby.contains(kind == .accessibility ? "control" : "record") else { return nil }
+        return screen.items.filter {
+            $0.text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "open system settings"
+                && $0.rect.minY > request.rect.minY && $0.rect.midY - request.rect.midY < 200
+                && abs($0.rect.midX - request.rect.midX) < 350
+        }.min { $0.rect.minY < $1.rect.minY }?.center
     }
 
     /// Leaves the guest desktop as we found it. System Settings is often not the frontmost app by now (the agent
@@ -46,35 +106,46 @@ public struct PermissionGrant {
     /// login, greeting every task. Click its sidebar first to bring it forward, quit it, and check it went.
     public func quitSystemSettings() async throws {
         for _ in 0..<3 {
-            guard let screen = try? read(), screen.contains("Wi-Fi"),
+            guard let screen = try? read().text, screen.contains("Wi-Fi"),
                   let sidebar = screen.first("Bluetooth") ?? screen.first("Network") else { return }
-            display.click(sidebar.center)
-            try await Task.sleep(for: .seconds(1))
+            display.click(sidebar.center, count: 1)
+            try await sleep(.seconds(1))
             try await display.key("cmd+q")
-            try await Task.sleep(for: .seconds(2))
+            try await sleep(.seconds(2))
         }
     }
 
     public func grant(_ kind: PermissionKind) async throws {
+        try Task.checkCancellation()
         if try await isGranted(kind) {
             log("\(kind): already granted")
             return
         }
         log("\(kind): opening its settings pane in the guest")
         try await prepare(kind)
-        try await Task.sleep(for: .seconds(2.5))
+        try await sleep(.seconds(2.5))
 
         var switchClicks = 0
         var switchMisses = 0
         var idleRounds = 0
-        var prepares = 1
+        var openedSettings = false
         var restarted = false
         for _ in 0..<20 {
+            try Task.checkCancellation()
             if try await isGranted(kind) {
                 log("\(kind): granted")
                 return
             }
-            let screen = try read()
+            try Task.checkCancellation()
+            let frame = try read()
+            let screen = frame.text
+
+            if let allow = ConsentPrompt.allowButton(in: screen) {
+                display.click(allow, count: 1)
+                log("\(kind): answered this agent's screen capture consent")
+                try await sleep(.seconds(1))
+                continue
+            }
 
             // The password prompt that guards the privacy settings.
             if screen.contains("Modify Settings") || (screen.contains("Password") && screen.contains("Cancel")) {
@@ -85,30 +156,32 @@ public struct PermissionGrant {
                 for _ in 0..<40 { try await display.key("backspace") }
                 try await display.type(try password())
                 try await display.key("return")
-                try await Task.sleep(for: .seconds(2.5))
+                try await sleep(.seconds(2.5))
                 continue
             }
             // Screen recording asks to relaunch the app; the agent's LaunchAgent restarts it.
             if let reopen = screen.first("Quit & Reopen") ?? screen.first("Quit and Reopen") {
                 log("\(kind): confirming relaunch of the agent")
-                display.click(reopen.center)
-                try await Task.sleep(for: .seconds(4))
+                display.click(reopen.center, count: 1)
+                try await sleep(.seconds(4))
                 continue
             }
             // The system's own consent prompt, shown when the agent asked for the permission.
-            if let open = screen.first("Open System Settings") {
-                display.click(open.center)
-                try await Task.sleep(for: .seconds(2.5))
+            if screen.contains(Self.agentName), let open = screen.first("Open System Settings") {
+                display.click(open.center, count: 1)
+                try await sleep(.seconds(2.5))
                 continue
             }
             // The pane itself: flip the agent's switch.
-            if let row = screen.items.first(where: { $0.text == Self.agentName }) {
-                guard let image = display.capture(),
-                      let toggle = Self.agentSwitch(in: image, guestSize: display.guestSize, screen: screen, row: row.rect) else {
+            if let row = Self.permissionRow(in: screen, kind: kind) {
+                // Keep OCR coordinates and switch pixels in the same frame.
+                // Settings can navigate or reflow between independent captures.
+                let image = frame.image
+                guard let toggle = Self.agentSwitch(in: image, guestSize: display.guestSize, screen: screen, row: row.rect) else {
                     // While the pane animates in, the row's text shows before its switch is drawn. Look again.
                     switchMisses += 1
                     guard switchMisses < 4 else { throw HostControlError.notFound("the switch next to \(Self.agentName)") }
-                    try await Task.sleep(for: .seconds(1.5))
+                    try await sleep(.seconds(1.5))
                     continue
                 }
                 // Never click a switch that is already on: that would revoke the permission.
@@ -121,41 +194,54 @@ public struct PermissionGrant {
                 }
                 guard switchClicks < 2 else { break }
                 log("\(kind): turning on the switch")
-                display.click(toggle)
+                display.click(toggle, count: 1)
                 switchClicks += 1
-                try await Task.sleep(for: .seconds(2.5))
+                try await sleep(.seconds(2.5))
                 continue
             }
-            // The pane is open but the agent is not listed: its request did not register (seen on a
-            // fresh guest for screen recording, right after the TCC reset). Ask again.
+            // A missing row may mean an occluded dialog, not a failed registration.
+            // Never create a second request or reset TCC as an automatic retry.
             idleRounds += 1
-            if idleRounds % 4 == 0, prepares < 4 {
-                // A request from the same process that was dropped stays dropped (seen on fresh macOS 27.0.1 guests,
-                // twice in a row); a new agent process registers. So after the second ask, restart the agent first.
-                if prepares >= 2, !restarted {
-                    log("\(kind): the agent is still not listed; restarting it and asking again")
-                    try await restartAgent()
-                    restarted = true
-                } else {
-                    log("\(kind): the agent is not listed yet; asking again")
-                }
-                try await prepare(kind)
-                prepares += 1
-                try await Task.sleep(for: .seconds(2.5))
+            if idleRounds == 2, screen.contains("Wi-Fi"),
+               let sidebar = screen.first("Bluetooth") ?? screen.first("Network") {
+                log("\(kind): revealing a consent dialog behind System Settings")
+                display.click(sidebar.center, count: 1)
+                try await display.key("cmd+h")
+            }
+            if idleRounds >= 4, !openedSettings {
+                log("\(kind): opening settings without another consent request")
+                try await openSettings(kind)
+                openedSettings = true
+                try await sleep(.seconds(2.5))
                 continue
             }
-            try await Task.sleep(for: .seconds(1.5))
+            try await sleep(.seconds(1.5))
         }
         if try await isGranted(kind) { return }
         throw HostControlError.gaveUp("Could not turn on \(kind) for \(Self.agentName); please do it in the virtual Mac.")
     }
 
-    private func read() throws -> ScreenText {
+    private func read() throws -> (image: CGImage, text: ScreenText) {
         guard let image = display.capture() else { throw HostControlError.noFramebuffer }
-        return try ScreenText.recognize(image, guestSize: display.guestSize)
+        return (image, try ScreenText.recognize(image, guestSize: display.guestSize))
     }
 
     // MARK: Locating the switch
+
+    /// An agent row in Accessibility says nothing about its Screen Recording
+    /// grant. Require the requested pane's heading above and aligned with the
+    /// row; the same heading in the Settings sidebar is not sufficient.
+    nonisolated public static func permissionRow(in screen: ScreenText, kind: PermissionKind) -> ScreenText.Item? {
+        let headings = kind == .accessibility
+            ? ["Accessibility", "Device Control and Data Access"]
+            : ["Screen Recording", "Screen & System Audio Recording", "Screen and System Audio Recording"]
+        guard let row = screen.items.first(where: { $0.text == agentName }),
+              screen.items.contains(where: {
+                  let legacyDescription = kind == .accessibility && $0.text.hasPrefix("Allow the applications below to control your computer")
+                  return (headings.contains($0.text) || legacyDescription) && $0.rect.maxY < row.rect.minY && $0.rect.minX >= row.rect.minX - 70
+              }) else { return nil }
+        return row
+    }
 
     /// The switch in the agent's row: up to the pane's text edge, else across a typical pane width. On macOS 26 the
     /// pane's description is short and ends left of the switch.

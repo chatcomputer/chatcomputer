@@ -16,6 +16,7 @@ The app uses its normal VM and model settings; run it on a test machine.
 import argparse
 import glob
 import json
+import math
 import os
 import random
 import signal
@@ -83,6 +84,8 @@ def crash_reports(since):
 
 def launch(app, cont=False):
     env = ["--env", "CC_DEV_WINDOW_SHOTS=1"] + (["--env", "CC_DEV_CONTINUE=1"] if cont else [])
+    if os.environ.get("CC_DATA_DIR"):
+        env += ["--env", "CC_DATA_DIR=" + os.environ["CC_DATA_DIR"]]
     subprocess.run(["open"] + env + [app], check=True)
     deadline = time.time() + 300
     while time.time() < deadline:
@@ -109,31 +112,81 @@ def agent_busy():
     return "own agent (working on a task)" in status()
 
 
-def wait_task(limit=900):
-    """Waits for the built-in agent to start and then finish; returns seconds, or None on timeout."""
-    start = time.time()
-    while time.time() - start < 60 and not agent_busy():
-        time.sleep(2)
-    while time.time() - start < limit:
-        if not agent_busy():
-            return round(time.time() - start)
-        time.sleep(5)
-    return None
-
-
 TASKS_DIR = os.path.join(data_dir(), "Tasks")
 
 
-def last_task():
-    """Phase and token counts of the most recently started task."""
+def task_ids():
     try:
-        folders = sorted((os.path.join(TASKS_DIR, f) for f in os.listdir(TASKS_DIR)), key=os.path.getmtime)
-        task = json.load(open(os.path.join(folders[-1], "task.json")))
+        return set(os.listdir(TASKS_DIR))
+    except OSError:
+        return set()
+
+
+def read_task(task_id):
+    """Read this exact submitted task; an earlier completed task cannot satisfy a wait."""
+    if not task_id or os.path.basename(task_id) != task_id:
+        return {"phase": "unknown"}
+    try:
+        with open(os.path.join(TASKS_DIR, task_id, "task.json")) as handle:
+            task = json.load(handle)
+        if task.get("id") != task_id:
+            return {"phase": "unknown"}
         phase = task.get("phase", {})
         name = next(iter(phase)) if isinstance(phase, dict) and phase else str(phase)
-        return {"phase": name, "inputTokens": task.get("inputTokens", 0)}
-    except (OSError, ValueError, IndexError):
+        return {"taskID": task_id, "goal": task.get("goal"), "phase": name,
+                "modelID": task.get("modelID"), "inputTokens": task.get("inputTokens", 0)}
+    except (OSError, ValueError, TypeError, AttributeError):
         return {"phase": "unknown"}
+
+
+def wait_new_task(goal, previous_ids, limit=60):
+    deadline = time.monotonic() + limit
+    while time.monotonic() < deadline:
+        for task_id in task_ids() - previous_ids:
+            task = read_task(task_id)
+            if task.get("goal") == goal:
+                return task_id
+        time.sleep(1)
+    return None
+
+
+def wait_task(task_id, limit=900):
+    """Only this task's persisted completion plus actual model usage counts."""
+    start = time.monotonic()
+    while time.monotonic() - start < limit:
+        task = read_task(task_id)
+        phase = task["phase"]
+        if phase == "completed":
+            return round(time.monotonic() - start) if task.get("inputTokens", 0) > 0 and task.get("modelID") else None
+        if phase in ("failed", "cancelled", "waitingForUser", "takenOver"):
+            return None
+        time.sleep(2)
+    return None
+
+
+def task_evidence(task_id):
+    task = read_task(task_id)
+    return {key: value for key, value in task.items() if key != "goal"}
+
+
+def response_succeeded(reply, prefix):
+    return not reply.get('isError') and reply.get('text', '').startswith(prefix)
+
+
+def qualified(rows, required_seconds):
+    """A finished loop is not proof that lifecycle recovery actually happened."""
+    done = rows[-1] if rows else {}
+    tasks = [r for r in rows if r.get("event") in ("task", "quit-mid-task")]
+    return bool(tasks) and done.get("event") == "done" and done.get("t", 0) >= required_seconds and not any(
+        r.get("crashes", 0) or r.get("ok") is False for r in rows
+    ) and all(r.get("phase") == "completed" and r.get("inputTokens", 0) > 0 and r.get("modelID")
+              and r.get("taskID") and r.get("seconds") is not None for r in tasks) and any(
+        r.get("event") == "quit-mid-task" and r.get("wasBusy") and r.get("phaseAtQuit") == "paused"
+        and r.get("quitOK") and r.get("relaunchOK")
+        for r in rows
+    ) and any(r.get("event") == "snapshot" and r.get("took") and r.get("restored") and r.get("deleted") and r.get("ready")
+              for r in rows) and any(r.get("event") == "relaunch" and r.get("quitOK") and r.get("launchOK")
+                                     for r in rows)
 
 
 def main():
@@ -142,10 +195,15 @@ def main():
     parser.add_argument("--hours", type=float, default=24)
     parser.add_argument("--log", default="soak.jsonl")
     args = parser.parse_args()
+    if not math.isfinite(args.hours) or args.hours <= 0:
+        parser.error('--hours must be finite and greater than zero')
+    if not os.environ.get('CC_DATA_DIR'):
+        parser.error('set CC_DATA_DIR to an isolated test data folder')
     app = os.path.abspath(args.app)
     started = time.time()
     end = started + args.hours * 3600
     log = open(args.log, "a")
+    rows = []
 
     def record(event, **fields):
         pid = app_pid(app)
@@ -153,6 +211,7 @@ def main():
                 "crashes": len(crash_reports(started)), **fields}
         log.write(json.dumps(line) + "\n")
         log.flush()
+        rows.append(line)
         print(json.dumps(line), flush=True)
 
     n = 0
@@ -162,35 +221,71 @@ def main():
             ok = launch(app)
             record("launch", ok=ok)
             if not ok:
-                quit_app(app)
-                continue
+                record("done", tasks=n - 1, ok=False)
+                log.close()
+                return 1
         goal = random.choice(TASKS)
-        request("dev_ui", action="submit", text=goal)
+        previous_ids = task_ids()
+        submitted = request("dev_ui", action="submit", text=goal)
+        task_id = None if submitted.get("isError") else wait_new_task(goal, previous_ids)
+        if task_id is None:
+            record("task-start-failed", task=goal, ok=False)
+            record("done", tasks=n - 1, ok=False)
+            log.close()
+            return 1
         if n % 3 == 0:
-            time.sleep(random.uniform(20, 60))
-            busy = agent_busy()
-            quit_ok = quit_app(app)
-            relaunch_ok = launch(app, cont=True)
-            seconds = wait_task()
-            record("quit-mid-task", task=goal, wasBusy=busy, quitOK=quit_ok, relaunchOK=relaunch_ok, seconds=seconds, **last_task())
+            time.sleep(random.uniform(1, 3))
+            busy = agent_busy() and read_task(task_id)["phase"] == "running"
+            if busy:
+                quit_ok = quit_app(app)
+                phase_at_quit = read_task(task_id)["phase"] if quit_ok else "unknown"
+                # Never launch another process against a VM whose owner did not stop.
+                relaunch_ok = quit_ok and launch(app, cont=True)
+                seconds = wait_task(task_id) if relaunch_ok else None
+                record("quit-mid-task", task=goal, wasBusy=True, phaseAtQuit=phase_at_quit, quitOK=quit_ok, relaunchOK=relaunch_ok,
+                       seconds=seconds, ok=seconds is not None and quit_ok and relaunch_ok, **task_evidence(task_id))
+            else:
+                seconds = wait_task(task_id)
+                record("task", task=goal, midTaskRequested=True, seconds=seconds,
+                       ok=seconds is not None, **task_evidence(task_id))
         else:
-            seconds = wait_task()
-            record("task", task=goal, seconds=seconds, **last_task())
+            seconds = wait_task(task_id)
+            record("task", task=goal, seconds=seconds, ok=seconds is not None, **task_evidence(task_id))
         if seconds is None:
-            # Stuck: stop the task the hard way and start fresh.
+            # Preserve the failure; normal suspension must finish before any relaunch.
             quit_app(app)
-            continue
+            record("done", tasks=n, ok=False)
+            log.close()
+            return 1
         if n % 5 == 0:
             t0 = time.time()
-            taken = request("snapshot_take", name="Soak").get("text", "")
-            restored = request("snapshot_restore", snapshot="Soak", save_current=False).get("text", "")
-            request("snapshot_delete", snapshot="Soak")
+            taken = request("snapshot_take", name="Soak")
+            took_ok = response_succeeded(taken, 'Saved snapshot')
+            restored = request("snapshot_restore", snapshot="Soak", save_current=False) if took_ok else {"isError": True}
+            restored_ok = response_succeeded(restored, 'Restored')
+            deleted = request("snapshot_delete", snapshot="Soak") if restored_ok else {"isError": True}
             ready = launch(app)  # waits for the desktop again
-            record("snapshot", seconds=round(time.time() - t0), took="Saved" in taken, restored="Restored" in restored, ready=ready)
+            deleted_ok = response_succeeded(deleted, 'Deleted snapshot')
+            ok = took_ok and restored_ok and deleted_ok and ready
+            record("snapshot", seconds=round(time.time() - t0), took=took_ok,
+                   restored=restored_ok, deleted=deleted_ok, ready=ready, ok=ok)
+            if not ok:
+                record("done", tasks=n, ok=False)
+                log.close()
+                return 1
         if n % 10 == 0:
-            q, l = quit_app(app), launch(app)
-            record("relaunch", quitOK=q, launchOK=l)
+            q = quit_app(app)
+            l = q and launch(app)
+            record("relaunch", quitOK=q, launchOK=l, ok=q and l)
+            if not (q and l):
+                record("done", tasks=n, ok=False)
+                log.close()
+                return 1
     record("done", tasks=n)
+    ok = qualified(rows, args.hours * 3600)
+    record("qualification", ok=ok)
+    log.close()
+    return 0 if ok else 1
 
 
 def summary(path):
@@ -204,10 +299,12 @@ def summary(path):
     for r in tasks:
         if r.get("phase") != "completed":
             print(f"  not completed at t={r['t']}s: {r.get('phase')} — {r['task'][:60]}")
+    verdict = next((r.get('ok') for r in reversed(rows) if r.get('event') == 'qualification'), None)
+    print('qualification: ' + ('PASS' if verdict is True else 'FAIL' if verdict is False else 'not recorded (legacy log)'))
 
 
 if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--summary":
         summary(sys.argv[2])
     else:
-        main()
+        sys.exit(main())

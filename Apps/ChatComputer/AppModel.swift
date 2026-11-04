@@ -81,6 +81,13 @@ final class AppModel {
     private var lastUnlockAttempt = Date.distantPast
 
     var onboarding = OnboardingState()
+    var permissionTask: Task<Void, Never>?
+    var captureVerified = false
+    var verifyingCapture = false
+    private(set) var captureTask: Task<Void, Error>?
+    private var preparingToQuit = false
+    private var captureIdentity: String?
+    private var lastCaptureAttempt = Date.distantPast
 
     /// A snapshot being taken or restored, shown over the guest screen (see Snapshots.swift).
     var snapshotActivity: SnapshotActivity?
@@ -282,7 +289,7 @@ final class AppModel {
             if await bridge.isConnected,
                case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                                         deadline: Date().addingTimeInterval(10), command: .health)),
-               report.isDesktopReady {
+               report.isDesktopReady, captureVerified {
                 resume()
                 return
             }
@@ -297,7 +304,7 @@ final class AppModel {
             if let bridge, await bridge.isConnected,
                case .health(let report)? = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
                                                                         deadline: Date().addingTimeInterval(10), command: .health)),
-               report.isDesktopReady {
+               report.isDesktopReady, captureVerified {
                 try? await Task.sleep(for: .seconds(3))
                 submit(goal)
                 return
@@ -314,6 +321,8 @@ final class AppModel {
     // MARK: VM
 
     func loadVM() {
+        captureVerified = false
+        captureIdentity = nil
         do {
             let controller = try VirtualMachineController(bundle: bundle)
             controller.onSocketDeviceReady = { [weak self] device in self?.bridge?.attach(to: device) }
@@ -335,6 +344,10 @@ final class AppModel {
     /// Before the app quits: stop work in progress and save the virtual Mac (memory included), so the next
     /// launch resumes it. If saving fails it shuts down cleanly instead, and only as a last resort is it cut off.
     func prepareToQuit() async {
+        preparingToQuit = true
+        permissionTask?.cancel()
+        captureTask?.cancel()
+        if let captureTask { _ = try? await captureTask.value }
         external?.stop()
         guard let vm else { return }
         for _ in 0..<240 where snapshotActivity != nil || vm.isWorkingOnSnapshots {
@@ -395,6 +408,10 @@ final class AppModel {
         }
         guard snapshotActivity == nil, vm?.isWorkingOnSnapshots != true else {
             errorMessage = "Wait until the snapshot is finished, then send the task again."
+            return false
+        }
+        guard captureVerified, !verifyingCapture else {
+            errorMessage = "Screen capture is not verified yet. Finish the virtual Mac's Screen Recording prompt, then use Machine › Verify Screen Capture."
             return false
         }
         // Attachments go with a new task, not with an answer to the agent's question.
@@ -488,7 +505,7 @@ final class AppModel {
                 try? await Task.sleep(for: .seconds(5))
                 tick += 1
                 guard let self else { return }
-                guard self.isReady, let vm = self.vm, vm.state == .running, self.snapshotActivity == nil,
+                guard !self.preparingToQuit, let vm = self.vm, vm.state == .running, self.snapshotActivity == nil,
                       !vm.isWorkingOnSnapshots, !self.updatingAgent, let bridge = self.bridge else {
                     if self.vm?.state != .running { self.guestReadiness = nil }
                     continue
@@ -501,6 +518,14 @@ final class AppModel {
                     report = health
                 }
                 self.guestReadiness = GuestReadiness(connected: connected, report: report)
+                let identity = report.map { "\($0.agentVersion):\($0.permissionDiagnostics?.processID ?? -1)" }
+                if identity != self.captureIdentity || report?.isDesktopReady != true {
+                    self.captureVerified = false
+                    self.captureIdentity = identity
+                }
+                // Setup can wait between verification and freezing. A restart
+                // in that interval invalidates its pixels just as it does later.
+                guard self.isReady else { continue }
                 // A locked screen (after the guest slept, or this Mac did) is unlocked from the host, at most once a minute.
                 if self.guestReadiness == .screenLocked, !self.guestIsBusy,
                    Date().timeIntervalSince(self.lastUnlockAttempt) > 60 {
@@ -513,6 +538,16 @@ final class AppModel {
                    self.agentUpdatePolicy.shouldUpdate(running: report.agentVersion, bundled: bundled, busy: self.guestIsBusy) {
                     await self.updateGuestAgent(from: report.agentVersion, to: bundled)
                     continue
+                }
+
+                if report?.isDesktopReady == true, !self.captureVerified {
+                    self.guestReadiness = .captureNotVerified
+                    if !self.guestIsBusy, !self.verifyingCapture,
+                       Date().timeIntervalSince(self.lastCaptureAttempt) > 60 {
+                        self.lastCaptureAttempt = Date()
+                        do { try await self.verifyGuestCapture(); self.guestReadiness = .ready }
+                        catch { self.recordPermission("runtime-capture-not-ready") }
+                    }
                 }
 
                 if tick % 12 == 0 { self.warnIfLowOnSpace(vm) }
@@ -590,8 +625,39 @@ final class AppModel {
         Bundle.main.url(forResource: "ChatComputerAgent", withExtension: "app", subdirectory: "GuestAgent")
     }
 
-    /// Replaces the guest agent with the bundled one: the app is staged in the bootstrap share, which is shared
-    /// only for the update; the agent checks its signature (same team), swaps itself and is restarted by launchd.
+    func didRestoreGuestSnapshot() {
+        agentUpdatePolicy.didRestoreSnapshot()
+    }
+
+    /// A VM upgraded halfway through onboarding is not watched by watchGuest yet.
+    /// Update it here as well, before relying on the new permission-flow commands.
+    func ensureGuestAgentCurrent() async throws {
+        guard let vm, let bridge, let expected = Self.bundledAgentVersion else {
+            throw HostControlError.gaveUp("The bundled guest agent is missing.")
+        }
+        func health() async throws -> HealthReport {
+            let result = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                      deadline: Date().addingTimeInterval(10), command: .health))
+            guard case .health(let report) = result else {
+                throw HostControlError.gaveUp("The guest agent did not return its version. Finish any pending permission dialog, then retry.")
+            }
+            return report
+        }
+        let before = try await health()
+        recordPermission("setup-agent-health", guest: before.permissionDiagnostics)
+        guard before.agentVersion != expected else { return }
+        recordPermission("setup-agent-update-started")
+        await updateGuestAgent(from: before.agentVersion, to: expected)
+        try Task.checkCancellation()
+        guard try await health().agentVersion == expected else {
+            recordPermission("setup-agent-update-failed")
+            throw HostControlError.gaveUp("The guest agent could not update. Finish any pending guest permission dialog, then retry setup.")
+        }
+        recordPermission("setup-agent-update-passed")
+    }
+
+    /// Replaces the guest agent with the bundled one: the app is staged under a new bootstrap-share name;
+    /// the agent checks its signature (same team), swaps itself and is restarted by launchd.
     /// Its privacy grants carry over because they belong to the signing identity. Restoring an older snapshot
     /// brings back an older agent, so this runs again then.
     private func updateGuestAgent(from running: String, to bundled: String) async {
@@ -768,11 +834,16 @@ final class AppModel {
     // MARK: Control (proposal §04: pause, takeover and cancel are different)
 
     func pause() {
+        if let captureTask { captureTask.cancel(); return }
         // ⌘. stops a coding agent too: for it, pausing means the user takes over.
         if externalHolder != nil, !isRunningTask { return takeOver(reason: "you chose Pause") }
         Task { await runner?.pause() }
     }
     func resume() {
+        guard captureVerified, !verifyingCapture else {
+            errorMessage = "Verify Screen Capture from the Machine menu before continuing the task."
+            return
+        }
         Task {
             await makeWayForBuiltInTask()
             await runner?.resume()
@@ -783,6 +854,11 @@ final class AppModel {
     /// The user touched the VM screen while the agent held input.
     /// The user takes input control from the agent. `reason` says what triggered it, shown in the chat.
     func takeOver(reason: String = "you chose Take Over") {
+        if permissionTask != nil {
+            cancelPermissionSetup()
+            return
+        }
+        if let captureTask { captureTask.cancel(); return }
         if externalHolder != nil, !isRunningTask {
             Task { await external?.userTookOver(reason: reason) }
             return
@@ -831,13 +907,19 @@ final class AppModel {
         let secrets = self.secrets
         let grant = PermissionGrant(
             display: display,
-            prepare: { kind in _ = try await send(.preparePermission(kind)) },
+            prepare: { kind in
+                self.recordPermission("request-\(kind.rawValue)-started")
+                if case .failure(let error) = try await send(.preparePermission(kind)) { throw error }
+                self.recordPermission("request-\(kind.rawValue)-acknowledged")
+            },
             isGranted: { kind in
                 // The agent relaunches after the screen recording grant; until it reconnects, "not yet".
                 guard await bridge.isConnected, case .health(let report)? = try? await send(.health) else { return false }
+                self.recordPermission("health-\(kind.rawValue)", guest: report.permissionDiagnostics)
                 return kind == .accessibility ? report.accessibilityGranted : report.screenRecordingGranted
             },
             restartAgent: {
+                self.recordPermission("permission-agent-restart-started")
                 _ = try? await send(.restartAgent)
                 // Wait for the old connection to drop and the new agent to pair.
                 try await Task.sleep(for: .seconds(2))
@@ -847,6 +929,7 @@ final class AppModel {
                     waited += 1
                 }
                 try await Task.sleep(for: .seconds(1))
+                self.recordPermission("permission-agent-restart-finished")
             },
             password: {
                 guard let password = try secrets.read(SecretAccount.guestPassword(vmID: vmID)) else {
@@ -856,8 +939,136 @@ final class AppModel {
             },
             log: { [weak self] message in
                 self?.onboarding.detail = message.prefix(1).uppercased() + message.dropFirst()
-                self?.devLog("grant: \(message)")
+                // PermissionGrant emits fixed stage descriptions, never OCR text
+                // or the password it types. Keep them even without CC_DEV_LOG.
+                self?.recordPermission("grant: \(message)")
+            }, openSettings: { kind in
+                guard case .capabilities(let capabilities) = try await send(.capabilities),
+                      capabilities.supportsPermissionFlow == true else {
+                    throw HostControlError.gaveUp("Update the guest agent, or open its privacy settings manually. This agent does not support the new permission flow.")
+                }
+                if case .failure(let error) = try await send(.openPermissionSettings(kind)) { throw error }
             })
         try await grant.run()
+    }
+
+    func recordPermission(_ stage: String, guest: PermissionDiagnostics? = nil) {
+        let version = AgentVersion.string(short: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
+                                          build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?")
+        do { try PermissionJournal(directory: dataDirectory).append(stage: stage, appVersion: version, guest: guest) }
+        catch { devLog("permission journal could not be written") }
+        devLog("permission: \(stage)")
+    }
+
+    func captureIsVerified(for report: HealthReport) -> Bool {
+        captureVerified && report.isDesktopReady
+            && captureIdentity == "\(report.agentVersion):\(report.permissionDiagnostics?.processID ?? -1)"
+    }
+
+    func ensureGuestCaptureVerified() async throws {
+        do {
+            if let captureTask {
+                // External commands share the background check instead of racing
+                // its completion against their shorter readiness wait.
+                try await captureTask.value
+            }
+            guard let vm, let bridge, await bridge.isConnected else {
+                throw HostControlError.gaveUp("The guest agent is not connected. Wait for it to connect, then retry.")
+            }
+            guard case .health(let report) = try await bridge.send(.init(
+                vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                deadline: Date().addingTimeInterval(5), command: .health)) else {
+                throw HostControlError.gaveUp("The guest did not return its permission status.")
+            }
+            if captureIsVerified(for: report) { return }
+            try await verifyGuestCapture()
+        } catch {
+            captureVerified = false
+            throw error
+        }
+    }
+
+    /// A real guest window must appear in two captures, while the host can still
+    /// see and answer a system consent dialog independently of the capture RPC.
+    func verifyGuestCapture() async throws {
+        guard !preparingToQuit else { throw HostControlError.gaveUp("The app is quitting.") }
+        // A caller can await health after observing no task, while the runtime
+        // watcher starts one. Join here too, at the point that owns creation.
+        if let captureTask {
+            try await captureTask.value
+            return
+        }
+        guard !builtInAgentNeedsMac, externalHolder == nil, snapshotActivity == nil, vm?.isWorkingOnSnapshots != true else {
+            throw HostControlError.gaveUp("Pause the agent and wait for any snapshot before checking screen capture.")
+        }
+        // Even early failures (no agent, unsupported capabilities, denied
+        // permissions) invalidate a previous success from this session.
+        captureVerified = false
+        captureIdentity = nil
+        verifyingCapture = true
+        let task = Task { [self] in
+            // Every waiter must observe the cleanup before the shared task
+            // completes, including a snapshot waiting to change the VM.
+            defer { verifyingCapture = false; captureTask = nil }
+            try await performGuestCaptureVerification()
+        }
+        captureTask = task
+        try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func performGuestCaptureVerification() async throws {
+        guard let vm, let bridge, let view = guestView, await bridge.isConnected else {
+            recordPermission("capture-agent-not-connected")
+            throw HostControlError.gaveUp("The guest agent is not connected. Wait for it to connect, then retry.")
+        }
+        let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+        func send(_ command: GuestCommand) async throws -> CommandResult {
+            let result = try await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
+                                                      deadline: Date().addingTimeInterval(20), command: command))
+            if case .failure(let error) = result { throw error }
+            return result
+        }
+        guard case .capabilities(let capabilities) = try await send(.capabilities),
+              capabilities.supportsPermissionFlow == true else {
+            recordPermission("capture-agent-update-required")
+            throw HostControlError.gaveUp("The guest agent must update before capture can be verified. Wait for the bundled agent update, or reinstall the guest agent.")
+        }
+        guard case .health(let health) = try await send(.health) else {
+            recordPermission("capture-agent-not-answering")
+            throw HostControlError.gaveUp("The guest did not return its permission status.")
+        }
+        recordPermission("capture-agent-health", guest: health.permissionDiagnostics)
+        if let problem = GuestReadiness(connected: true, report: health).problem {
+            recordPermission("capture-permissions-not-ready", guest: health.permissionDiagnostics)
+            throw HostControlError.gaveUp(problem)
+        }
+        recordPermission("capture-verification-started")
+        let verifier = GuestCaptureVerifier(showProbe: { marker in
+            _ = try await send(.captureProbe(marker))
+        }, capture: {
+            guard case .screenshot(let shot) = try await send(.screenshot(region: nil)) else {
+                throw HostControlError.gaveUp("The guest did not return a screenshot.")
+            }
+            return shot
+        }, handlePrompt: {
+            await ConsentPrompt.approveIfShown(on: display)
+        }, log: { self.recordPermission($0) })
+        do {
+            try await verifier.run()
+            // Bind this result to the process actually checked. Otherwise the
+            // watcher can invalidate a fresh post-restore check on its next tick
+            // and strand an external agent that has just acquired control.
+            captureIdentity = "\(health.agentVersion):\(health.permissionDiagnostics?.processID ?? -1)"
+            captureVerified = true
+            recordPermission("capture-verification-passed")
+        } catch {
+            captureVerified = false
+            recordPermission("capture-verification-failed")
+            throw error
+        }
     }
 }

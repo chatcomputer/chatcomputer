@@ -51,5 +51,15 @@ import Testing
         }
         #expect(policy.failures == 3)
         #expect(!policy.shouldUpdate(running: "0.2.0 (4)", bundled: "1.0.0 (7)", busy: false, now: now))
+        // A deliberate restore must not inherit the old VM state's retry cap
+        // or its recent attempt's cooldown.
+        policy.didRestoreSnapshot()
+        #expect(policy.failures == 0)
+        #expect(policy.shouldUpdate(running: "0.2.0 (4)", bundled: "1.0.0 (7)", busy: false, now: now))
+        #expect(!policy.shouldUpdate(running: "0.2.0 (4)", bundled: "1.0.0 (7)", busy: true, now: now))
+        policy.began(at: now)
+        policy.finished(succeeded: true)
+        policy.didRestoreSnapshot()
+        #expect(policy.shouldUpdate(running: "0.2.0 (4)", bundled: "1.0.0 (7)", busy: false, now: now.addingTimeInterval(1)))
     }
 }

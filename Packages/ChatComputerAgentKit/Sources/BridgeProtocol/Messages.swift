@@ -88,6 +88,12 @@ public enum GuestCommand: Codable, Sendable, Equatable {
     /// Registers the agent for a privacy permission and opens that settings pane in the guest.
     /// Needs no permission itself; the host then flips the switch (see `HostControl.PermissionGrant`).
     case preparePermission(PermissionKind)
+    /// Only sent to agents advertising supportsPermissionFlow. Opening settings is
+    /// separate from requesting consent so it cannot cover an unanswered prompt.
+    case openPermissionSettings(PermissionKind)
+    /// A temporary, non-interactive guest window used to verify real capture pixels.
+    /// nil removes it. Only sent when supportsPermissionFlow is true.
+    case captureProbe(String?)
     /// The agent answers, then exits; its LaunchAgent (KeepAlive) starts it again and it reconnects.
     /// Used when a permission was granted but the running process does not see it yet.
     case restartAgent
@@ -238,8 +244,9 @@ public struct HealthReport: Codable, Sendable, Equatable {
     public var accessibilityGranted: Bool
     public var screenRecordingGranted: Bool
     public var sharedFoldersMounted: Bool
+    public var permissionDiagnostics: PermissionDiagnostics?
 
-    public init(agentVersion: String, driver: String, hasAquaSession: Bool, screenLocked: Bool, accessibilityGranted: Bool, screenRecordingGranted: Bool, sharedFoldersMounted: Bool) {
+    public init(agentVersion: String, driver: String, hasAquaSession: Bool, screenLocked: Bool, accessibilityGranted: Bool, screenRecordingGranted: Bool, sharedFoldersMounted: Bool, permissionDiagnostics: PermissionDiagnostics? = nil) {
         self.agentVersion = agentVersion
         self.driver = driver
         self.hasAquaSession = hasAquaSession
@@ -247,6 +254,7 @@ public struct HealthReport: Codable, Sendable, Equatable {
         self.accessibilityGranted = accessibilityGranted
         self.screenRecordingGranted = screenRecordingGranted
         self.sharedFoldersMounted = sharedFoldersMounted
+        self.permissionDiagnostics = permissionDiagnostics
     }
 
     /// The readiness probe from the proposal (§06): desktop usable, not just SSH reachable.
@@ -261,13 +269,16 @@ public struct DriverCapabilities: Codable, Sendable, Equatable {
     public var supportsAccessibilityTree: Bool
     public var supportsBrowserSnapshot: Bool
     public var supportsBackgroundInput: Bool
+    /// Optional for compatibility with guests saved before the permission flow existed.
+    public var supportsPermissionFlow: Bool?
 
-    public init(driver: String, driverVersion: String, supportsAccessibilityTree: Bool, supportsBrowserSnapshot: Bool, supportsBackgroundInput: Bool) {
+    public init(driver: String, driverVersion: String, supportsAccessibilityTree: Bool, supportsBrowserSnapshot: Bool, supportsBackgroundInput: Bool, supportsPermissionFlow: Bool? = nil) {
         self.driver = driver
         self.driverVersion = driverVersion
         self.supportsAccessibilityTree = supportsAccessibilityTree
         self.supportsBrowserSnapshot = supportsBrowserSnapshot
         self.supportsBackgroundInput = supportsBackgroundInput
+        self.supportsPermissionFlow = supportsPermissionFlow
     }
 }
 

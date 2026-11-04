@@ -135,7 +135,15 @@ public actor AgentService {
                 try await GuestShutdown.begin()
                 return .ok
             case .preparePermission(let kind):
-                await PermissionSetup.prepare(kind)
+                guard await PermissionSetup.prepare(kind) else {
+                    return .failure(BridgeError(.permissionDenied, "Finish the other pending permission dialog in the virtual Mac, then retry this step."))
+                }
+                return .ok
+            case .openPermissionSettings(let kind):
+                await PermissionSetup.openSettings(kind)
+                return .ok
+            case .captureProbe(let marker):
+                await PermissionSetup.showCaptureProbe(marker)
                 return .ok
             case .updateAgent:
                 try AgentUpdate.install()
@@ -201,48 +209,6 @@ enum GuestShutdown {
         let source = CGEventSource(stateID: .hidSystemState)
         for down in [true, false] {
             CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Return), keyDown: down)?.post(tap: .cghidEventTap)
-        }
-    }
-}
-
-/// Puts the agent into the privacy list and opens the matching pane, so whoever grants the
-/// permission (the user, or the host via `HostControl`) only has to flip one switch.
-enum PermissionSetup {
-    /// Permissions this agent process has already cleared once.
-    @MainActor private static var cleared: Set<String> = []
-
-    @MainActor
-    static func prepare(_ kind: PermissionKind) {
-        // Only called while the permission is missing. An entry left by a build with a different
-        // signature looks granted in the list but does not apply to this binary; clear it so the
-        // prompt below registers this one (observed on macOS 27 after replacing an ad hoc build).
-        // tccd applies the reset a few seconds after tccutil returns (2.7 s measured on 27.0.1): a request
-        // made sooner was registered and then deleted by the late reset, so the agent never appeared in the
-        // list, on every retry. So: clear once per process, and wait for the reset to land before asking.
-        if !cleared.contains(kind.tccService) {
-            cleared.insert(kind.tccService)
-            let reset = Process()
-            reset.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
-            reset.arguments = ["reset", kind.tccService, Bundle.main.bundleIdentifier ?? "app.chatcomputer.agent"]
-            try? reset.run()
-            reset.waitUntilExit()
-            Thread.sleep(forTimeInterval: 4)
-        }
-
-        let pane: String
-        switch kind {
-        case .accessibility:
-            // The prompt is what adds the app to the list; its own button opens the pane too.
-            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
-            pane = "Privacy_Accessibility"
-        case .screenRecording:
-            _ = CGRequestScreenCaptureAccess()
-            // Trying to list shareable content also registers the app in the Screen Recording list.
-            Task { _ = try? await SCShareableContent.current }
-            pane = "Privacy_ScreenCapture"
-        }
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
-            NSWorkspace.shared.open(url)
         }
     }
 }

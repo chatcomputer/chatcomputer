@@ -1,0 +1,147 @@
+{
+  "recordedAt": "2026-11-04T17:51:50.167005+00:00",
+  "kind": "user-requested-wrap-up-not-full-release-acceptance",
+  "candidate": {
+    "recordedAt": "2026-11-04T17:45:54.825825+00:00",
+    "kind": "signed-wrap-up-candidate-build",
+    "app": {
+      "version": "0.9.12",
+      "build": "71",
+      "bundleID": "app.chatcomputer.ChatComputer",
+      "identity": [
+        "Identifier=app.chatcomputer.ChatComputer",
+        "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+        "Authority=Developer ID Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=YPV49M8592"
+      ],
+      "executableSHA256": "f5796882e36dd76959f2acfcb82c73ed01b2f6551198070f9165673b7ec2549e"
+    },
+    "guestAgent": {
+      "version": "0.9.12",
+      "build": "71",
+      "bundleID": "app.chatcomputer.agent",
+      "identity": [
+        "Identifier=app.chatcomputer.agent",
+        "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+        "Authority=Developer ID Certification Authority",
+        "Authority=Apple Root CA",
+        "TeamIdentifier=YPV49M8592"
+      ],
+      "executableSHA256": "8ec4a6d6200e623cafc67669dbb88f0ea3842c5f3f32a29cdf81811e63c4f61d"
+    },
+    "sourceSHA256": "8710297b50d028c3ae8c59806d2513a04c6cf9d363a5608587e7e856d470c802",
+    "zipSHA256": "3e089bbc37fb38eca4764785b03a5292bf45ad2526a970f3c18f7b0fdc4971d1",
+    "swiftTests": 194,
+    "pythonChecks": 50,
+    "notarizedAndStapled": true,
+    "modelLiveLoop": "SKIPPED: no configured key",
+    "published": false,
+    "fullP0P1Passed": false,
+    "evidenceFiles": [
+      {
+        "path": "build/validation/test-mac-71.log",
+        "sha256": "883a9a087f22137e4e93d205ba211921cad7f71d782762aa1223c7d7600a00b4"
+      },
+      {
+        "path": "build/validation/script-tests-71.log",
+        "sha256": "47623764f8a4a4becab189060494ceb2473e180d5e4edfdcbb886022bd615e3f"
+      },
+      {
+        "path": "build/validation/cleanup-mutation-71.log",
+        "sha256": "857758a1715613a9e0f0158cf729619baf545d03387cd440befd8f0473d394a6"
+      },
+      {
+        "path": "build/validation/release-71.log",
+        "sha256": "621616d8c297fc6c21d37e9a394980747456d532764680bca576bdec08e61f89"
+      }
+    ]
+  },
+  "targetedRuntime": {
+    "passed": true,
+    "modelInvoked": false,
+    "freshInstall": false,
+    "origin": "Existing isolated70 benchmark VM updated to71",
+    "resourceNote": "Temporary test VMs/caches removed before this run; not a same-resource performance comparison",
+    "takeSnapshotWhileCaptureRunning": true,
+    "restoreSnapshotWhileCaptureRunning": true,
+    "activeLeaseCaptureInvalidated": true,
+    "otherClientDidNotStealLease": true,
+    "sameClientRecoveredAndReacquiredLease": true,
+    "cliMCPFilesAndNormalReopen": true,
+    "normalFinalSIGTERMExit": true
+  },
+  "functionalFileResults": {
+    "passed": true,
+    "modelInvoked": false,
+    "appBuild": "71",
+    "dataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-codex-70-27",
+    "outputs": [
+      {
+        "name": "p1-targeted-71-cli.txt",
+        "expected": "Chat Computer targeted-71: cli file verified.",
+        "sha256": "aa6b0d9c879d18952956befe49e2ecef77b766e56362d485ba99542babe0d7b2"
+      },
+      {
+        "name": "p1-targeted-71-mcp.txt",
+        "expected": "Chat Computer targeted-71: mcp file verified.",
+        "sha256": "e5ad52228e69c510859667af57fe46eb4e6fa6b67ff590c083a37299c641e5f4"
+      }
+    ]
+  },
+  "fullP0P1Passed": false,
+  "published": false,
+  "remaining": [
+    "No second physical Mac",
+    "Built-in DeepSeek/Anthropic regressions and4.3h soak not run: no configured model resource",
+    "Current71 full fresh-install/fault/model matrix not run;70 results remain historical",
+    "Old26 saved session twice unresponsive; sole cause unknown"
+  ],
+  "userScopeChange": "Stop expanding validation, clean rebuildable temporary data, commit and push code",
+  "evidenceFiles": [
+    {
+      "path": "build/validation/targeted-71-result.json",
+      "sha256": "6e961fdd7452eec8008b55d6b6a4ac8bf5c8d4e9392b6c9850c75f4331f16c99"
+    },
+    {
+      "path": "build/validation/targeted-71-cli.jsonl",
+      "sha256": "24c9fee63d519491b7cd3ecead2b3425698ec454714259bbaf3e1746d1295afe"
+    },
+    {
+      "path": "build/validation/targeted-71-dev.jsonl",
+      "sha256": "c2fb8387e65d304cd7559afbe8f406b55a33e4ceb7dbe794be2754027f5699cd"
+    },
+    {
+      "path": "build/validation/targeted-71-host.log",
+      "sha256": "ee0f381634fb82f634bc003e977f55b0974d6367bb46490c011679655d0c6691"
+    },
+    {
+      "path": "build/validation/targeted-71-monitor.log",
+      "sha256": "12ab62c96fc6a6a7079b92d721c05bca572d4fd01cdd6a027cd77f6183636340"
+    },
+    {
+      "path": "build/validation/targeted-71-files-result.json",
+      "sha256": "df8a35fa46b4240d1393fefbb1dce42ef7769bf8f2a546d48fe03d7183612faf"
+    },
+    {
+      "path": "build/validation/targeted-71-files.jsonl",
+      "sha256": "188be06fa1398969b0cb1439b31b612ed815544c2d5e9b0d582a584cc3e1c286"
+    },
+    {
+      "path": "build/validation/candidate-71-build.manifest.json",
+      "sha256": "1180311d1079854977a660aaa8c415ffead970e9fc8b4d194e4ec461199ffc39"
+    }
+  ],
+  "localEvidenceArchive": {
+    "path": "build/validation-records-20261104.tar.gz",
+    "sha256": "88d3d4891ba84e4e00869683ef11253b45925d434c71daac37693cb8f296aa5d",
+    "note": "User requested temporary-data cleanup. Original evidence paths are now members of this local archive; full VM state, IPSWs, old signed builds and unneeded frames removed."
+  },
+  "postBuildDocumentationOnlyChange": {
+    "path": "Packages/ChatComputerKit/Tests/HostControlTests/PermissionPanes/README.md",
+    "change": "Remove one extra final blank line from fixture README; executable source and fixture images unchanged",
+    "beforeSHA256": "9c27b9fe8f26461879253cdd31aa02c9295daa28af1584327937720347653a43",
+    "afterSHA256": "10593e237561f9ebf666193c2b243e5e6a843da29a5916437e78739babc50411",
+    "sourceSHA256AtCommit": "66e42f1cdc4ea3121dc3dc557ef0d153162da802fca6463862e6685f64975064"
+  }
+}

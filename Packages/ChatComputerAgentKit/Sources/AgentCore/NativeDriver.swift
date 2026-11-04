@@ -27,7 +27,7 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
 
     public var capabilities: DriverCapabilities {
         DriverCapabilities(driver: "native", driverVersion: agentVersion, supportsAccessibilityTree: true,
-                           supportsBrowserSnapshot: false, supportsBackgroundInput: false)
+                           supportsBrowserSnapshot: false, supportsBackgroundInput: false, supportsPermissionFlow: true)
     }
 
     public func health() async -> HealthReport {
@@ -44,7 +44,8 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
             screenLocked: locked,
             accessibilityGranted: AXIsProcessTrusted(),
             screenRecordingGranted: CGPreflightScreenCaptureAccess(),
-            sharedFoldersMounted: FileManager.default.fileExists(atPath: "/Volumes/My Shared Files")
+            sharedFoldersMounted: FileManager.default.fileExists(atPath: "/Volumes/My Shared Files"),
+            permissionDiagnostics: await PermissionSetup.diagnostics()
         )
     }
 
@@ -72,7 +73,10 @@ public final class NativeDriver: DriverAdapter, @unchecked Sendable {
         let configuration = SCStreamConfiguration()
         configuration.width = Int(Double(pointWidth) * pixelScale)
         configuration.height = Int(Double(pointHeight) * pixelScale)
-        configuration.showsCursor = true
+        // A restored pointer can cover the probe's random marker and change its
+        // OCR text. Keep it in ordinary screenshots; verification needs pixels
+        // from the temporary window without a pointer drawn over its letters.
+        configuration.showsCursor = !(await PermissionSetup.captureProbeVisible)
         let full = try await SCScreenshotManager.captureImage(
             contentFilter: SCContentFilter(display: display, excludingWindows: []), configuration: configuration)
 

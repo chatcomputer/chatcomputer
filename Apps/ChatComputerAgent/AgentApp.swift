@@ -3,6 +3,7 @@ import BridgeProtocol
 import ApplicationServices
 import CoreGraphics
 import SwiftUI
+import AppKit
 
 /// Runs inside the guest as a LaunchAgent. It is the one app the user grants Accessibility and
 /// Screen Recording to, so its signing identity must stay stable across updates (proposal §03).
@@ -16,14 +17,15 @@ struct AgentApp: App {
             Divider()
             // macOS 27 lists this under Privacy & Security › "Device Control and Data Access".
             Button(state.accessibility ? "Device control: allowed" : "Allow Device Control…") {
-                let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-                _ = AXIsProcessTrustedWithOptions(options)
+                PermissionSetup.prepare(.accessibility)
             }
             .disabled(state.accessibility)
             Button(state.screenRecording ? "Screen Recording: allowed" : "Allow Screen Recording…") {
-                _ = CGRequestScreenCaptureAccess()
+                PermissionSetup.prepare(.screenRecording)
             }
             .disabled(state.screenRecording)
+            Button("Open Screen Recording Settings…") { PermissionSetup.openSettings(.screenRecording) }
+            Button("Repair Screen Recording…") { state.repairScreenRecording() }
         }
     }
 }
@@ -36,6 +38,18 @@ final class AgentState {
     var screenRecording = CGPreflightScreenCaptureAccess()
 
     private let service: AgentService
+
+    func repairScreenRecording() {
+        let alert = NSAlert()
+        alert.messageText = "Reset this agent's Screen Recording permission?"
+        alert.informativeText = "Only use this after changing the agent's signing identity. You will need to grant Screen Recording again. A pending permission request must be finished first."
+        alert.addButton(withTitle: "Reset Permission")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task {
+            if await PermissionSetup.repair(.screenRecording) { PermissionSetup.prepare(.screenRecording) }
+        }
+    }
 
     init() {
         let version = AgentVersion.string(

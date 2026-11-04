@@ -74,7 +74,7 @@ final class ExternalControl {
             case .status:
                 return ControlResponse(text: await status(for: client))
             case .screenshot(let region):
-                let bridge = try await readyGuest()
+                let bridge = try await readyGuest(for: client)
                 guard case .screenshot(let shot) = try await bridge.send(envelope(.screenshot(region: region), deadline: 20)) else {
                     throw Failure("The virtual Mac did not return a screenshot.")
                 }
@@ -83,7 +83,7 @@ final class ExternalControl {
                     : "Zoomed screenshot (\(shot.width)×\(shot.height)). Use coordinates from a full screenshot to click."
                 return ControlResponse(text: what, image: shot.imageData, imageType: shot.mediaType)
             case .text:
-                let bridge = try await readyGuest()
+                let bridge = try await readyGuest(for: client)
                 guard case .capabilities(let capabilities) = try await bridge.send(envelope(.capabilities, deadline: 5)),
                       capabilities.supportsAccessibilityTree else {
                     throw Failure("The agent in the virtual Mac is too old to read text; it updates itself when the virtual Mac is idle.")
@@ -94,7 +94,7 @@ final class ExternalControl {
                 default: throw Failure("The virtual Mac did not return its text.")
                 }
             case .elements(let query):
-                let bridge = try await readyGuest()
+                let bridge = try await readyGuest(for: client)
                 // An older agent can't decode the command and would drop the connection: ask first.
                 guard case .capabilities(let capabilities) = try await bridge.send(envelope(.capabilities, deadline: 5)),
                       capabilities.supportsAccessibilityTree else {
@@ -121,13 +121,13 @@ final class ExternalControl {
             case .snapshotTake(let name):
                 await release(note: nil)
                 let snapshot = try await model.saveSnapshot(name: name, by: client)
-                _ = try await readyGuest()
+                _ = try await readyGuest(for: client, afterSnapshot: true)
                 return ControlResponse(text: "Saved snapshot “\(snapshot.name)” (\(snapshot.id.uuidString.prefix(8)))\(snapshot.includesMemory ? " with open apps and windows" : "").")
             case .snapshotRestore(let wanted, let saveCurrent):
                 let snapshot = try findSnapshot(wanted)
                 await release(note: nil)
                 try await model.returnTo(snapshot, savingCurrent: saveCurrent, by: client)
-                _ = try await readyGuest()
+                _ = try await readyGuest(for: client, afterSnapshot: true)
                 let saved = saveCurrent ? " The previous state was saved as “Before restoring “\(snapshot.name)””." : ""
                 return ControlResponse(text: "Restored “\(snapshot.name)”. Take a screenshot before acting.\(saved)")
             case .snapshotDelete(let wanted):
@@ -170,7 +170,7 @@ final class ExternalControl {
     }
 
     private func perform(_ action: ComputerAction, command: ControlCommand, client: String) async throws -> ControlResponse {
-        let bridge = try await readyGuest()
+        let bridge = try await readyGuest(for: client)
         let token = try await acquire(for: client, bridge: bridge)
         var result = try await bridge.send(envelope(.perform(action), lease: token, deadline: 30))
         if case .failure(let error) = result, error.category == .leaseRejected {
@@ -234,6 +234,39 @@ final class ExternalControl {
             case "resumeOnboarding":
                 model.autoOnboardingStarted = false
                 model.startAutoOnboardingIfRequested()
+            case "grantPermissions": Task { await model.grantPermissionsStep() }
+            case "manualPermissions": Task { await model.grantPermissionsStep(automatically: false) }
+            case "cancelPermissions": model.cancelPermissionSetup()
+            case "verifyCapture":
+                Task {
+                    do { try await model.verifyGuestCapture() }
+                    catch { model.errorMessage = error.localizedDescription }
+                }
+            case "permissionState":
+                return ControlResponse(text: "step=\(model.onboarding.step) working=\(model.onboarding.isWorking) captureVerified=\(model.captureVerified) verifyingCapture=\(model.verifyingCapture)")
+            case "frameInfo":
+                guard let image = model.captureGuestScreen() else { return .error("no guest framebuffer") }
+                let view = model.guestView
+                return ControlResponse(text: "framebuffer=\(image.width)x\(image.height) active=\(NSApp.isActive) key=\(view?.window?.isKeyWindow == true) responder=\(view != nil && view?.window?.firstResponder === view)")
+            case "guestKey", "guestType", "guestClick":
+                guard !model.onboarding.isWorking, !model.builtInAgentNeedsMac, model.externalHolder == nil,
+                      !model.verifyingCapture, let vm = model.vm, vm.state == .running, let view = model.guestView else {
+                    return .error("Stop setup or the active task before developer input.")
+                }
+                let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
+                do {
+                    switch request.arguments["action"]?.stringValue {
+                    case "guestKey": try await display.key(request.arguments["key"]?.stringValue ?? "escape")
+                    case "guestType": try await display.type(request.arguments["text"]?.stringValue ?? "")
+                    default:
+                        guard let x = request.arguments["x"]?.doubleValue, let y = request.arguments["y"]?.doubleValue,
+                              x.isFinite, y.isFinite, x >= 0, y >= 0,
+                              x < display.guestSize.width, y < display.guestSize.height else {
+                            return .error("Developer click needs x and y.")
+                        }
+                        display.click(CGPoint(x: x, y: y))
+                    }
+                } catch { return .error("Developer input failed.") }
             case "takeOver": model.takeOver(reason: "you clicked the virtual Mac")
             case "handBack": model.returnControl()
             case "attach": model.pendingAttachments = (request.arguments["files"]?.arrayValue ?? []).compactMap(\.stringValue).map { URL(fileURLWithPath: $0) }
@@ -254,6 +287,18 @@ final class ExternalControl {
             let directory = URL(fileURLWithPath: request.arguments["dir"]?.stringValue ?? NSTemporaryDirectory())
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let prefix = request.arguments["name"]?.stringValue ?? "window"
+            if request.arguments["guestOnly"] == .bool(true) {
+                guard let image = model.captureGuestScreen(),
+                      let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
+                    return .error("no guest framebuffer")
+                }
+                let url = directory.appendingPathComponent("\(prefix)-guest.png")
+                do {
+                    try data.write(to: url, options: .atomic)
+                    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+                    return ControlResponse(text: url.path)
+                } catch { return .error("could not write the test framebuffer") }
+            }
             var written: [String] = []
             for (index, window) in NSApp.windows.enumerated() where window.isVisible && window.frame.width > 200 {
                 guard let view = window.contentView?.superview ?? window.contentView,
@@ -341,15 +386,17 @@ final class ExternalControl {
     // MARK: Guest
 
     /// Waits until the virtual Mac is running with its agent connected and the desktop ready, starting it if needed.
-    private func readyGuest() async throws -> any GuestChannel {
+    private func readyGuest(for client: String, afterSnapshot: Bool = false) async throws -> any GuestChannel {
         guard model.isReady, let vm = model.vm, let bridge = model.bridge else {
             throw Failure("Chat Computer is not set up yet. Finish the setup in its window first.")
         }
-        // A starting Mac gets time to boot; a running one that isn't ready gets a short wait, so one stuck
-        // command doesn't hold up every command queued behind it.
-        var deadline = Date().addingTimeInterval(vm.state == .running ? 20 : 150)
+        // Virtualization can report running before a restored guest reaches its
+        // login session or connects the agent. Snapshot operations get the boot
+        // budget too; ordinary running commands retain their shorter wait.
+        var deadline = Date().addingTimeInterval(vm.state == .running && !afterSnapshot ? 20 : 150)
         var started = false
         var unlocked = false
+        var checkedCapture = false
         var reason = "it is \(vm.state)"
         while Date() < deadline {
             if model.snapshotActivity != nil || vm.isWorkingOnSnapshots {
@@ -366,6 +413,23 @@ final class ExternalControl {
                     let readiness = await guestReadiness(bridge)
                     if readiness == nil { return bridge }
                     reason = readiness ?? reason
+                    if readiness == GuestReadiness.captureNotVerified.problem,
+                       !checkedCapture {
+                        // A snapshot briefly disconnects the bridge and invalidates
+                        // capture. Do not wait for the background retry cooldown
+                        // and report failure after already saving/restoring it.
+                        checkedCapture = true
+                        // A transient health failure invalidates pixels even
+                        // while this client holds input. Release only its own
+                        // lease before verification; the action reacquires it
+                        // afterward. Another client's lease stays untouched.
+                        if model.externalHolder == client { await release(note: nil) }
+                        try await model.ensureGuestCaptureVerified()
+                        // Verification may finish after the short readiness
+                        // deadline. Recheck its actual result before timing out.
+                        if let problem = await guestReadiness(bridge) { reason = problem }
+                        else { return bridge }
+                    }
                     if !unlocked, reason.contains("locked") {
                         unlocked = true
                         await model.unlockGuestIfLocked()
@@ -385,7 +449,12 @@ final class ExternalControl {
         let connected = await bridge.isConnected
         var report: HealthReport?
         if connected, case .health(let health)? = try? await bridge.send(envelope(.health, deadline: 5)) { report = health }
-        return GuestReadiness(connected: connected, report: report).problem
+        if let report, let bundled = AppModel.bundledAgentVersion, report.agentVersion != bundled {
+            return "the agent in the virtual Mac needs an update; it updates when the virtual Mac is idle"
+        }
+        let readiness = GuestReadiness(connected: connected, report: report)
+        if readiness.isReady, let report, !model.captureIsVerified(for: report) { return GuestReadiness.captureNotVerified.problem }
+        return readiness.problem
     }
 
     private func envelope(_ command: GuestCommand, lease: UUID? = nil, deadline: TimeInterval = 10) -> CommandEnvelope {
@@ -460,7 +529,7 @@ final class ExternalControl {
         // Go to Folder can't open a folder that doesn't exist yet; the outbox is writable from here.
         if inOutbox { try? FileManager.default.createDirectory(at: hostFolder, withIntermediateDirectories: true) }
         let before = SaveDialog.fingerprints(named: name, in: hostFolder)
-        let bridge = try await readyGuest()
+        let bridge = try await readyGuest(for: client)
         let token = try await acquire(for: client, bridge: bridge)
         model.transcript.append(ChatItem(role: .action, text: "\(client): save \"\(name)\" → \(path)"))
         let vmID = model.vm?.spec.id ?? UUID()

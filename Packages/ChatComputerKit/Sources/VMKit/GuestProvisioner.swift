@@ -19,8 +19,13 @@ public struct GuestProvisioner: Sendable {
     /// `password` overrides it for development (a short password you can type into the guest).
     /// Remote login is enabled solely so `installAgent` can run; bootstrap turns it off again.
     public func firstBootOptions(spec: VMSpec, password override: String? = nil) throws -> VZMacGuestProvisioningOptions {
-        let password = override ?? Self.randomSecret()
-        try secrets.write(password, for: SecretAccount.guestPassword(vmID: spec.id))
+        let account = SecretAccount.guestPassword(vmID: spec.id)
+        let existing = try secrets.read(account)
+        if let existing, let override, existing != override {
+            throw VMError.bootstrapFailed("This virtual Mac already has a saved password. Retry with that password, or create a new virtual Mac.")
+        }
+        let password = existing ?? override ?? Self.randomSecret()
+        if existing == nil { try secrets.write(password, for: account) }
 
         let options = VZMacGuestProvisioningOptions()
         options.fullName = spec.name
@@ -42,7 +47,7 @@ public struct GuestProvisioner: Sendable {
         let pairingToken = Self.randomSecret()
         try stageBootstrapFiles(spec: spec, agentApp: agentApp, pairingToken: pairingToken)
 
-        let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet, attempts: waitMinutes * 30)
+        let address = try await guestAddress(macAddress: spec.macAddress, subnet: subnet, timeout: .seconds(waitMinutes * 60))
         // The port can accept connections before sshd answers: on a fresh guest the first connection timed out
         // "during banner exchange". Failures before the script starts are retried; nothing has run yet.
         var attempt = 0
@@ -122,15 +127,29 @@ public struct GuestProvisioner: Sendable {
     /// long before the guest is up; it is re-read on every attempt in case it changes.
     /// The first boot after provisioning can take several minutes before SSH answers (it was 30 s in one fresh
     /// install and never in another), so the wait is long; the caller restarts the guest if it runs out.
-    private func guestAddress(macAddress: String, subnet: IPv4Subnet?, attempts: Int) async throws -> String {
-        for _ in 0..<attempts {
+    private func guestAddress(macAddress: String, subnet: IPv4Subnet?, timeout: Duration) async throws -> String {
+        try await Self.waitForAddress(timeout: timeout) {
             if let leases = try? String(contentsOfFile: "/var/db/dhcpd_leases", encoding: .utf8),
                let ip = Self.leaseAddress(in: leases, macAddress: macAddress, subnet: subnet),
                await Self.portIsOpen(host: ip, port: 22) {
                 return ip
             }
-            try await Task.sleep(for: .seconds(2))
+            return nil
         }
+    }
+
+    /// A slow port probe consumes the same deadline as the retry delay. Counting
+    /// attempts alone can turn a ten-minute wait into fifteen or twenty minutes.
+    static func waitForAddress(timeout: Duration, probe: @Sendable () async -> String?) async throws -> String {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        repeat {
+            try Task.checkCancellation()
+            if let address = await probe() { return address }
+            let remaining = clock.now.duration(to: deadline)
+            if remaining <= .zero { break }
+            try await Task.sleep(for: min(.seconds(2), remaining))
+        } while clock.now < deadline
         throw VMError.guestAddressUnknown
     }
 

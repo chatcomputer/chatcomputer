@@ -35,6 +35,12 @@ public struct SetupAssistant {
     /// Runs until the desktop shows, then turns on SSH and automatic login from Terminal.
     public func run(timeout: TimeInterval = 900) async throws {
         let started = Date()
+        // A resumed, partially configured guest can have a sleeping display.
+        // Wake it before interpreting an empty frame as the animated hello page.
+        try Task.checkCancellation()
+        try await display.key("escape")
+        display.move(to: CGPoint(x: display.guestSize.width / 2, y: display.guestSize.height / 2))
+        try await Task.sleep(for: .seconds(3))
         var lastPage = ""
         var repeats = 0
         var unreadable = 0
@@ -47,9 +53,21 @@ public struct SetupAssistant {
                 try await Task.sleep(for: .seconds(2))
                 continue
             }
-            unreadable = 0
             let screen = try ScreenText.recognize(image, guestSize: display.guestSize)
-            let page = Self.page(screen)
+            if screen.items.isEmpty {
+                // A restored display may not accept the first wake key yet.
+                // A black frame is not the animated hello screen: wake again
+                // until there is text to classify, without clicking blindly.
+                unreadable += 1
+                guard unreadable < 30 else { throw HostControlError.noFramebuffer }
+                try await display.key("escape")
+                display.move(to: CGPoint(x: display.guestSize.width / 2, y: display.guestSize.height / 2))
+                try await Task.sleep(for: .seconds(2))
+                continue
+            }
+            unreadable = 0
+            let page = Self.page(screen, fullName: fullName)
+            if page == "working" { revealMenuBar() }
             trace?(page, image)
             // Pages slide in: text shows before the controls take clicks and typing. Act on a page only when the
             // next read still shows it.
@@ -75,8 +93,9 @@ public struct SetupAssistant {
     }
 
     /// The page, recognized by text that only it shows. Dialogs are checked before the page under them.
-    nonisolated static func page(_ screen: ScreenText) -> String {
+    nonisolated static func page(_ screen: ScreenText, fullName: String? = nil) -> String {
         let checks: [(String, [String])] = [
+            ("login", ["Your password is required to"]),
             // Dialog text wraps, so each needle is a fragment that stays on one recognized line.
             ("skip apple account?", ["want to skip", "Don't Skip", "Don’t Skip"]),
             ("agree dialog", ["read and agree"]),
@@ -114,6 +133,14 @@ public struct SetupAssistant {
         }
         // The desktop: Finder's menu bar, and no Setup Assistant window.
         if screen.contains("Finder"), screen.contains("Go"), screen.contains("Window") { return "desktop" }
+        // A retry can restore the Terminal opened by an earlier bootstrap.
+        if TerminalBootstrap.isTerminal(screen) { return "desktop" }
+        // A resumed session's lock screen omits the cold-boot password notice.
+        // Recognize it only for the saved account, after checking actual setup
+        // pages so a new account's password field cannot be mistaken for login.
+        if let fullName, screen.items.contains(where: { $0.text == fullName }), screen.contains("Enter Password") {
+            return "login"
+        }
         // The hello screen greets in a rotating language: no fixed text to read.
         return screen.items.count <= 3 ? "hello" : "working"
     }
@@ -128,6 +155,18 @@ public struct SetupAssistant {
             if !click("Continue") { try await display.key("return") }
         }
         switch page {
+        case "login":
+            guard attempt < 2 else { throw HostControlError.gaveUp("The virtual Mac did not accept its saved login password.") }
+            guard let field = screen.first("Enter Password") else {
+                throw HostControlError.gaveUp("The virtual Mac's login password field could not be read.")
+            }
+            // Login after a reboot differs from the session lock screen: Escape
+            // can leave the account's password field. Focus the observed field.
+            display.click(field.center)
+            for _ in 0..<64 { try await display.key("backspace") }
+            try await display.type(password())
+            try await display.key("return")
+            try await Task.sleep(for: .seconds(3))
         case "hello":
             display.click(helloButton)
         case "working", "creating account":
@@ -235,27 +274,17 @@ public struct SetupAssistant {
     /// Remote Login and automatic login, from Terminal: `systemsetup` needs Full Disk Access on macOS 26, so sshd
     /// is started with launchctl. The password goes only to sudo's prompts, never on a command line.
     private func enableRemoteLogin() async throws {
-        let secret = try password()
-        try await display.key("cmd+space")
-        try await Task.sleep(for: .seconds(1.5))
-        try await display.type("Terminal")
-        try await Task.sleep(for: .seconds(1))
-        try await display.key("return")
-        try await Task.sleep(for: .seconds(4))
-        try await display.type("sudo launchctl enable system/com.openssh.sshd && sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist; sudo sysadminctl -autologin set -userName \(username) -password -")
-        try await display.key("return")
-        try await Task.sleep(for: .seconds(2))
-        try await display.type(secret)      // sudo
-        try await display.key("return")
-        try await Task.sleep(for: .seconds(4))
-        try await display.type(secret)      // sysadminctl's own prompt
-        try await display.key("return")
-        try await Task.sleep(for: .seconds(3))
-        try await display.type("exit")
-        try await display.key("return")
-        try await Task.sleep(for: .seconds(1))
-        try await display.key("cmd+q")
-        log("setup assistant: remote login and automatic login on")
+        try await TerminalBootstrap(read: { revealMenuBar(); return try read() }, key: { try await display.key($0) },
+                                    type: { try await display.type($0) }, password: password,
+                                    log: { log("setup assistant: bootstrap: \($0)") }).run(username: username)
+        log("setup assistant: remote login and automatic login verified")
+    }
+
+    private func revealMenuBar() {
+        // An existing account may hide its menu bar automatically. A tiny
+        // movement at the top edge reveals the application identity for OCR.
+        display.move(to: CGPoint(x: 65, y: 1))
+        display.move(to: CGPoint(x: 64, y: 0))
     }
 
     private func read() throws -> ScreenText {

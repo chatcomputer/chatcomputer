@@ -1,0 +1,1 @@
+{"task": "textedit-note", "run": 1, "agent": "Claude Code (CLI)", "passed": false, "models": [], "detail": "agent exited with status 1; agent reported an error; no note.txt in the outbox", "seconds": 2, "turns": 1, "costUSD": 0, "inputTokens": 0, "cachedInputTokens": 0, "outputTokens": 0, "answer": "Failed to authenticate: OAuth session expired and could not be refreshed"}

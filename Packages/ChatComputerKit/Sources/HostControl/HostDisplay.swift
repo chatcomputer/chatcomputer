@@ -16,7 +16,16 @@ import Virtualization
 ///
 /// Coordinates are guest points with a top-left origin (1280×800 for the default display).
 @MainActor
-public final class HostDisplay {
+public protocol PermissionDisplay {
+    var guestSize: CGSize { get }
+    func capture() -> CGImage?
+    func click(_ point: CGPoint, count: Int)
+    func key(_ combo: String) async throws
+    func type(_ text: String) async throws
+}
+
+@MainActor
+public final class HostDisplay: PermissionDisplay {
     public let view: VZVirtualMachineView
     public var guestSize: CGSize
 
@@ -41,15 +50,21 @@ public final class HostDisplay {
         return rep.cgImage
     }
 
-    private static func framebuffer(in layer: CALayer?) -> IOSurface? {
+    static func framebuffer(in layer: CALayer?) -> IOSurface? {
         guard let layer else { return nil }
+        var largest: IOSurface?
         if let contents = layer.contents, CFGetTypeID(contents as CFTypeRef) == IOSurfaceGetTypeID() {
-            return unsafeBitCast(contents as AnyObject, to: IOSurface.self)
+            largest = unsafeBitCast(contents as AnyObject, to: IOSurface.self)
         }
+        // A restored view can also have an IOSurface for its cursor. Traversal
+        // order is not a guarantee that the first surface is the guest display.
         for sublayer in layer.sublayers ?? [] {
-            if let surface = framebuffer(in: sublayer) { return surface }
+            if let surface = framebuffer(in: sublayer),
+               largest == nil || surface.width * surface.height > largest!.width * largest!.height {
+                largest = surface
+            }
         }
-        return nil
+        return largest
     }
 
     // MARK: Mouse

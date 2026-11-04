@@ -66,7 +66,7 @@ public enum ControlCommandLine {
             open.executableURL = URL(fileURLWithPath: "/usr/bin/open")
             // Start the app this command belongs to (the symlink's target), not whichever copy Launch Services
             // finds first for the bundle ID: two copies must never run the same virtual Mac.
-            open.arguments = ["-g"] + (ownAppBundle().map { [$0.path] } ?? ["-b", appBundleID])
+            open.arguments = launchArguments(bundle: ownAppBundle(), dataDirectory: ProcessInfo.processInfo.environment["CC_DATA_DIR"])
             do {
                 try open.run()
                 open.waitUntilExit()
@@ -92,6 +92,17 @@ public enum ControlCommandLine {
         let executable = URL(fileURLWithPath: path).resolvingSymlinksInPath()
         let bundle = executable.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         return bundle.pathExtension == "app" ? bundle : nil
+    }
+
+    /// LaunchServices does not inherit the CLI's environment. Forward only the
+    /// explicit data-folder override, never model keys or the whole environment.
+    static func launchArguments(bundle: URL?, dataDirectory: String?) -> [String] {
+        var arguments = ["-g"]
+        if let dataDirectory, !dataDirectory.isEmpty {
+            arguments += ["--env", "CC_DATA_DIR=\(dataDirectory)"]
+        }
+        arguments += bundle.map { [$0.path] } ?? ["-b", appBundleID]
+        return arguments
     }
 
     private static func serveMCP(version: String) async {

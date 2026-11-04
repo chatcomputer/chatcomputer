@@ -79,43 +79,60 @@ extension AppModel {
         }
     }
 
-    /// Step 4 done by host-level control, then the usual check through the agent.
-    func grantPermissionsStep() async {
+    /// One cancellable host operation for both automatic and manual completion.
+    func grantPermissionsStep(automatically: Bool = true) async {
+        guard permissionTask == nil, !onboarding.isWorking else { return }
+        let task = Task { await performPermissionSetup(automatically: automatically) }
+        permissionTask = task
+        await task.value
+        permissionTask = nil
+    }
+
+    func cancelPermissionSetup() {
+        permissionTask?.cancel()
+    }
+
+    private func performPermissionSetup(automatically: Bool) async {
         onboarding.isWorking = true
+        var attention: Int?
+        defer {
+            onboarding.isWorking = false
+            if let attention { NSApp.cancelUserAttentionRequest(attention) }
+        }
+        recordPermission(automatically ? "automatic-setup-started" : "manual-verification-started")
         do {
             if vm?.state != .running { await bootVM() }
-            var waited = 0
-            while !(await bridge?.isConnected ?? false), waited < 60 {
+            for _ in 0..<60 {
+                try Task.checkCancellation()
+                if await bridge?.isConnected == true { break }
                 onboarding.detail = "Waiting for the agent in the virtual Mac to connect…"
                 try await Task.sleep(for: .seconds(1))
-                waited += 1
             }
-            // The next part types and clicks into the virtual Mac from this Mac, which only reaches it while this
-            // app is in front: macOS doesn't let a background app take the focus.
-            var attention: Int?
+            guard await bridge?.isConnected == true else {
+                recordPermission("setup-agent-not-connected")
+                throw HostControlError.gaveUp("The guest agent did not connect. Restart the virtual Mac and retry.")
+            }
+            try await ensureGuestAgentCurrent()
+            if !NSApp.isActive { recordPermission("waiting-for-host-focus") }
             while !NSApp.isActive {
-                onboarding.detail = "Click this window to continue: the next step operates the virtual Mac's screen, which only works while Chat Computer is in front."
-                // Someone who switched away during setup gets a bouncing Dock icon rather than a silent wait.
+                onboarding.detail = "Click this window to continue setting up the virtual Mac."
                 if attention == nil { attention = NSApp.requestUserAttention(.criticalRequest) }
-                devLog("onboarding: waiting for the app to be in front")
                 try await Task.sleep(for: .seconds(1))
             }
-            if let attention { NSApp.cancelUserAttentionRequest(attention) }
+            recordPermission("host-focused")
             await unlockGuestIfLocked()
-            do {
-                try await grantPermissionsAutomatically()
-            } catch {
-                // Screen recording often needs a second pass on a fresh guest: the agent restarts to pick up the
-                // permission and may reconnect after the first pass gave up. A second pass has always finished it.
-                onboarding.detail = "Trying once more…"
-                try await Task.sleep(for: .seconds(3))
-                try await grantPermissionsAutomatically()
-            }
+            try Task.checkCancellation()
+            if automatically { try await grantPermissionsAutomatically() }
             onboarding.isWorking = false
+            // Both paths go through health AND real capture verification.
             await runOnboardingStep()
+        } catch is CancellationError {
+            recordPermission("setup-cancelled")
+            onboarding.detail = "Automatic setup stopped. Finish any pending prompt in the virtual Mac, then continue manually. " + Self.permissionInstructions
         } catch {
-            onboarding.isWorking = false
-            onboarding.detail = "Automatic setup stopped: \(error)\n\n" + Self.permissionInstructions
+            recordPermission("setup-failed")
+            devLog("onboarding: grantPermissions failed: \(error)")
+            onboarding.detail = "Setup stopped: \(error)\n\n" + Self.permissionInstructions
         }
     }
 
@@ -151,24 +168,13 @@ extension AppModel {
         try await assistant.run()
     }
 
-    /// The clean starting point should greet the first task with an empty desktop. The agent's first screenshot
-    /// makes macOS ask whether it may keep recording the screen: take one now and answer it from the host, so the
-    /// answer is part of the saved machine. And System Settings, left open by the permission step, would reopen
-    /// at every login.
-    func tidyGuestBeforeFreezing() async {
-        guard let vm, let bridge, let view = guestView, await bridge.isConnected else { return }
+    /// A clean baseline must contain verified screen capture, not merely TCC flags.
+    func tidyGuestBeforeFreezing() async throws {
+        guard let vm, let view = guestView else { throw HostControlError.noWindow }
         let display = HostDisplay(view: view, guestSize: CGSize(width: vm.spec.displayWidth / 2, height: vm.spec.displayHeight / 2))
-        _ = try? await bridge.send(.init(vmID: vm.spec.id, jobID: nil, leaseToken: nil, observationVersion: nil,
-                                         deadline: Date().addingTimeInterval(10), command: .screenshot(region: nil)))
-        for _ in 0..<5 {
-            try? await Task.sleep(for: .seconds(2))
-            if await ConsentPrompt.approveIfShown(on: display) {
-                devLog("onboarding: answered the screen recording prompt")
-                break
-            }
-        }
         let grant = PermissionGrant(display: display, prepare: { _ in }, isGranted: { _ in true }, restartAgent: {}, password: { "" })
-        try? await grant.quitSystemSettings()
+        try await grant.quitSystemSettings()
+        try await ensureGuestCaptureVerified()
     }
 
     static let permissionInstructions = """
@@ -178,6 +184,7 @@ extension AppModel {
         """
 
     func runOnboardingStep() async {
+        guard !onboarding.isWorking else { return }
         onboarding.isWorking = true
         defer { onboarding.isWorking = false }
         do {
@@ -220,14 +227,24 @@ extension AppModel {
                 if vm.state != .running { await vm.start() }
                 onboarding.detail = "Waiting for the guest desktop, then installing…"
                 let provisioner = GuestProvisioner(bundle: bundle, secrets: secrets)
+                let needsSetupAssistant = vm.spec.release == .macOS26
                 do {
-                    try await provisioner.installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
+                    try await provisioner.installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet,
+                                                       waitMinutes: needsSetupAssistant ? 1 : 10)
                 } catch VMError.guestAddressUnknown {
-                    // The guest never came up on the network: restart it once and wait again.
-                    devLog("onboarding: guest unreachable after 10 minutes; restarting it")
-                    onboarding.detail = "The virtual Mac is not responding; restarting it…"
-                    try? await vm.forceStop()
-                    await vm.start()
+                    if needsSetupAssistant {
+                        // A previous interrupted Terminal step can leave both SSH
+                        // and automatic login off. Resume with the saved password;
+                        // another cold boot alone cannot turn those services on.
+                        devLog("onboarding: guest SSH unavailable; verifying macOS 26 bootstrap again")
+                        onboarding.detail = "Remote Login did not start. Checking the virtual Mac's setup again…"
+                        try await walkSetupAssistant(vm)
+                    } else {
+                        devLog("onboarding: guest unreachable after 10 minutes; restarting it")
+                        onboarding.detail = "The virtual Mac is not responding; restarting it…"
+                        try? await vm.forceStop()
+                        await vm.start()
+                    }
                     onboarding.detail = "Waiting for the guest desktop, then installing…"
                     try await provisioner.installAgent(spec: vm.spec, agentApp: agentApp, subnet: vm.network.ipv4Subnet)
                 }
@@ -236,7 +253,7 @@ extension AppModel {
                 onboarding.step = .grantPermissions
 
             case .grantPermissions:
-                // The user grants these inside the guest (left pane); we only observe the result.
+                // A manual grant still needs health and actual pixel verification.
                 guard let bridge, let vm else { return }
                 if vm.state != .running { await vm.start() }
                 // The agent may be restarting to pick up a new permission; give it time to reconnect.
@@ -251,12 +268,16 @@ extension AppModel {
                     onboarding.detail = "Not granted yet. " + Self.permissionInstructions
                     return
                 }
+                recordPermission("permissions-preflight-passed", guest: report.permissionDiagnostics)
+                onboarding.detail = "Checking that the agent can capture the virtual Mac…"
+                try await tidyGuestBeforeFreezing()
+                try Task.checkCancellation()
                 onboarding.step = .freezeImage
 
             case .freezeImage:
                 guard let vm else { return }
                 onboarding.detail = "Tidying up the virtual Mac…"
-                await tidyGuestBeforeFreezing()
+                try await tidyGuestBeforeFreezing()
                 onboarding.detail = "Shutting down the virtual Mac…"
                 let bridge = self.bridge
                 try await vm.shutDown(viaGuest: bridge.map { bridge in
@@ -279,8 +300,10 @@ extension AppModel {
             onboarding.progress = nil
         } catch {
             // Logged as well: the alert is the only other trace, and an unattended setup has no one to read it.
+            recordPermission(error is CancellationError ? "onboarding-cancelled" : "onboarding-step-failed")
             devLog("onboarding: \(onboarding.step) failed: \(error)")
-            errorMessage = error.localizedDescription
+            onboarding.detail = error is CancellationError ? "Setup stopped. You can finish permissions manually, then continue." : "Setup stopped: \(error.localizedDescription)"
+            if !(error is CancellationError) { errorMessage = error.localizedDescription }
         }
     }
 
@@ -298,6 +321,7 @@ extension AppModel {
 /// The setup steps, in the main window's right-hand panel until the virtual Mac is ready. The guest screen on the
 /// left is the window's own `GuestStageView`, visible from first boot on, so the permission step happens in place.
 struct OnboardingPanel: View {
+    @State private var includeGuestScreen = false
     @Environment(AppModel.self) private var model
 
     var body: some View {
@@ -322,7 +346,7 @@ struct OnboardingPanel: View {
                     .disabled(model.onboarding.isWorking)
                     .keyboardShortcut(.defaultAction)
                     Button("I granted them myself") {
-                        Task { await model.runOnboardingStep() }
+                        Task { await model.grantPermissionsStep(automatically: false) }
                     }
                     .buttonStyle(.link)
                     .disabled(model.onboarding.isWorking)
@@ -337,6 +361,18 @@ struct OnboardingPanel: View {
                     }
                     .disabled(model.onboarding.isWorking || !model.canStartInstall)
                     .keyboardShortcut(.defaultAction)
+                }
+            }
+            if model.permissionTask != nil {
+                Button("Stop automatic setup") { model.cancelPermissionSetup() }
+            }
+            if model.onboarding.step == .grantPermissions || model.onboarding.step == .freezeImage {
+                Toggle("Include the current guest screen in diagnostics", isOn: $includeGuestScreen)
+                    .font(.caption)
+                Text("The optional image can contain your files and screen content. Nothing is uploaded.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Button("Export Diagnostics…") {
+                    Task { await Diagnostics.export(model, includeGuestScreen: includeGuestScreen) }
                 }
             }
             Spacer()

@@ -54,5 +54,49 @@ import Testing
             #expect(screen.first(label) != nil, "missing \(label)")
         }
     }
+
+    @Test func recognizesAnExistingAccountsLoginAfterRestart() {
+        let screen = ScreenText(items: [
+            .init(text: "Enter Password", rect: CGRect(x: 500, y: 690, width: 180, height: 24)),
+            .init(text: "Your password is required to", rect: CGRect(x: 500, y: 730, width: 240, height: 20)),
+            .init(text: "log in", rect: CGRect(x: 590, y: 752, width: 60, height: 20)),
+        ])
+        #expect(SetupAssistant.page(screen) == "login")
+    }
+
+    @Test func recognizesTheSavedAccountsRealLockScreen() throws {
+        let screen = try Self.screen("lock-26")
+        #expect(SetupAssistant.page(screen, fullName: "Chat Computer") == "login")
+        #expect(SetupAssistant.page(screen, fullName: "Another account") != "login")
+        #expect(SetupAssistant.page(screen) != "login")
+    }
+
+    @Test func accountCreationIsNotAnExistingAccountLogin() throws {
+        let original = try Self.screen("shot-010")
+        let screen = ScreenText(items: original.items + [
+            .init(text: "Chat Computer", rect: .zero),
+            .init(text: "Enter Password", rect: .zero),
+        ])
+        #expect(SetupAssistant.page(screen, fullName: "Chat Computer") == "account")
+    }
+
+    @Test func aRestoredTerminalIsAnUnlockedDesktop() throws {
+        let screen = try Self.screen("terminal-restored-26")
+        #expect(TerminalBootstrap.isTerminal(screen))
+        #expect(SetupAssistant.page(screen, fullName: "Chat Computer") == "desktop")
+    }
+
+    @Test func recognizesRealMergedTerminalMenuTitles() throws {
+        let screen = try Self.screen("terminal-menu-merged-26")
+        #expect(TerminalBootstrap.isTerminal(screen))
+        #expect(SetupAssistant.page(screen, fullName: "Chat Computer") == "desktop")
+    }
+
+    @Test func terminalIdentityNeedsBothWholeMenuWords() {
+        let body = ScreenText(items: [.init(text: "Terminal Shell", rect: CGRect(x: 20, y: 100, width: 200, height: 20))])
+        #expect(!TerminalBootstrap.isTerminal(body))
+        let another = ScreenText(items: [.init(text: "FakeTerminal Shell", rect: CGRect(x: 20, y: 4, width: 200, height: 20))])
+        #expect(!TerminalBootstrap.isTerminal(another))
+    }
 }
 #endif

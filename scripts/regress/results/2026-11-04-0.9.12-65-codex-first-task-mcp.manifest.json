@@ -1,0 +1,63 @@
+{
+  "recordedAt": "2026-11-04T12:44:28.355673+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "c774a4ceadc7dc17a589a1de8f5a40fe36c2a649",
+  "sourceSHA256": "e97891173f7dc3f230c1bbf2ac843d8f2384d82e35d6d5ed6dd1f7371d2a93c6",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "65",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "47b42454d27a8eed3f0115a9a4e339df99c0e191931f20adc5a881b06ff4f543"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "65",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "8bf4b50bd6de798739e72ef61aac404a4be3f2d5c1f54df57254b33c46a64c1b"
+  },
+  "vm": {
+    "id": "53D5B4F2-30ED-4811-B9E7-8B7C9FA19442",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "39499BD8-FFF6-472C-9D62-8B55B33916A8",
+  "suite": "short",
+  "model": "openai:gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-65-codex-first-task-mcp.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "1c4ec9554f56e8920b4b5af91375a8d955e127fb4e978815720134883cf020a7",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "d95b28430470d8a0aa9deaf98015a0f6ce15941a57fe63a710de89bfd7e9f813",
+  "scope": "One exploratory textedit-note task; not the complete short suite",
+  "provenanceNotes": [
+    "App and bundled agent are the actual unchanged signed build65 used for this sample.",
+    "Source/runner hashes were captured after this exploratory sample; tooling was subsequently edited. They describe source at manifest generation, not an immutable execution-time runner. Raw agent events and original result are retained.",
+    "Codex cost is unknown (costUSD null); old console rendering of $0.00 was a display bug."
+  ],
+  "traceDirectory": "build/validation/codex-65-mcp-traces"
+}

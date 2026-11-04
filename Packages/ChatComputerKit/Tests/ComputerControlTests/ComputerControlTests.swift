@@ -192,5 +192,12 @@ import Testing
         #expect(ControlCommandLine.isCommandLine(["/Applications/ChatComputer.app/Contents/MacOS/ChatComputer", "--help"]))
         #expect(!ControlCommandLine.isCommandLine(["/Applications/ChatComputer.app/Contents/MacOS/ChatComputer", "-NSDocumentRevisionsDebugMode", "YES"]))
     }
+
+    @Test func coldLaunchKeepsTheExplicitDataFolderAndOwnApp() {
+        let app = URL(fileURLWithPath: "/tmp/Local Build/ChatComputer.app")
+        let arguments = ControlCommandLine.launchArguments(bundle: app, dataDirectory: "/tmp/Private Test Data")
+        #expect(arguments == ["-g", "--env", "CC_DATA_DIR=/tmp/Private Test Data", app.path])
+        #expect(ControlCommandLine.launchArguments(bundle: nil, dataDirectory: "") == ["-g", "-b", ControlCommandLine.appBundleID])
+    }
 }
 #endif

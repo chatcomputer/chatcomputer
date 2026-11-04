@@ -9,25 +9,27 @@
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DD="${CC_DERIVED_DATA:-$ROOT/.build/DerivedData}"
+. "$ROOT/scripts/check-output.sh"
+LOGS="${CC_TEST_LOG_DIR:-$ROOT/build/test-logs}"
 
 echo "== 1. swift test"
-swift test --package-path "$ROOT/Packages/ChatComputerKit" 2>&1 | grep -E "Test run with|✘|error:" 
+run_checked "$LOGS/unit.log" 'Test run with|✘|error:' swift test --package-path "$ROOT/Packages/ChatComputerKit"
 
 echo "== 2. xcodebuild"
 (cd "$ROOT" && xcodegen generate -q)
-xcodebuild -project "$ROOT/ChatComputer.xcodeproj" -scheme ChatComputer -configuration Debug \
-  -derivedDataPath "$DD" CODE_SIGN_IDENTITY=- build 2>&1 | grep -E "error:|BUILD"
-codesign -d --entitlements - --xml "$DD/Build/Products/Debug/ChatComputer.app" 2>/dev/null \
-  | grep -q com.apple.security.virtualization && echo "virtualization entitlement: present"
+run_checked "$LOGS/build.log" 'error:|BUILD' xcodebuild -project "$ROOT/ChatComputer.xcodeproj" -scheme ChatComputer -configuration Debug \
+  -derivedDataPath "$DD" CODE_SIGN_IDENTITY=- build
+codesign -d --entitlements - --xml "$DD/Build/Products/Debug/ChatComputer.app" >"$LOGS/entitlements.xml" 2>"$LOGS/codesign.log"
+grep -q com.apple.security.virtualization "$LOGS/entitlements.xml" || { echo "FAIL: virtualization entitlement missing"; exit 1; }
+echo "virtualization entitlement: present"
 
 echo "== 3. vm selftest"
-"$ROOT/scripts/harness.sh" vm selftest 2>/dev/null
+run_checked "$LOGS/selftest.log" '.' "$ROOT/scripts/harness.sh" vm selftest
 
 if [ -n "${CC_API_KEY:-}" ]; then
   echo "== 4. live loop"
   for scenario in notes approval injection; do
-    "$ROOT/scripts/harness.sh" live-loop --scenario "$scenario" 2>/dev/null | grep -E "result after|^PASS|^FAIL" | tr '\n' ' '
-    echo
+    run_checked "$LOGS/live-$scenario.log" 'result after|^PASS|^FAIL' "$ROOT/scripts/harness.sh" live-loop --scenario "$scenario"
   done
 else
   echo "== 4. live loop skipped (CC_API_KEY not set)"

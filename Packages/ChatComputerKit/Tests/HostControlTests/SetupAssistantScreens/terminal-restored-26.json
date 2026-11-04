@@ -1,0 +1,149 @@
+[
+  {
+    "h" : 11,
+    "text" : "Terminal",
+    "w" : 68,
+    "x" : 44,
+    "y" : 9
+  },
+  {
+    "h" : 11,
+    "text" : "Shell",
+    "w" : 40,
+    "x" : 120,
+    "y" : 9
+  },
+  {
+    "h" : 11,
+    "text" : "Edit",
+    "w" : 33,
+    "x" : 174,
+    "y" : 9
+  },
+  {
+    "h" : 11,
+    "text" : "View Window",
+    "w" : 115,
+    "x" : 212,
+    "y" : 9
+  },
+  {
+    "h" : 13,
+    "text" : "Help",
+    "w" : 37,
+    "x" : 334,
+    "y" : 9
+  },
+  {
+    "h" : 15,
+    "text" : "Q ≥ Wed Nоv4 12:25АМ",
+    "w" : 206,
+    "x" : 1056,
+    "y" : 7
+  },
+  {
+    "h" : 13,
+    "text" : "• agent — -zsh - 120×30",
+    "w" : 169,
+    "x" : 126,
+    "y" : 61
+  },
+  {
+    "h" : 14,
+    "text" : "agent@Chats-Virtual-Machine ~ % sudo -k \/bin\/sh -c 'if launchctl enable system\/com.openssh.sshd && { launchctl print sys",
+    "w" : 842,
+    "x" : 48,
+    "y" : 89
+  },
+  {
+    "h" : 15,
+    "text" : "tem\/com.openssh.sshd >\/dev\/null 2>&1 || launchctl bootstrap system \/System\/Library\/LaunchDaemons\/ssh.plist; } && { launc",
+    "w" : 840,
+    "x" : 50,
+    "y" : 103
+  },
+  {
+    "h" : 13,
+    "text" : "hctl kickstart -k system\/com.openssh.sshd >\/dev\/null 2>&1 || true; } && sysadminctl -autologin set -userName '\\''agent'\\",
+    "w" : 842,
+    "x" : 48,
+    "y" : 120
+  },
+  {
+    "h" : 18,
+    "text" : "\"' -password - && \/usr\/bin\/nc -z -G 2 127.0.0.1 22 && sysadminctl -autologin status 2>&1 | grep -F '|''Automatic login u",
+    "w" : 842,
+    "x" : 50,
+    "y" : 132
+  },
+  {
+    "h" : 11,
+    "text" : "ser:",
+    "w" : 29,
+    "x" : 50,
+    "y" : 152
+  },
+  {
+    "h" : 15,
+    "text" : "agent'|'' >\/dev\/null; then printf '|''|103|103|137\\102\\117\\117\\124\\123|124\\122\\101\\120|137\\122\\105\\101\\104\\131\\012'",
+    "w" : 811,
+    "x" : 80,
+    "y" : 150
+  },
+  {
+    "h" : 20,
+    "text" : "['; else printf '|''|103|103|137\\102|117|117\\124|123|124\\122|101\\120|137\\|106|101|111|114\\105|104|012'|\"'; fi\"",
+    "w" : 770,
+    "x" : 50,
+    "y" : 161
+  },
+  {
+    "h" : 11,
+    "text" : "Password:",
+    "w" : 63,
+    "x" : 50,
+    "y" : 182
+  },
+  {
+    "h" : 11,
+    "text" : "[Restored Nov 4,",
+    "w" : 107,
+    "x" : 65,
+    "y" : 197
+  },
+  {
+    "h" : 11,
+    "text" : "2026 at 12:24:10 AM1",
+    "w" : 145,
+    "x" : 178,
+    "y" : 197
+  },
+  {
+    "h" : 13,
+    "text" : "Last login: Wed Nov",
+    "w" : 137,
+    "x" : 48,
+    "y" : 212
+  },
+  {
+    "h" : 13,
+    "text" : "4 00:24:06 on console",
+    "w" : 159,
+    "x" : 186,
+    "y" : 212
+  },
+  {
+    "h" : 15,
+    "text" : "agent@chats-Virtual-Machine ~ % |",
+    "w" : 232,
+    "x" : 50,
+    "y" : 225
+  },
+  {
+    "h" : 37,
+    "text" : ")¼ O",
+    "w" : 107,
+    "x" : 827,
+    "y" : 744
+  }
+]

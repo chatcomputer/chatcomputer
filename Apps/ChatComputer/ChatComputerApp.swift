@@ -56,6 +56,13 @@ struct ChatComputerApp: App {
                     .disabled(!model.isReady)
                 Divider()
                 Button("Show Restore Image in Finder") { model.revealRestoreImage() }
+                Button("Verify Screen Capture") {
+                    Task {
+                        do { try await model.verifyGuestCapture() }
+                        catch { model.errorMessage = error.localizedDescription }
+                    }
+                }
+                .disabled(model.verifyingCapture || model.builtInAgentNeedsMac || model.externalHolder != nil || model.snapshotActivity != nil)
             }
             CommandMenu("Agent") {
                 // Emergency stop is handled by the host, independent of guest or model (proposal §04).

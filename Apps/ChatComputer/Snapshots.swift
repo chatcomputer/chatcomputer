@@ -21,6 +21,7 @@ extension AppModel {
     /// Why snapshots can't be taken or restored right now, or nil if they can.
     var snapshotsUnavailableReason: String? {
         guard isReady, let vm else { return "Finish setting up first." }
+        if verifyingCapture { return "Wait until the screen capture check is finished." }
         if snapshotActivity != nil || vm.isWorkingOnSnapshots { return "A snapshot is in progress." }
         guard phase == .ready || phase.isTerminal else { return "Finish or cancel the current task first." }
         switch vm.state {
@@ -48,6 +49,7 @@ extension AppModel {
     /// brings back the open apps and windows. `by` names a coding agent that asked for it.
     @discardableResult
     func saveSnapshot(name: String? = nil, by requester: String? = nil) async throws -> VMSnapshot {
+        while let captureTask { _ = await captureTask.result }
         if let reason = snapshotsUnavailableReason { throw SnapshotUnavailable(reason: reason) }
         guard let vm else { throw SnapshotUnavailable(reason: "Finish setting up first.") }
         let name = name ?? "Snapshot " + Date().formatted(.dateTime.month(.abbreviated).day().hour().minute())
@@ -64,13 +66,16 @@ extension AppModel {
 
     /// Returns the virtual Mac to `snapshot`, first saving the current state as a snapshot if asked.
     func returnTo(_ snapshot: VMSnapshot, savingCurrent: Bool, by requester: String? = nil) async throws {
+        while let captureTask { _ = await captureTask.result }
         if let reason = snapshotsUnavailableReason { throw SnapshotUnavailable(reason: reason) }
         guard let vm else { throw SnapshotUnavailable(reason: "Finish setting up first.") }
+        captureVerified = false
         let screen = vm.state == .running ? captureGuestScreen() : nil
         snapshotActivity = SnapshotActivity(title: "Restoring “\(snapshot.name)”…", frozenScreen: screen)
         defer { snapshotActivity = nil }
         try await vm.restoreSnapshot(snapshot.id, savingCurrentAs: savingCurrent ? "Before restoring “\(snapshot.name)”" : nil,
                                      thumbnail: screen.flatMap(Self.thumbnail))
+        didRestoreGuestSnapshot()
         if vm.state == .stopped { await vm.start() }
         let who = requester.map { " for \($0)" } ?? ""
         let detail = snapshot.includesMemory ? "" : " The virtual Mac is starting up from that disk."

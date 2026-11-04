@@ -47,4 +47,22 @@ import Testing
         report.screenLocked = true
         #expect(!report.isDesktopReady)
     }
+
+    @Test func oldGuestCapabilitiesAndHealthStillDecode() throws {
+        let oldCapabilities = Data(#"{"driver":"native","driverVersion":"0.9.11 (43)","supportsAccessibilityTree":true,"supportsBrowserSnapshot":false,"supportsBackgroundInput":false}"#.utf8)
+        let capabilities = try JSONDecoder().decode(DriverCapabilities.self, from: oldCapabilities)
+        #expect(capabilities.supportsPermissionFlow == nil)
+        let oldHealth = Data(#"{"agentVersion":"0.9.11 (43)","driver":"native","hasAquaSession":true,"screenLocked":false,"accessibilityGranted":true,"screenRecordingGranted":true,"sharedFoldersMounted":true}"#.utf8)
+        let report = try JSONDecoder().decode(HealthReport.self, from: oldHealth)
+        #expect(report.permissionDiagnostics == nil)
+        #expect(report.isDesktopReady)
+    }
+
+    @Test func newSetupCommandsRoundTripWithoutRequiringInputLease() throws {
+        for command in [GuestCommand.openPermissionSettings(.screenRecording), .captureProbe("CC CAPTURE 123456"), .captureProbe(nil)] {
+            let data = try JSONEncoder().encode(command)
+            #expect(try JSONDecoder().decode(GuestCommand.self, from: data) == command)
+            #expect(!command.requiresLease)
+        }
+    }
 }

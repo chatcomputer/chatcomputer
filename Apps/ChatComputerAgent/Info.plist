@@ -22,5 +22,7 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>Chat Computer captures this virtual Mac's screen so your agent can see and operate it.</string>
 </dict>
 </plist>

@@ -9,9 +9,14 @@ import Foundation
 public enum ConsentPrompt {
     /// Where to click Allow, if the screen shows this prompt for the guest agent.
     public static func allowButton(in screen: ScreenText) -> CGPoint? {
-        let text = screen.items.map(\.text).joined(separator: " ").lowercased()
-        guard text.contains("chatcomputeragent"), text.contains("private window picker") || text.contains("requesting to bypass") else { return nil }
         guard let prompt = screen.first("requesting to bypass") ?? screen.first("private window picker") else { return nil }
+        // An agent row elsewhere in Settings must not authorize another app's dialog.
+        guard screen.items.contains(where: {
+            $0.text.lowercased().contains("chatcomputeragent")
+                && $0.text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "chatcomputeragent"
+                && abs($0.rect.midY - prompt.rect.midY) < 100
+                && abs($0.rect.midX - prompt.rect.midX) < 300
+        }) else { return nil }
         // The Allow button sits below the prompt's text, in the same dialog.
         return screen.items
             .filter { $0.text.trimmingCharacters(in: .whitespaces).lowercased() == "allow" && $0.rect.minY > prompt.rect.minY
@@ -29,6 +34,7 @@ public enum ConsentPrompt {
             guard let screen = try? ScreenText.recognize(image, guestSize: size) else { return nil }
             return allowButton(in: screen)
         }.value
+        guard !Task.isCancelled else { return false }
         guard let point else { return false }
         display.click(point)
         return true

@@ -27,7 +27,7 @@ Requires macOS 27 and Xcode 27.
 
 ```sh
 xcodegen generate                                   # after editing project.yml; never edit the .xcodeproj
-cd Packages/ChatComputerKit && swift test           # unit tests: run after every change
+swift test --package-path Packages/ChatComputerKit  # unit tests; stay at the repository root
 scripts/test-mac.sh                                 # unit tests, Xcode build, host API checks, live scenarios
 ```
 
@@ -39,12 +39,27 @@ Before claiming a change works, run the layer that exercises it:
 | Change touches | Run |
 |---|---|
 | Portable logic (BridgeProtocol, ChatCore, ModelProxy, Orchestrator) | `swift test` |
-| The agent loop or a model client | `scripts/harness.sh live-loop --scenario notes|approval|injection` (needs `CC_API_KEY`) |
+| The agent loop or a model client | `scripts/test-mac.sh` with `CC_API_KEY` (runs notes, approval and injection); one scenario: `scripts/harness.sh live-loop --scenario notes` |
 | The guest driver (`AgentCore`) | `scripts/harness.sh vm up --update-agent --input-test 3` |
-| Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code), before and after; add `--suite long` for multi-step, multi-app work (`tasks-long.json`) |
+| Agent behaviour, prompts, cost | `scripts/harness.sh vm regress` (built-in agent) and `scripts/regress/external.py` (Claude Code by default; `--agent codex --model MODEL` for Codex CLI), before and after with the same external agent/model; add `--suite long` for multi-step, multi-app work (`tasks-long.json`) |
 | The guest agent's version or driver, for regression | `vm regress --rebuild-base --agent <ChatComputerAgent.app>`: the base snapshot keeps the agent it was made with |
 | Lifecycle: quit, sleep, snapshots, long runs | `scripts/soak.py`; a release's install path: `scripts/fresh-install.sh` |
 | Apps, onboarding, signing | `scripts/release.sh`, then launch `build/release/ChatComputer.app` |
+
+Documentation-only edits need link and command checks. Script edits need the failure-injection tests in
+`scripts/tests/`. For a retained, isolated install run, set `CC_DATA_DIR` to a new directory before
+`scripts/fresh-install.sh`; existing files, directories and symlinks are refused. Without that switch, the
+script temporarily moves the selected data folder and restores it on exit.
+Report unavailable hardware, missing keys and skipped scenarios explicitly. Candidate
+regression JSONL files should have a companion manifest from `scripts/regress/run-manifest.py`.
+Use `--external-agent codex` in that manifest when testing Codex. Keep its raw events with
+`external.py --trace-dir PATH` and set `CC_DATA_DIR` to an isolated test VM. Switching external agents starts a separate comparison; it does not
+replace the built-in DeepSeek/Anthropic checks or turn an unavailable historical model run into a pass.
+Claude Code is a historical benchmark client, not a product dependency. If its session is unavailable,
+use an already available external client and record a separate comparison; do not make its login a
+prerequisite for unrelated implementation or functional checks.
+Once a trace is hashed into a manifest, treat it as sealed. Give later probes or recovery phases new
+filenames; appending to the old trace invalidates the manifest's evidence hashes.
 
 ## Rules that are easy to break
 
@@ -92,9 +107,33 @@ Before claiming a change works, run the layer that exercises it:
     fixture (`cc-harness vm up --setup-assistant DIR` saves every screen it reads). The guest agent is built for
     macOS 26 from `Packages/ChatComputerAgentKit`: Launch Services refuses a binary built for a newer macOS
     (-10825), and then the agent never shows in Privacy settings. Keep 27-only APIs out of that package.
+    Keep the saved guest password across setup retries. Terminal bootstrap must observe its password prompts
+    and verify SSH plus automatic login before it reports success; fixed sleeps are not a readiness check.
+    On retries, interrupt the old command and observe a fresh shell marker before sending sudo. A new
+    authentication command can otherwise land in the previous sudo password prompt. Bind all markers
+    to the current attempt; never answer a stale password or account prompt.
 12. **The VM stop request doesn't shut down a macOS guest.** It only opens a dialog. Shut down through the
    agent (`GuestCommand.shutdown`) or `VirtualMachineController.shutDown`. Quitting the app suspends the VM
    (`AppModel.prepareToQuit`); to stop a running app from a script, send SIGTERM, never SIGKILL.
+13. **A permission request is not a capture check.** Both the guest menu and bridge use `PermissionSetup`.
+    Ordinary retries must not reset TCC or launch duplicate requests. Keep the host's framebuffer observer
+    running while a guest capture is pending. Setup completes only after two prompt-free captures show the
+    temporary capture-check window. Never persist those images unless the user chose a diagnostic screenshot.
+    The temporary window must remain visible above ordinary documents without relying on app activation;
+    a restored TextEdit window previously hid its marker and made a usable capture fail verification.
+    Hide the captured cursor only while that probe is visible: a pointer over `CC` caused Vision to read `CG`.
+    A successful check belongs to its agent version and PID. Invalidate it during onboarding too, clear it
+    before any new verification attempt, and query the current identity before freezing or serving an
+    external command; a disconnected agent once left an old success visible at onboarding step 5.
+    After answering capture consent, re-present the probe with a new marker and discard the earlier
+    pixels. Renew the bounded capture budget only once; recurring dialogs must still stop setup.
+    Before requesting the next permission, dismiss the previous permission's own consent alert,
+    even when health already says granted. In a fresh27 run the old control alert outlived its grant,
+    and asking for capture then left the recording list empty.
+    Locate a permission row and its switch in the same captured frame. Settings can navigate
+    between reads; OCR coordinates from one image must not be applied to another image.
+    Coalesce capture checks where their task is created too: checking for an existing task
+    before awaiting health leaves a race with the background readiness watcher on cold launch.
 
 ## Development switches
 
@@ -112,6 +151,14 @@ These are environment variables, unset in normal use. Launch with `open --env NA
 | `CC_DEV_LOG` | Append runner updates to a file, for unattended runs |
 | `CC_DEV_CONTINUE=1` | Continue a task restored from the last session once the guest is ready |
 | `CC_DEV_WINDOW_SHOTS=1` | Accept `dev_ui` and `dev_window_shot` on the control socket, to drive and capture the app's UI for docs and tests (`dev_ui` actions include `submit`, `cancel`, `continue`, `hostSleep`, `hostWake`, `diagnostics`, `snapshots`, `settings`, `appendChat` for test transcript content, `appearance` light/dark, `dataDirectory` to choose the data folder in setup) |
+
+Permission test actions also include `grantPermissions`, `manualPermissions`, `cancelPermissions`,
+`verifyCapture`, `permissionState` and `frameInfo`. `guestKey` (`key`), `guestType` (`text`) and `guestClick`
+(`x`, `y` in guest points) use the host's VM input before an agent is available; setup and active tasks must
+be stopped first. They are development-only socket actions, not ordinary CLI or MCP tools.
+`frameInfo` also reports host activation, the key window and the VM view's keyboard focus.
+`dev_window_shot` with `guestOnly: true` writes the host-read guest framebuffer to a 0600 PNG instead
+of the whole window, for diagnosing what setup actually reads. It remains gated by `CC_DEV_WINDOW_SHOTS=1`.
 
 All data lives in one folder, `~/.chatcomputer` unless another was chosen in setup (`DataDirectory`; saved as
 `DataDirectory` in the `app.chatcomputer.ChatComputer` preferences, which `cc-harness`, `chatcomputer` and the scripts

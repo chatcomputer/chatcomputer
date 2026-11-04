@@ -6,7 +6,8 @@ import GuestBridge
 /// Like GuestConsole, but every action goes through the guest agent (the model's path), and
 /// screenshots are the agent's own captures. Commands, one per line in <dir>/commands:
 ///     shot | click X Y [COUNT] | rclick X Y | move X Y | drag X1 Y1 X2 Y2 | scroll up|down N X Y
-///     type TEXT | key COMBO | wait SECONDS | done
+///     type TEXT | key COMBO | wait SECONDS | probe [MARKER] | done
+/// `probe` shows or closes the temporary capture-check window for pixel diagnostics.
 @MainActor
 enum AgentConsole {
     static func serve(_ bridge: BridgeServer, vmID: UUID, directory: URL) async throws {
@@ -55,6 +56,7 @@ enum AgentConsole {
                                                                  at: numbers.count >= 3 ? ScreenPoint(x: numbers[1], y: numbers[2]) : nil, modifiers: [])))
                     case "type": result = try await send(.perform(.type(text: rest)))
                     case "key": result = try await send(.perform(.key(combo: rest, repeat: 1)))
+                    case "probe": result = try await send(.captureProbe(rest.isEmpty ? nil : rest))
                     case "wait": try await Task.sleep(for: .seconds(Double(rest) ?? 1)); result = .ok
                     default: result = .failure(BridgeError(.invalidCommand, "unknown command"))
                     }

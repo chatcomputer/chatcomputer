@@ -1,0 +1,57 @@
+{
+  "recordedAt": "2026-11-04T12:40:26.667839+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "c774a4ceadc7dc17a589a1de8f5a40fe36c2a649",
+  "sourceSHA256": "038b98e4c6e62f6842d26844954c8d588e4e24521a2276ba5d1690e8112e1b7c",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "65",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "47b42454d27a8eed3f0115a9a4e339df99c0e191931f20adc5a881b06ff4f543"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "65",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "8bf4b50bd6de798739e72ef61aac404a4be3f2d5c1f54df57254b33c46a64c1b"
+  },
+  "vm": {
+    "id": "53D5B4F2-30ED-4811-B9E7-8B7C9FA19442",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "39499BD8-FFF6-472C-9D62-8B55B33916A8",
+  "suite": "short",
+  "model": "openai:gpt-6.1-sol",
+  "results": "2026-11-04-0.9.12-65-codex-first-task-cli-retry.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "00b73f5d4736939a19af194a72ef4772b2f783776fa4037a6ec2b1e70fc1e480",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "9c5193086dc187e64d4a103c94c47ebbd1fd91e8ca760dc1a49f3cb6e97effb3",
+  "scope": "One textedit-note task; not the complete short suite"
+}

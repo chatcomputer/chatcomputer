@@ -1,0 +1,54 @@
+{
+  "recordedAt": "2026-11-04T05:35:06.577944+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "c774a4ceadc7dc17a589a1de8f5a40fe36c2a649",
+  "sourceSHA256": "87fab91deebe2fc1f787630b1e41f8b24511cf4f82553dc1e5984486132c0b94",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.12",
+    "build": "48",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "a9fc63562831ddd1429175ecf90e071cb596e0c0bbc49ed5a582694fa9f3ecc6"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.12",
+    "build": "48",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "d70369045038138785358d4ce9fb25b4c7e4c836abb1c53005a8f31711490684"
+  },
+  "vm": {
+    "id": "4EF42B5F-6767-4C16-B0E4-7FD175095F1F",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": null,
+  "suite": "short",
+  "model": "Claude Code 2.1.290: OAuth expired before model response; textedit-note only",
+  "results": "2026-11-03-0.9.12-48-first-task-cli.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "2f905828cf4074435f181147663f99691ff8dc14045b42a4088c8944cbdad80f",
+  "externalAgentVersion": "2.1.290 (Claude Code)"
+}

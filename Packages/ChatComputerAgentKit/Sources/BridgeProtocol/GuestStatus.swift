@@ -8,6 +8,7 @@ public enum GuestReadiness: Equatable, Sendable {
     case agentNotAnswering
     case noDesktopSession
     case screenLocked
+    case captureNotVerified
     case missingPermissions(accessibility: Bool, screenRecording: Bool)
 
     public init(connected: Bool, report: HealthReport?) {
@@ -29,6 +30,7 @@ public enum GuestReadiness: Equatable, Sendable {
         case .agentNotAnswering: "the agent in the virtual Mac is connected but not answering"
         case .noDesktopSession: "nobody is logged in to the virtual Mac's desktop"
         case .screenLocked: "the virtual Mac's screen is locked"
+        case .captureNotVerified: "screen capture has not been verified; finish the guest's Screen Recording prompt, then verify it again"
         case .missingPermissions(let accessibility, let screenRecording):
             "the agent in the virtual Mac lacks " + [accessibility ? "Accessibility" : nil, screenRecording ? "Screen Recording" : nil]
                 .compactMap { $0 }.joined(separator: " and ") + " permission"
@@ -50,7 +52,7 @@ public enum AgentVersion {
 
 /// When to replace the guest agent with the one bundled in the app. Any difference counts (a downgraded app
 /// brings its own agent too). Not while the guest is busy, at most once a minute, and after three updates that
-/// did not take, not again until the app restarts.
+/// did not take, not again until the app restarts or a snapshot deliberately replaces the VM state.
 public struct AgentUpdatePolicy: Sendable {
     public static let retryInterval: TimeInterval = 60
     public static let maxFailures = 3
@@ -69,4 +71,11 @@ public struct AgentUpdatePolicy: Sendable {
     public mutating func began(at now: Date = Date()) { lastAttempt = now }
 
     public mutating func finished(succeeded: Bool) { failures = succeeded ? 0 : failures + 1 }
+
+    /// Restoring a snapshot deliberately brings back another agent. Its first
+    /// update is not a retry of the VM state that existed before the restore.
+    public mutating func didRestoreSnapshot() {
+        lastAttempt = nil
+        failures = 0
+    }
 }

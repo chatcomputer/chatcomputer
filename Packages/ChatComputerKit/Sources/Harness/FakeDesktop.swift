@@ -32,6 +32,8 @@ actor FakeDesktop: GuestChannel {
 
     func send(_ envelope: CommandEnvelope) async throws -> CommandResult {
         switch envelope.command {
+        case .openPermissionSettings, .captureProbe:
+            return .failure(BridgeError(.driverFailure, "Permission setup is not supported by the simulated desktop."))
         case .setLease, .cancel, .shutdown, .preparePermission, .restartAgent, .updateAgent:
             return .ok
         case .health, .capabilities:

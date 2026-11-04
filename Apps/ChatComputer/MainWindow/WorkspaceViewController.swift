@@ -199,7 +199,7 @@ final class GuestStageView: NSView {
                                                                 progress: working ? model.onboarding.progress : nil))
             }
         }
-        let holds = model.agentHoldsInput
+        let holds = model.agentHoldsInput || model.permissionTask != nil || model.verifyingCapture
         display.shield.isHidden = !holds
         if holds { window?.makeFirstResponder(display.shield) }
 
