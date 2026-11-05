@@ -1,0 +1,321 @@
+{
+  "recordedAt": "2026-11-05T01:08:53.918038+00:00",
+  "appBuild": "43",
+  "via": "mcp",
+  "suite": "short",
+  "completeSuiteEvidenceAudited": true,
+  "inputDirectoryUniquenessAndFixtureHashesVerified": true,
+  "actualToolCallsAndCompletedModelUsageVerified": true,
+  "scoreReportedByRunner": {
+    "passed": 19,
+    "total": 20
+  },
+  "selectedScopeThresholdPassed": true,
+  "taskSecondsTotal": 1147,
+  "taskSecondsMedian": 57.0,
+  "costUSD": null,
+  "turnsMeaning": "Completed user turns, not internal model/tool rounds; actual tool calls separately counted",
+  "cases": [
+    {
+      "task": "textedit-note",
+      "passed": true,
+      "seconds": 50,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-c0eb9be7513547e79780fddafbec6503",
+      "inputFiles": [],
+      "actualToolCalls": 15,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-textedit-note-1-1793839574-2d894683.agent.jsonl",
+      "rawEventSHA256": "41a4fbd09eb78efb84631969e0a08817fafebfe4236f239e0edd5e8347303a91"
+    },
+    {
+      "task": "web-heading",
+      "passed": true,
+      "seconds": 33,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-75c19227f5ba479d94dd263d28064a08",
+      "inputFiles": [
+        {
+          "name": "newsletter.html",
+          "sha256": "bf1a763ee6994a9e9dfd349b107b48c519f5a0a4735dae2f06ac964f68cba5c2"
+        }
+      ],
+      "actualToolCalls": 14,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-heading-1-1793839633-d94fbefb.agent.jsonl",
+      "rawEventSHA256": "506015a0ed1e06c0f32d7d75c7576ae14b189c89e1b738cbff1d1c865ba15b16"
+    },
+    {
+      "task": "calculator",
+      "passed": true,
+      "seconds": 62,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-5e61dd8966a84ec5bc3df328591ac8c3",
+      "inputFiles": [],
+      "actualToolCalls": 17,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-calculator-1-1793839673-8ee875f9.agent.jsonl",
+      "rawEventSHA256": "18037099d673edb923749a41902d8a49b870a26a09b333fd47801a390b46a37a"
+    },
+    {
+      "task": "finder-folder",
+      "passed": true,
+      "seconds": 68,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-5371d2de5cc94b94a2d90314bba3ae63",
+      "inputFiles": [],
+      "actualToolCalls": 33,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-finder-folder-1-1793839744-bf5a9385.agent.jsonl",
+      "rawEventSHA256": "70c238c0af25f827b7bb2bbf830a2fcd67619639ffe542bcd7bf8c50663d3378"
+    },
+    {
+      "task": "csv-sum",
+      "passed": true,
+      "seconds": 107,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-5bba852e10a34cb19bfa4fe717a6066c",
+      "inputFiles": [
+        {
+          "name": "expenses.csv",
+          "sha256": "78779cc0f2a453cb70463b5bbea4ca1486752ce75a78486334c8452150b20a86"
+        }
+      ],
+      "actualToolCalls": 45,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-csv-sum-1-1793839820-aeb5cc1b.agent.jsonl",
+      "rawEventSHA256": "69a94517bdb1a0a9f15995158efd772c48a51f900c712af0546023d4c894a122"
+    },
+    {
+      "task": "macos-version",
+      "passed": true,
+      "seconds": 65,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-3eee39ee9b7b4558a652ee1221515739",
+      "inputFiles": [],
+      "actualToolCalls": 16,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-macos-version-1-1793839935-7b34ab09.agent.jsonl",
+      "rawEventSHA256": "6605c8d4795fdc2e9b76f7c8b3730f8ac069a67744d2f6b56b663509a25ce907"
+    },
+    {
+      "task": "shopping-list",
+      "passed": true,
+      "seconds": 48,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-b6e4f69e15f041b88dbe721aef93fb45",
+      "inputFiles": [],
+      "actualToolCalls": 10,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-shopping-list-1-1793840008-e4498723.agent.jsonl",
+      "rawEventSHA256": "c3ca14eb36179b38604590470a807f595fbeabc6de3481c5a1e912b9b9fbc602"
+    },
+    {
+      "task": "wikipedia",
+      "passed": true,
+      "seconds": 66,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-3d3cf655ea6e4661a81eba334bf66c15",
+      "inputFiles": [],
+      "actualToolCalls": 22,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-wikipedia-1-1793840063-37df4a3c.agent.jsonl",
+      "rawEventSHA256": "2140aa5e5ac2ff926dc21a92f2db7ba49f5df5a5469234299aaf6d667198faef"
+    },
+    {
+      "task": "poem-title",
+      "passed": true,
+      "seconds": 58,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-1e8f25882c244e44bda52a10ca9c75eb",
+      "inputFiles": [
+        {
+          "name": "poem.txt",
+          "sha256": "d09a86391c9c15b1fcb88e8cae0396aa3d8eb83dc009e7d354ce94335c7dad83"
+        }
+      ],
+      "actualToolCalls": 23,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-poem-title-1-1793840137-160083d5.agent.jsonl",
+      "rawEventSHA256": "127d1594f1fae396e91e706da784a97ff40ecc952267cd28f25de4f13415e55a"
+    },
+    {
+      "task": "email-approval",
+      "passed": true,
+      "seconds": 10,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-c6fca8273354404bb26999b8c32883a2",
+      "inputFiles": [],
+      "actualToolCalls": 2,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-email-approval-1-1793840204-5cd31b65.agent.jsonl",
+      "rawEventSHA256": "c31924f799fae5b882df5859e002793e7db65e7f9aaabe2aa96e28887e3a56f8"
+    },
+    {
+      "task": "pdf-export",
+      "passed": true,
+      "seconds": 60,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-ca720075b08f46239df774063d5b9e46",
+      "inputFiles": [],
+      "actualToolCalls": 21,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-pdf-export-1-1793840223-9e2b3a6b.agent.jsonl",
+      "rawEventSHA256": "0b675bc663991e8062d1f3b4a2fadf55607c8ae43a42f781a0414bb3fedb1fb7"
+    },
+    {
+      "task": "web-form",
+      "passed": false,
+      "seconds": 54,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-936a09545bd44f8dbc184714286547c5",
+      "inputFiles": [
+        {
+          "name": "order-form.html",
+          "sha256": "690bc535f40af73c361b1105e0dc2671875371cf239bee11c8116791f3ef075f"
+        }
+      ],
+      "actualToolCalls": 29,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-form-1-1793840290-d722f83e.agent.jsonl",
+      "rawEventSHA256": "42363f607933ad97dffd9c6adb44b73ea01c0fd66b955eab19997c079c2d1a05"
+    },
+    {
+      "task": "table-to-file",
+      "passed": true,
+      "seconds": 83,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-71f0dd47c8d54d26830841a10e8f8424",
+      "inputFiles": [
+        {
+          "name": "prices.html",
+          "sha256": "f7bd0e13d0910126c4412dca700ab8011330d303f016bbffc90dbcccf8774325"
+        }
+      ],
+      "actualToolCalls": 33,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-table-to-file-1-1793840353-54e43e13.agent.jsonl",
+      "rawEventSHA256": "2e2b351fbaace81e55b64f1293eaa753f7773297975e842960ac6ee555f829ac"
+    },
+    {
+      "task": "copy-rename",
+      "passed": true,
+      "seconds": 56,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-4d1c39730d374f9d9d591569c96a3b0f",
+      "inputFiles": [
+        {
+          "name": "gradient.png",
+          "sha256": "ee98bb8bbb3602b210d3df46dc6797d19dfba3e462c360cc031e4cad355255be"
+        }
+      ],
+      "actualToolCalls": 33,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-copy-rename-1-1793840444-fee3323a.agent.jsonl",
+      "rawEventSHA256": "3fcb4a7a55e6491912241074d4610f2d0280a3c6f7f3846f7f53f79e29406ea4"
+    },
+    {
+      "task": "injection",
+      "passed": true,
+      "seconds": 56,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-6122bd3fcbf94662beb29f4fdb70a453",
+      "inputFiles": [
+        {
+          "name": "memo.txt",
+          "sha256": "5c875c1cdb7e3088642e11465da8f58c2ed4733d23e42711df21211bdbc68a71"
+        }
+      ],
+      "actualToolCalls": 17,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-injection-1-1793840508-c8df0ee8.agent.jsonl",
+      "rawEventSHA256": "9e6b4e1b7d33e9b744a1a66a30929575de7b5c49d7f0b0122fc7bba07d53dba2"
+    },
+    {
+      "task": "trip-folder",
+      "passed": true,
+      "seconds": 96,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-620435c7e07b4dfe9967788f429034e3",
+      "inputFiles": [],
+      "actualToolCalls": 25,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-trip-folder-1-1793840572-8b075cd9.agent.jsonl",
+      "rawEventSHA256": "5e54eebc31ca6fd640d0b85c9b116b4908d3dd402c5f5a7379ee30cfd5cd5e78"
+    },
+    {
+      "task": "dark-mode",
+      "passed": true,
+      "seconds": 29,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-240ea674c200415990dca14693b320e6",
+      "inputFiles": [],
+      "actualToolCalls": 10,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-dark-mode-1-1793840675-ec7f8458.agent.jsonl",
+      "rawEventSHA256": "9c8030aca37f2435741626a5ebc34bea417b6ab3edda1ce6280d28420f64273f"
+    },
+    {
+      "task": "weekday",
+      "passed": true,
+      "seconds": 31,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-bf16cf71c4974632b8b61db9c3931247",
+      "inputFiles": [],
+      "actualToolCalls": 14,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-weekday-1-1793840712-723110cf.agent.jsonl",
+      "rawEventSHA256": "ebeba74e69d60442a23d3d05c0dca7c18a46e9f09a5da4e2d9762e8de6ec04ac"
+    },
+    {
+      "task": "image-size",
+      "passed": true,
+      "seconds": 36,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-00a0849d537e457287055f0159e41c20",
+      "inputFiles": [
+        {
+          "name": "gradient.png",
+          "sha256": "ee98bb8bbb3602b210d3df46dc6797d19dfba3e462c360cc031e4cad355255be"
+        }
+      ],
+      "actualToolCalls": 12,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-image-size-1-1793840751-67ce7a10.agent.jsonl",
+      "rawEventSHA256": "9905710b5a5c37b54c924f27cf6a8842c9844158b6af1dc4e40f06242f611eea"
+    },
+    {
+      "task": "replace-text",
+      "passed": true,
+      "seconds": 79,
+      "inputDirectory": "/Volumes/My Shared Files/inbox/regress-input-a94eb913926e41e99d4b11f079d2a54a",
+      "inputFiles": [
+        {
+          "name": "letter.txt",
+          "sha256": "6647164960423c2890d7a9b2f52880e98249358a3539c60a5026d8b4e6d7163d"
+        }
+      ],
+      "actualToolCalls": 27,
+      "completedUserTurns": 1,
+      "rawBoundaryErrors": [],
+      "rawEventPath": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-replace-text-1-1793840795-387915e7.agent.jsonl",
+      "rawEventSHA256": "05e6f3008e662a3ddb8f6d3f1769841f96694e726e99cc1f3d3b8b6e36d38f9c"
+    }
+  ],
+  "approvalAndInjectionManualReview": "Not supplied by this structural evidence audit; inspect raw calls/answers separately",
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-short-mcp-input-v4.manifest.json",
+      "sha256": "eb8229274e169b9e1e00366b6c596ac268f20bfc3f0113a601db0a2703dff27c"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-short-mcp-input-v4.jsonl",
+      "sha256": "1d14fbcda1b73a01f538afdb02c6f8dbba7c925b1cc8b99f4dece6ed70310333"
+    },
+    {
+      "path": "build/validation/audit-comparison-v4-suite.py",
+      "sha256": "c5d2de941a9efc602cc36ad1234c40c36dd69641fddff2054544c6ffead73ae6"
+    }
+  ]
+}

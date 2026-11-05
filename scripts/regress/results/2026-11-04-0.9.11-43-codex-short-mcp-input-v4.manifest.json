@@ -1,0 +1,285 @@
+{
+  "recordedAt": "2026-11-05T00:45:51.975951+00:00",
+  "host": {
+    "version": "27.0.1",
+    "build": "26A434",
+    "hardware": "Mac18,5"
+  },
+  "gitCommit": "12d7959ae3dd979cb02369ca78c99015891b4ead",
+  "sourceSHA256": "635625dc290842c043c266bd0afa9e90bebdf95aa94b15be22cdff50b9af50e8",
+  "workingTreeDirty": true,
+  "app": {
+    "version": "0.9.11",
+    "build": "43",
+    "bundleID": "app.chatcomputer.ChatComputer",
+    "identity": [
+      "Identifier=app.chatcomputer.ChatComputer",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "09a975537e0ae25452685d30d998cee743aefd7d451ef2f08a56c5991f73ae06"
+  },
+  "bundledGuestAgent": {
+    "version": "0.9.11",
+    "build": "43",
+    "bundleID": "app.chatcomputer.agent",
+    "identity": [
+      "Identifier=app.chatcomputer.agent",
+      "Authority=Developer ID Application: Feng Zhu (YPV49M8592)",
+      "Authority=Developer ID Certification Authority",
+      "Authority=Apple Root CA",
+      "TeamIdentifier=YPV49M8592"
+    ],
+    "executableSHA256": "3b08a93f62565be724277570d9dba8c65fe49e355de8d497d3da3bf88b6b1fe5"
+  },
+  "vm": {
+    "id": "C5677170-D259-4C4B-A165-12D8ABA4E3D4",
+    "stage": "ready",
+    "restoreImageBuild": "26A434",
+    "guestRelease": "27",
+    "cpuCount": 4,
+    "memoryBytes": 8589934592,
+    "displayWidth": 2560,
+    "displayHeight": 1600
+  },
+  "snapshotID": "98C4A6B8-EFDE-41D9-8DFD-7842C32592AB",
+  "suite": "short",
+  "model": "gpt-6.1-sol",
+  "results": "2026-11-04-0.9.11-43-codex-short-mcp-input-v4.jsonl",
+  "tasksSHA256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151",
+  "externalRunnerSHA256": "c97595c24a6bd41384348e2b4113cd4fa5383d41ffe03701c97f42bf4b03bc40",
+  "guestReadinessParserSHA256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0",
+  "externalAgent": "codex",
+  "externalAgentVersion": "codex-cli 0.166.0-alpha.6",
+  "codexAdapterSHA256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2",
+  "state": "finished",
+  "via": "mcp",
+  "benchmarkRevision": "isolated-inputs-v2-actual-agent-v1",
+  "expectedTasks": 20,
+  "only": null,
+  "fullSuiteRun": true,
+  "commonAppPath": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/benchmark-app/ChatComputer.app",
+  "modelDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-benchmark-v2-front",
+  "appDataDirectory": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/test-fresh-71-27-a",
+  "supervisorSHA256": "4141bab3d8828a2ed88e50f22c8bdff23a1b761eb728faaf2adb860faab38587",
+  "isolationProxySHA256": "0a5b19a792058bc916abe505638e4c78a36eee082d2c576e10d213876cd1600f",
+  "shippingRuntimeReferenceCommit": "c774a4c",
+  "sourceScope": "Execution checkout includes newer harness/tasks; actual unmodified signed SUT identified by App/agent fingerprints. No assertion that the whole execution checkout compiled this binary.",
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "initialActualGuestVersion": "0.9.11 (43)",
+  "finishedAt": "2026-11-05T01:08:09.104948+00:00",
+  "runnerExit": 1,
+  "completedTasks": 20,
+  "passedTasks": 19,
+  "allTaskActualVersionsMatchSUT": true,
+  "selectedScopeThresholdPassed": true,
+  "normalFinalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    74908
+  ],
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-short-mcp-input-v4.jsonl",
+      "sha256": "1d14fbcda1b73a01f538afdb02c6f8dbba7c925b1cc8b99f4dece6ed70310333"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/codex_agent.py",
+      "sha256": "88a1a860779ca1e73ad968870bc7f1d6e8aa227c1176d849afe308830a09e4a2"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/external.py",
+      "sha256": "c97595c24a6bd41384348e2b4113cd4fa5383d41ffe03701c97f42bf4b03bc40"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/guest_readiness.py",
+      "sha256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/isolation-proxy.py",
+      "sha256": "0a5b19a792058bc916abe505638e4c78a36eee082d2c576e10d213876cd1600f"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-calculator-1-1793839673-8ee875f9.agent.jsonl",
+      "sha256": "18037099d673edb923749a41902d8a49b870a26a09b333fd47801a390b46a37a"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-calculator-1-1793839673-8ee875f9.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-copy-rename-1-1793840444-fee3323a.agent.jsonl",
+      "sha256": "3fcb4a7a55e6491912241074d4610f2d0280a3c6f7f3846f7f53f79e29406ea4"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-copy-rename-1-1793840444-fee3323a.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-csv-sum-1-1793839820-aeb5cc1b.agent.jsonl",
+      "sha256": "69a94517bdb1a0a9f15995158efd772c48a51f900c712af0546023d4c894a122"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-csv-sum-1-1793839820-aeb5cc1b.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-dark-mode-1-1793840675-ec7f8458.agent.jsonl",
+      "sha256": "9c8030aca37f2435741626a5ebc34bea417b6ab3edda1ce6280d28420f64273f"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-dark-mode-1-1793840675-ec7f8458.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-email-approval-1-1793840204-5cd31b65.agent.jsonl",
+      "sha256": "c31924f799fae5b882df5859e002793e7db65e7f9aaabe2aa96e28887e3a56f8"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-email-approval-1-1793840204-5cd31b65.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-finder-folder-1-1793839744-bf5a9385.agent.jsonl",
+      "sha256": "70c238c0af25f827b7bb2bbf830a2fcd67619639ffe542bcd7bf8c50663d3378"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-finder-folder-1-1793839744-bf5a9385.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-image-size-1-1793840751-67ce7a10.agent.jsonl",
+      "sha256": "9905710b5a5c37b54c924f27cf6a8842c9844158b6af1dc4e40f06242f611eea"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-image-size-1-1793840751-67ce7a10.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-injection-1-1793840508-c8df0ee8.agent.jsonl",
+      "sha256": "9e6b4e1b7d33e9b744a1a66a30929575de7b5c49d7f0b0122fc7bba07d53dba2"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-injection-1-1793840508-c8df0ee8.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-macos-version-1-1793839935-7b34ab09.agent.jsonl",
+      "sha256": "6605c8d4795fdc2e9b76f7c8b3730f8ac069a67744d2f6b56b663509a25ce907"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-macos-version-1-1793839935-7b34ab09.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-pdf-export-1-1793840223-9e2b3a6b.agent.jsonl",
+      "sha256": "0b675bc663991e8062d1f3b4a2fadf55607c8ae43a42f781a0414bb3fedb1fb7"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-pdf-export-1-1793840223-9e2b3a6b.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-poem-title-1-1793840137-160083d5.agent.jsonl",
+      "sha256": "127d1594f1fae396e91e706da784a97ff40ecc952267cd28f25de4f13415e55a"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-poem-title-1-1793840137-160083d5.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-replace-text-1-1793840795-387915e7.agent.jsonl",
+      "sha256": "05e6f3008e662a3ddb8f6d3f1769841f96694e726e99cc1f3d3b8b6e36d38f9c"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-replace-text-1-1793840795-387915e7.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-shopping-list-1-1793840008-e4498723.agent.jsonl",
+      "sha256": "c3ca14eb36179b38604590470a807f595fbeabc6de3481c5a1e912b9b9fbc602"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-shopping-list-1-1793840008-e4498723.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-table-to-file-1-1793840353-54e43e13.agent.jsonl",
+      "sha256": "2e2b351fbaace81e55b64f1293eaa753f7773297975e842960ac6ee555f829ac"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-table-to-file-1-1793840353-54e43e13.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-textedit-note-1-1793839574-2d894683.agent.jsonl",
+      "sha256": "41a4fbd09eb78efb84631969e0a08817fafebfe4236f239e0edd5e8347303a91"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-textedit-note-1-1793839574-2d894683.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-trip-folder-1-1793840572-8b075cd9.agent.jsonl",
+      "sha256": "5e54eebc31ca6fd640d0b85c9b116b4908d3dd402c5f5a7379ee30cfd5cd5e78"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-trip-folder-1-1793840572-8b075cd9.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-form-1-1793840290-d722f83e.agent.jsonl",
+      "sha256": "42363f607933ad97dffd9c6adb44b73ea01c0fd66b955eab19997c079c2d1a05"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-form-1-1793840290-d722f83e.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-heading-1-1793839633-d94fbefb.agent.jsonl",
+      "sha256": "506015a0ed1e06c0f32d7d75c7576ae14b189c89e1b738cbff1d1c865ba15b16"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-web-heading-1-1793839633-d94fbefb.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-weekday-1-1793840712-723110cf.agent.jsonl",
+      "sha256": "ebeba74e69d60442a23d3d05c0dca7c18a46e9f09a5da4e2d9762e8de6ec04ac"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-weekday-1-1793840712-723110cf.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-wikipedia-1-1793840063-37df4a3c.agent.jsonl",
+      "sha256": "2140aa5e5ac2ff926dc21a92f2db7ba49f5df5a5469234299aaf6d667198faef"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/regress-wikipedia-1-1793840063-37df4a3c.agent.stderr",
+      "sha256": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/run-manifest.py",
+      "sha256": "2cd892deb1aa2ec88ede72deea8b1462d18a260102ba1966291d744caea80581"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/supervisor.py",
+      "sha256": "4141bab3d8828a2ed88e50f22c8bdff23a1b761eb728faaf2adb860faab38587"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/tasks-long.json",
+      "sha256": "9a1ebd7937c67880536fe6438f72d0c019877aad8ab609ff950e82a6189a5697"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-raw/tasks.json",
+      "sha256": "3cbe4d6bb3b49a3df0dc6ba61774ac87b3a5c0b2f3196836cd20a40fd4e8d151"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-proxy.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
