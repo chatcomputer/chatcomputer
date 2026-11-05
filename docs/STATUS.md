@@ -2,6 +2,8 @@
 
 已发布预发布版本为 **[0.9.12（73）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)**。用户在停止扩大验证后明确要求发布；沿用原签名公证包，未重新构建，Homebrew已同步。发布不等于完整验收通过，未完成项保持原状态，见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)、[验收矩阵](VALIDATION-0.9.12-MATRIX.md)、[验证记录](VALIDATION-0.9.12.md)。下方“不发布/未发布”均为此次发布指令之前的历史。
 
+官网同步与最终清理：官网提交 `1eafd1c` 已部署，中英文下载按钮显示0.9.12、两个链接均直接指向该版zip，页脚链接指向该版说明；不再由运行时API覆盖。原始截图、日志和辅助代码先逐文件核对归档，再移除1455个展开副本与临时文件；三个0600本机档案共约761MiB，存于 `build/`，分别为 `validation-records-20261104.tar.gz`、`validation-wrapup-20261104.tar.gz`、`resources-20261104-final.tar.gz`。保留签名73包及真实43包；当前约265GiB可用。早先“保留小型原始记录”现指归档内副本，展开目录已删除。见 [官网与最终清理清单](../scripts/regress/results/2026-11-04-0.9.12-website-final-cleanup.manifest.json)。
+
 **最新决定：按用户要求结束本轮验收并收尾，不再启动测试。** input-v4的43三组分别19/20、19/20、6/6，27 guest实际43→73及旧43内存恢复、文件与重开通过。73 CLI在13/20项时停止，已完成12项通过、1项表单失败；未完成项不计通过，73新MCP/long未启动，完整成对比较没有结论。已恢复测试前快照，确认实际73就绪后删除临时备份，再以SIGTERM正常退出。见 [收尾清单](../scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json)。本轮73全新安装、原生输入和两种guest故障矩阵等仍未完成，缺第二台Mac和内置模型配置的项目仍未验证；不发布。下方“运行中/下一步”均为历史进度。
 
 **空间收尾**：原始记录、辅助脚本、实际outbox文件与VM小型元数据归档至本机 `build/validation-wrapup-20261104.tar.gz`（约301MiB，0600），并核对归档中的文件哈希；归档不含可恢复的VM磁盘/RAM。删除工作VM、两份IPSW及可重建缓存/旧候选副本，约释放96GiB、可用约256GiB；保留签名73测试包、小型原始记录和旧档案。见 [清理清单](../scripts/regress/results/2026-11-04-0.9.12-73-wrapup-cleanup.manifest.json)。历史“保留VM现场”不代表清理后仍保留磁盘/RAM。

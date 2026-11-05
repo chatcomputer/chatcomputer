@@ -1,0 +1,44 @@
+{
+  "recordedAt": "2026-11-05T04:07:18.387393+00:00",
+  "kind": "final-website-sync-and-archive-cleanup",
+  "website": {
+    "repository": "chatcomputer/chatcomputer.github.io",
+    "commit": "1eafd1cf34a6821823c5135f2f86e47a70a38b27",
+    "pagesBuild": "built",
+    "liveHTMLBothDownloadLinksAndEnglishChineseVersionVerified": "0.9.12",
+    "downloadURL": "https://github.com/chatcomputer/chatcomputer/releases/download/v0.9.12/ChatComputer.zip"
+  },
+  "archivesRetainedLocally": [
+    {
+      "path": "build/validation-records-20261104.tar.gz",
+      "bytes": 12735466,
+      "sha256": "88d3d4891ba84e4e00869683ef11253b45925d434c71daac37693cb8f296aa5d",
+      "permissions": "0o600"
+    },
+    {
+      "path": "build/validation-wrapup-20261104.tar.gz",
+      "bytes": 315940520,
+      "sha256": "270c7d6c8853b7416590575028d20d0c6a5d8c59adfb92b9ffd188df01a5db35",
+      "permissions": "0o600"
+    },
+    {
+      "path": "build/resources-20261104-final.tar.gz",
+      "bytes": 469000606,
+      "sha256": "3873d30d9fb0e117032cd7065900e74233d98ef263b8eb7d101fe4cafbc0373f",
+      "permissions": "0o600"
+    }
+  ],
+  "expandedFilesRemovedOnlyAfterArchiveHashMatch": 1455,
+  "unmatchedFilesRetained": [],
+  "resourceFilesInSupplementalArchive": 543,
+  "freeBytesBefore": 282927616000,
+  "freeBytesAfter": 284673642496,
+  "spaceChangeBytes": 1746026496,
+  "preserved": [
+    "Source code and website resources committed to respective repositories",
+    "Original signed73 app/zip in build/release",
+    "Authentic signed43 app in build/baseline-43",
+    "Three private evidence/resource archives and supplemental inventory"
+  ],
+  "scope": "Archives are local only; raw validation helpers/logs/captures are recoverable from them. Expanded copies removed. No Android Studio process or files touched."
+}
