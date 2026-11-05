@@ -1,5 +1,7 @@
 # 0.9.12 验证记录
 
+发布更新：用户随后明确要求发布版本。已发布 [0.9.12（73）预发布](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)，复用原签名公证/已验证的zip，核对实际包内App与agent指纹、staple、Gatekeeper和GitHub下载哈希，并同步Homebrew。未重新构建或恢复扩大测试；完整验收仍未完成，发行说明保留限制。见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)。以下“不发布/未发布”是之前的决定。
+
 **最新收尾（2026-11-04）**：用户认为验证耗时过长，要求结束本轮，不再启动新测试。当前未发布候选为73；下文71/70概述及“正在执行”均为历史。严格input-v4的43 CLI/MCP各19/20、long6/6，27 guest实际43→73、旧43内存恢复、CLI/MCP文件及重开通过。73 CLI完成13/20后停止，12项通过、1项表单未生成验证码；原始读回证明字段正确，模型在提交前请求许可。copy-rename调用中断且没有成绩，不计通过。73新MCP/long未启动，完整对照和性能结论均未完成；新比较PDF正文仍待核查。
 
 停止采用SIGTERM，无SIGKILL；原监督器未完成最终封存，另行通过产品接口恢复Before regression，完整匹配实际73就绪后才删除备份，再观察GUI以SIGTERM正常退出。13项均记录实际0.9.12 (73)，审批项独立复核通过，注入项未到达。另存 [收尾清单](../scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json)，部分组明确标interrupted而非通过。73全新安装、两种guest原生输入/权限故障/诊断、26升级等未完成；缺第二台Mac与内置模型配置的门槛不变，不宣称全部P0/P1通过，不发布。

@@ -1,0 +1,48 @@
+{
+  "recordedAt": "2026-11-05T02:25:45.867863+00:00",
+  "kind": "published-prerelease",
+  "version": "0.9.12",
+  "build": "73",
+  "releaseURL": "https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12",
+  "publishedAt": "2026-11-05T02:24:21Z",
+  "prerelease": true,
+  "draft": false,
+  "tag": "v0.9.12",
+  "tagCommit": "923c437be44bce459a3d5e68983a98fce8eab09f",
+  "runtimeSourceReference": "9f9d6a6aa32aa5f2ef04f470b03f35ae51e05273",
+  "runtimeSourcesUnchangedSinceTestedBuild": true,
+  "packageRebuiltForPublication": false,
+  "zipSHA256": "845d4d2425b9816937ef54772f527e71e92e7f15544de8f5ee86dd9982aa2164",
+  "assetBytes": 11078484,
+  "githubAssetDigestVerified": true,
+  "homebrewUpdaterDownloadedAndMatchedLocalZip": true,
+  "homebrew": {
+    "repository": "chatcomputer/homebrew-tap",
+    "commit": "4e07ba7873e9be91e206ecf175ab44fb13340092",
+    "caskGitBlobSHA": "a18bf7b5ccc386c2c0b6d537e2c44769dbaadb92",
+    "versionAndSHA256Verified": true
+  },
+  "preflight": {
+    "actualZipAppAndAgentMatchBuildManifest": true,
+    "deepStrictCodeSignatureVerified": true,
+    "stapledNotarizationValidated": true,
+    "gatekeeperAccepted": true
+  },
+  "userRequestedPublicationAfterEndingValidation": true,
+  "fullP0P1ValidationPassed": false,
+  "limitations": "Documented in release notes and validation matrix; partial v4 CLI13/20 and unrun current suites are not passes",
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json",
+      "sha256": "1a5d4bdc812ba7c00f9db7a14c491e522fb55889361fad69eb639a40075ebea7"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json",
+      "sha256": "fc9ff1926715f50951b7e0f5f84f3d697ab71b12976b5a64a8eb22066ac3be7b"
+    },
+    {
+      "path": "build/release-notes-0.9.12.md",
+      "sha256": "db6cc2027f653e2e52bed7c0ed1625f0951a03268c3554b344ea65046fcedaa2"
+    }
+  ]
+}

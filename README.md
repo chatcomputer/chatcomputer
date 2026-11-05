@@ -31,9 +31,9 @@ them. You can pause, cancel, or click the virtual Mac to take over at any moment
 Coding agents get the same Mac: the app is also a command line tool and an MCP server, so Claude Code, Codex and
 others can test GUI apps, installers and websites in a disposable macOS.
 
-The latest published release is **0.9.11**. `main` is preparing **0.9.12**: its permission verification and
-recovery changes below are still being validated. See the [candidate validation record](docs/VALIDATION-0.9.12.md)
-for passed checks and unavailable test environments.
+The latest published pre-release is **[0.9.12 (73)](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)**,
+with permission verification and recovery fixes. Validation is incomplete; see the
+[validation matrix](docs/VALIDATION-0.9.12-MATRIX.md) for passed checks, unfinished scenarios and unavailable test environments.
 
 ## Highlights
 
@@ -91,10 +91,10 @@ on their own.
 
 If automatic permission setup stops, finish any dialog hidden behind System Settings in the virtual Mac.
 Grant **ChatComputerAgent** Device Control (Accessibility on macOS 26) and Screen Recording, then choose
-**I granted them myself**. Repeatedly requesting permission is unnecessary. The 0.9.12 candidate verifies two
+**I granted them myself**. Repeatedly requesting permission is unnecessary. Version 0.9.12 verifies two
 real captures before completing setup; **Machine › Verify Screen Capture** can check again after an update or restore.
 **Export Diagnostics** is available from the setup panel. Its optional guest image can contain your screen content;
-nothing is uploaded automatically. The candidate's validation status is in [docs/VALIDATION-0.9.12.md](docs/VALIDATION-0.9.12.md).
+nothing is uploaded automatically. Recorded validation and limitations are in [docs/VALIDATION-0.9.12.md](docs/VALIDATION-0.9.12.md).
 
 ### Your first task
 

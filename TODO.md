@@ -2,6 +2,8 @@
 
 > 当前现状与规划的汇总见 [docs/STATUS.md](docs/STATUS.md)。
 
+发布更新：用户明确要求后，原73签名公证包已发布为 [0.9.12预发布](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)，Homebrew已同步。未重新构建，未完成的验证不勾选；见 [发布清单](scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)。下方“不发布”属于发布指令前历史。
+
 接下来在 Mac 上要做的事，按顺序排。完成一项就勾掉；技术验证（探针）的结论写回 `docs/ROADMAP.md` 第 5 节。
 
 代码里还有 `TODO(P#)` / `TODO(M#)` 注释，对应下面的条目：`rg -n 'TODO\(' -g '*.swift'`

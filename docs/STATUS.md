@@ -1,6 +1,6 @@
 # 现状与规划
 
-已发布版本为 **0.9.11**（[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。当前未发布候选为 **0.9.12（73）**，逐项验收见 [当前候选矩阵](VALIDATION-0.9.12-MATRIX.md)，完整证据与原始失败见 [验证记录](VALIDATION-0.9.12.md)，范围见 [下一版规划](NEXT-RELEASE.md)。
+已发布预发布版本为 **[0.9.12（73）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)**。用户在停止扩大验证后明确要求发布；沿用原签名公证包，未重新构建，Homebrew已同步。发布不等于完整验收通过，未完成项保持原状态，见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)、[验收矩阵](VALIDATION-0.9.12-MATRIX.md)、[验证记录](VALIDATION-0.9.12.md)。下方“不发布/未发布”均为此次发布指令之前的历史。
 
 **最新决定：按用户要求结束本轮验收并收尾，不再启动测试。** input-v4的43三组分别19/20、19/20、6/6，27 guest实际43→73及旧43内存恢复、文件与重开通过。73 CLI在13/20项时停止，已完成12项通过、1项表单失败；未完成项不计通过，73新MCP/long未启动，完整成对比较没有结论。已恢复测试前快照，确认实际73就绪后删除临时备份，再以SIGTERM正常退出。见 [收尾清单](../scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json)。本轮73全新安装、原生输入和两种guest故障矩阵等仍未完成，缺第二台Mac和内置模型配置的项目仍未验证；不发布。下方“运行中/下一步”均为历史进度。
 

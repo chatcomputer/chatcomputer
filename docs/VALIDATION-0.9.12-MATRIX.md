@@ -2,6 +2,8 @@
 
 本表按 [NEXT-RELEASE.md](NEXT-RELEASE.md) 的完整范围核对，当前构建为 **73**。日期：2026-11-04。未验证不等于失败，也不等于通过；本表不是发布批准。
 
+发布更新：用户在收尾后明确要求发布，原签名公证73包已作为 [0.9.12预发布](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12) 发行，Homebrew版本/哈希已同步核对，见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)。本表未完成项保持不变，不因发布转为通过。
+
 **最终收尾决定：用户要求停止继续验收，不再新增测试。** 73 input-v4 CLI停止于13/20（12通过、1表单失败），新MCP/long未启动；已恢复测试前状态并正常退出。所有待执行项保留未完成，不转记历史构建通过，完整前后比较及发布门槛未关闭。见 [收尾清单](../scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json)。下文旧“运行中”描述只记录当时状态。
 
 73当前已通过197项Swift、本机Mac构建/接口检查、原生回调探针、固定Developer ID签名、公证与Gatekeeper；内置模型检查缺配置而跳过。真实73内存快照连续恢复30/30，两份CLI/MCP文件及正常退出重开通过；源72/73内存哈希不变，本轮没有触发终态错误恢复分支，不能宣布原偶发故障修复。见 [73构建](../scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json)、[73生命周期](../scripts/regress/results/2026-11-04-0.9.12-73-lifecycle.manifest.json)。下面保留72的完整逐项记录作为历史，不将72成绩转记为73通过；73其余完整矩阵尚未完成。
