@@ -1,0 +1,71 @@
+{
+  "recordedAt": "2026-11-05T00:12:41.810361+00:00",
+  "appBuild": "73",
+  "kind": "Addendum to the three closed candidate73 suites; original pending-body manifests remain immutable",
+  "modelComparisonWasStoppedBeforeNativePDFProbe": true,
+  "PDFsDecoded": 3,
+  "allThreeActualPDFBodiesMatchTaskGoals": true,
+  "cases": [
+    {
+      "pdf": "build/validation/codex-73-cli-input-v3-report.pdf",
+      "sha256": "0d1effa117dbfe8ed60e2a1d3ac664dc485368e74aa2cf920d411b50b4270eb9",
+      "pageCount": 1,
+      "actualExtractedText": "Quarterly report draft.",
+      "bodyMatchesTaskGoal": true
+    },
+    {
+      "pdf": "build/validation/codex-73-mcp-input-v3-report.pdf",
+      "sha256": "11e133f174c1676fe25356362b69be65f619068275b97b83ff31083d123634f6",
+      "pageCount": 1,
+      "actualExtractedText": "Quarterly report draft.",
+      "bodyMatchesTaskGoal": true
+    },
+    {
+      "pdf": "build/validation/codex-73-cli-input-v3-planets.pdf",
+      "sha256": "c223657698c3840d9f49ced7a547d07ea2a018e3e274f75b5d09e886d5a1c0ac",
+      "pageCount": 1,
+      "actualExtractedText": "Jupiter: 139,820 km\nSaturn: 116,460 km\nUranus: 50,724 km",
+      "bodyMatchesTaskGoal": true
+    }
+  ],
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/pdf73-body-extraction.json",
+      "sha256": "5d29426331597a3daf0d077e0187a9b20f5c3e44b76b8da75f6832cbfef67235"
+    },
+    {
+      "path": "build/validation/pdf73-body-extraction.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "build/validation/PDFTextProbe.swift",
+      "sha256": "b123d875ea99b86de8c8c539d6cf8054d0033693ee404055ea856be85f7bf9a6"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-report.pdf",
+      "sha256": "0d1effa117dbfe8ed60e2a1d3ac664dc485368e74aa2cf920d411b50b4270eb9"
+    },
+    {
+      "path": "build/validation/codex-73-mcp-input-v3-report.pdf",
+      "sha256": "11e133f174c1676fe25356362b69be65f619068275b97b83ff31083d123634f6"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v3-planets.pdf",
+      "sha256": "c223657698c3840d9f49ced7a547d07ea2a018e3e274f75b5d09e886d5a1c0ac"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json",
+      "sha256": "ac1a1aee252bf57bf4b4daa9b9b653147dae27e84361b91ab4ef7d50b9e9595f"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json",
+      "sha256": "125770436aa9a997e675805c636fbfee349fac5c5f6f1bd2a8f8ea033c1f19ef"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-acceptance.manifest.json",
+      "sha256": "f5c9d8f16bd0c1e24b623bb8fdf57a2658967a988d098e5d4cce594cc55fdb5c"
+    }
+  ]
+}

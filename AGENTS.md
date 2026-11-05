@@ -55,6 +55,12 @@ build. Each external task gets a new input directory containing only its declare
 product's cumulative `inbox/external` must not define the task's input set. Keep copy, inventory and
 index checks consistent between the native and external runners. A changed harness or task contract
 starts a separate current/baseline comparison; preserve original scores and raw events.
+Parse the entire actual-agent status line with `scripts/regress/guest_readiness.py`.
+The phrase "this app brings VERSION" describes the bundled agent, not the running one.
+Check the actual version before capturing a benchmark base and after restoring it; a base
+that resumes an older agent and then updates is not proof of a base made with the requested agent.
+Keep `guestAgentBeforeTask` in each external result. Restore the pre-run backup and observe
+guest readiness before deleting that backup; a successful snapshot response alone is insufficient.
 Report unavailable hardware, missing keys and skipped scenarios explicitly. Candidate
 regression JSONL files should have a companion manifest from `scripts/regress/run-manifest.py`.
 Use `--external-agent codex` in that manifest when testing Codex. Keep its raw events with

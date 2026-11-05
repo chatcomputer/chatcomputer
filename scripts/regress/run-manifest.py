@@ -80,6 +80,7 @@ def main():
         'suite': args.suite, 'model': args.model, 'results': Path(args.results).name,
         'tasksSHA256': hashlib.sha256(tasks.read_bytes()).hexdigest(),
         'externalRunnerSHA256': hashlib.sha256(Path(__file__).with_name('external.py').read_bytes()).hexdigest(),
+        'guestReadinessParserSHA256': hashlib.sha256(Path(__file__).with_name('guest_readiness.py').read_bytes()).hexdigest(),
         'externalAgent': args.external_agent,
         'externalAgentVersion': command(args.external_agent, '--version'),
         'codexAdapterSHA256': hashlib.sha256(Path(__file__).with_name('codex_agent.py').read_bytes()).hexdigest()

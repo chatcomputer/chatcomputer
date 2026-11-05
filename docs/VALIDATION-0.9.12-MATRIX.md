@@ -8,10 +8,12 @@
 
 ## 73当前矩阵
 
+当前成对比较已因版本闸门缺陷停止：43保存前实际guest73，但工具误匹配了“本App携带43”的提示。旧43的11项成绩不用于对比，原准备通过结论撤回；73原分数保留为旧工具单边结果。67项脚本检查和新严格43基准3次恢复通过，待用同一新工具重开两边。见 [闸门修正](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json)。73三份PDF正文已全部补核对通过。
+
 | 验收项 | 73结果 | 证据或下一步 |
 |---|---|---|
 | 包测试、Debug构建、底层接口 | 通过：八个Swift测试组共197项 | [构建清单](../scripts/regress/results/2026-11-04-0.9.12-73-build.manifest.json)；内置live检查缺配置而跳过 |
-| 回归脚本失败注入、文件验证器 | 59项Python、9项原生文件检查的工具修正未再改变 | 原结果见 [工具修正](../scripts/regress/results/2026-11-04-benchmark-input-isolation-fix.manifest.json)，不替代73真实模型suite |
+| 回归脚本失败注入、文件验证器 | 67项Python、9项原生文件检查及harness构建通过 | [版本闸门修正](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json)；App/guest二进制未改 |
 | 发布签名、agent最低26、公证与Gatekeeper | 通过；未发布 | 73构建清单 |
 | 原生停止回调归属、显式停止的终态规则 | 原生回调探针与终态/过渡态单元覆盖通过 | 不能据此证明Kernel GUARD根因修复 |
 | 同一隔离27 VM内存恢复、源文件不变 | 30/30；无冷启动回退；源72/73内存哈希不变 | [生命周期清单](../scripts/regress/results/2026-11-04-0.9.12-73-lifecycle.manifest.json)；未触发终态错误恢复分支 |
@@ -20,10 +22,11 @@
 | 26.x全新安装A/B、两帧、首任务/重开 | 待执行 | 固定26.6.2 /25G83镜像；文件功能与模型首任务分别记录 |
 | 第二台Mac、用户反馈的27.2组合 | 未验证：缺硬件及具体版本信息 | 用户已确认没有第二台Mac |
 | 26.x、27.x原生输入各3/3 | 待执行 | 必须实际73 guest和真实文件 |
-| 签名43升级到73、旧43内存快照 | 升级待执行；实际43内存基准已就绪 | [43准备记录](../scripts/regress/results/2026-11-04-0.9.11-43-input-v3-preparation.manifest.json)；基线准备不等于升级通过 |
-| Codex CLI short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)；唯一失败是下单前要求许可；PDF正文仍待独立提取 |
-| Codex MCP short20 | 程序19/20，审批/注入独立复核通过 | [收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json)；表单要求许可未生成验证码；PDF正文仍待独立提取 |
-| 外部6项long与同环境43比较 | 73程序6/6；43 CLI已开始，其余待执行 | [73收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-acceptance.manifest.json)；额外文本/文件/UI核对通过，PDF正文待提取；完整前后比较未关闭 |
+| 签名43升级到73、旧43内存快照 | 升级待执行；新严格43基准已验证 | [严格43准备](../scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json)；旧v3准备结论作废，基线准备不等于升级通过 |
+| Codex CLI short20 | 旧工具单边程序19/20，审批/注入独立复核通过；新比较待执行 | [原收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)；唯一失败是下单前要求许可 |
+| Codex MCP short20 | 旧工具单边程序19/20，审批/注入独立复核通过；新比较待执行 | [原收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json)；表单要求许可未生成验证码 |
+| 外部6项long与同环境43比较 | 旧工具73程序6/6，额外文件/UI检查通过；新成对比较待执行 | [原73收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-acceptance.manifest.json)；完整前后比较未关闭 |
+| 73旧单边三份PDF正文 | 全部通过：各一页，正文与目标一致 | [补充正文验证](../scripts/regress/results/2026-11-04-0.9.12-73-pdf-body-addendum.manifest.json)；原历史清单不改写 |
 | 内置DeepSeek三轮、Anthropic两轮、内置long比较 | 未验证：缺模型配置 | 保留原门槛，不用Codex代替 |
 | 4.3小时真实模型soak、任务中退出/继续、快照与内存 | 未验证：缺模型配置 | 不用30次无模型恢复或外部回归代替 |
 | 两种guest的权限故障和诊断矩阵 | 待执行 | 遮挡/合并/取消/拒绝重授/身份失效/截图超时；三类无图诊断、显式一图和秘密扫描 |

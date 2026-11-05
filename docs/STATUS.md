@@ -2,6 +2,10 @@
 
 已发布版本为 **0.9.11**（[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。当前未发布候选为 **0.9.12（73）**，逐项验收见 [当前候选矩阵](VALIDATION-0.9.12-MATRIX.md)，完整证据与原始失败见 [验证记录](VALIDATION-0.9.12.md)，范围见 [下一版规划](NEXT-RELEASE.md)。
 
+**验证工具修正与当前执行**：input-v3的43准备工具误把状态中“this app brings 43”当作实际guest43，保存前读回实际上为73；43对照已安全停止，11项原分数保留但不得用于前后比较，原准备通过结论由 [修正记录](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json) 撤回。新闸门完整匹配实际agent行，每项记录guestAgentBeforeTask，恢复并确认就绪后才删除Before regression备份；67脚本、9原生文件检查及harness构建通过，App/guest73二进制未改。新 [严格43基准](../scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json) 已连续恢复3次，每次明确实际43且源RAM哈希不变，旧备份已安全恢复再删除。必须以新冻结工具重开成对比较，不能将旧单边分数转记成新比较通过。
+
+**73 PDF补充验证完成**：CLI/MCP两份report.pdf及长任务planets.pdf均一页，原生PDFKit提取的正文与各自任务完全一致。旧清单中“正文待核查”的历史状态保留，后续结论以 [正文补充记录](../scripts/regress/results/2026-11-04-0.9.12-73-pdf-body-addendum.manifest.json) 为准。以下73模型成绩属于input-v3单边结果，完整比较仍未关闭。
+
 **73修订与当前验证**：72修正输入隔离后的MCP只完成10/20，下一项调用模型前恢复快照失败，整组比较已停止，43未运行。系统记录再次为Virtualization服务GUARD终止，不能证明唯一根因。73仅在显式stop返回错误且原生VM状态已为stopped/error时允许后续快照文件操作；其余运行/过渡状态仍抛错，并增加最多64条无输入、路径或像素的生命周期元数据。197项Swift、本机Mac检查、原生回调探针、签名公证与Gatekeeper通过。真实73内存快照连续恢复30/30、两份CLI/MCP文件及正常退出重开通过；源72/73内存哈希不变。本轮没有触发终态错误恢复分支，不能证明原偶发问题已修复。证据见 `2026-11-04-0.9.12-73-lifecycle.manifest.json`。以下72成绩属于旧构建，不转记为73通过。
 
 **73 CLI完整结果**：完整20项结束，程序19/20、审批和提示注入独立复核通过，总任务1391秒、中位63.5秒、费用未知。唯一失败为本地表单填好后要求Place order许可、没有生成验证码；原分数保留。输入目录/fixture哈希、原始实际工具操作、App/agent/源码指纹和正常SIGTERM退出核对通过；已通过项的额外文件核验通过，但PDF目前只核对文件头，正文留待模型序列结束后提取，不声称完整PDF内容验收。long及43比较尚未结束，不计完整P0/P1通过。证据见 `2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json`。

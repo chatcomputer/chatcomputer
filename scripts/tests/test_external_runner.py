@@ -13,6 +13,29 @@ spec.loader.exec_module(module)
 
 
 class ExternalRunner(unittest.TestCase):
+    def test_bundled_version_hint_does_not_release_the_readiness_gate(self):
+        mismatch = ('Virtual Mac: running, desktop ready\n'
+                    'Agent in the virtual Mac: 0.9.12 (73) '
+                    '(this app brings 0.9.11 (43); it updates when the virtual Mac is idle)\n')
+        ready = 'Virtual Mac: running, desktop ready\nAgent in the virtual Mac: 0.9.11 (43)\n'
+        with patch.object(module, 'cli', side_effect=[mismatch, ready]) as cli, \
+                patch.object(module.time, 'sleep') as sleep:
+            self.assertEqual(module.wait_ready('/test/chatcomputer'), '0.9.11 (43)')
+        self.assertEqual(cli.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    def test_version_mismatch_times_out_without_starting_a_model_task(self):
+        mismatch = ('Virtual Mac: running, desktop ready\n'
+                    'Agent in the virtual Mac: 0.9.12 (73) (this app brings 0.9.11 (43))\n')
+        with patch.object(module, 'cli', return_value=mismatch), \
+                patch.object(module.time, 'time', side_effect=[0, 0, 181]), \
+                patch.object(module.time, 'sleep'), patch.object(module, 'stage_attachments') as stage, \
+                patch.object(module, 'run_codex') as model:
+            with self.assertRaisesRegex(RuntimeError, 'bundled guest agent'):
+                module.run_task({'id': 'unstarted'}, 1, '/test/chatcomputer', agent_name='codex')
+        stage.assert_not_called()
+        model.assert_not_called()
+
     def test_failed_restore_preserves_the_before_regression_snapshot(self):
         with patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'restore failed')) as run:
             with self.assertRaisesRegex(RuntimeError, 'restore failed'):
@@ -21,10 +44,19 @@ class ExternalRunner(unittest.TestCase):
         self.assertEqual(run.call_args.args[0][1:3], ['snapshot', 'restore'])
 
     def test_snapshot_is_deleted_only_after_a_successful_restore(self):
-        with patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'ok', '')) as run:
+        with patch.object(module.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'ok', '')) as run, \
+                patch.object(module, 'wait_ready', return_value='0.9.11 (43)') as ready:
             module.restore_before_regression('/test/chatcomputer')
         self.assertEqual([c.args[0][1:3] for c in run.call_args_list],
                          [['snapshot', 'restore'], ['snapshot', 'delete']])
+        ready.assert_called_once_with('/test/chatcomputer')
+
+    def test_restore_response_without_guest_readiness_keeps_the_backup(self):
+        with patch.object(module, 'cli', return_value='restored') as cli, \
+                patch.object(module, 'wait_ready', side_effect=RuntimeError('guest did not restart')):
+            with self.assertRaisesRegex(RuntimeError, 'guest did not restart'):
+                module.restore_before_regression('/test/chatcomputer')
+        cli.assert_called_once_with(['snapshot', 'restore', 'Before regression', '--no-save'], '/test/chatcomputer')
 
     def test_failed_cleanup_cannot_hide_behind_successful_tasks(self):
         result = {'task': 'textedit-note', 'passed': True, 'seconds': 1,
@@ -42,7 +74,8 @@ class ExternalRunner(unittest.TestCase):
     def test_failed_snapshot_deletion_is_reported(self):
         with patch.object(module.subprocess, 'run', side_effect=[
                 subprocess.CompletedProcess([], 0, 'restored', ''),
-                subprocess.CompletedProcess([], 1, '', 'delete failed')]):
+                subprocess.CompletedProcess([], 1, '', 'delete failed')]), \
+                patch.object(module, 'wait_ready', return_value='0.9.11 (43)'):
             with self.assertRaisesRegex(RuntimeError, 'delete failed'):
                 module.restore_before_regression('/test/chatcomputer')
 

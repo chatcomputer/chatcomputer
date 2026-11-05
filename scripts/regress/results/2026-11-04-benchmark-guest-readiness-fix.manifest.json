@@ -1,0 +1,119 @@
+{
+  "recordedAt": "2026-11-05T00:12:14.721539+00:00",
+  "kind": "Actual guest version readiness correction",
+  "shippingAppOrGuestChanged": false,
+  "invalidatedV3BaselinePreparation": true,
+  "supersedesPreparationVerdict": "2026-11-04-0.9.11-43-input-v3-preparation.manifest.json",
+  "actualPreSnapshotAgentLine": "Agent in the virtual Mac: 0.9.12 (73) (this app brings 0.9.11 (43); it updates when the virtual Mac is idle)",
+  "bug": "Substring target43 matched the bundled-version hint while the actual guest was73; desktop readiness alone also allowed mixed-version starts",
+  "newPolicy": "Whole actual-agent status line must match with no bundled-version hint; write guestAgentBeforeTask per result; observe restored guest readiness before deleting Before regression",
+  "old43Run": {
+    "completed": 11,
+    "passed": 11,
+    "interruptedByUs": true,
+    "fullSuitePassed": false,
+    "normalGUIExit": true,
+    "validBeforeAfterBaseline": false,
+    "completedOriginalRowsPreserved": true,
+    "interruptedInFlightTaskNotScored": true
+  },
+  "candidate73OriginalScoresPreserved": true,
+  "native73Original31RecordedAgentStatusesAllExact73": true,
+  "pairedComparisonMustRestartUnderNewFrozenHarness": true,
+  "pythonTestsPassed": 67,
+  "nativeFileChecksPassed": 9,
+  "harnessBuildPassed": true,
+  "initialNewTimeoutTestFixtureCorrection": "Mock clock advanced beyond default180seconds; original failed-test log retained",
+  "kernelGuardRootCauseProven": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/guest_readiness.py",
+      "sha256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0"
+    },
+    {
+      "path": "scripts/regress/external.py",
+      "sha256": "c97595c24a6bd41384348e2b4113cd4fa5383d41ffe03701c97f42bf4b03bc40"
+    },
+    {
+      "path": "scripts/regress/run-manifest.py",
+      "sha256": "2cd892deb1aa2ec88ede72deea8b1462d18a260102ba1966291d744caea80581"
+    },
+    {
+      "path": "scripts/tests/test_guest_readiness.py",
+      "sha256": "926352ab6ade99f6929f6dfcee59502a091e2f089a48c60e72dac3fcdea27a39"
+    },
+    {
+      "path": "scripts/tests/test_external_runner.py",
+      "sha256": "ef965666667b8c0b01186610d348933cbbe6994d02b66595620500970c4a9c0b"
+    },
+    {
+      "path": "build/validation/readiness-v4-python-tests.log",
+      "sha256": "d2393fa98861690ec5b5b5c170e28dd10d3b287a247af64f6f705ad66bc05ff2"
+    },
+    {
+      "path": "build/validation/readiness-v4-python-tests-retry1.log",
+      "sha256": "303874ff4ee9cc46d48729f8a59e423ba24f99cedc2531734d97295564614805"
+    },
+    {
+      "path": "build/validation/readiness-v4-python-tests-final.log",
+      "sha256": "373c499f364269ca41ee218ce74163af0df77486be1eeed683dca0804ddf6f70"
+    },
+    {
+      "path": "build/validation/readiness-v4-native-file-tests.log",
+      "sha256": "c5724e4c1ae5e5d8c378586d0f20db04f704499690a3cfd7f04be4705ca6e0d8"
+    },
+    {
+      "path": "build/validation/readiness-v4-harness-build.log",
+      "sha256": "f036a4f54e8079d30a34e46d04832ea97faf45de9174cd05eb8eb592eb6dbefb"
+    },
+    {
+      "path": "build/validation/readiness-v4-isolated-vm-status.log",
+      "sha256": "8b87625e7029350b039635d34ef360526bfc23237c6faec960aea2981dffd6bc"
+    },
+    {
+      "path": "build/validation/baseline43-invalid-readiness-stop.json",
+      "sha256": "43893bd94bbe468e65c1fc4e2139081d73626c1ef83811be4e6757d6135fec7a"
+    },
+    {
+      "path": "build/validation/stop-invalid-baseline43.py",
+      "sha256": "174a48f3edd5970b404eb7dcc4cbd4870f1782fac6d2c3de062693de18ee9183"
+    },
+    {
+      "path": "build/validation/prepare-base-43-from73-result.json",
+      "sha256": "8eee1d1e4c41acd1b43ce177c99cd79bf46338f26653369ecfe00f3357989830"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-input-v3-preparation.manifest.json",
+      "sha256": "14e8bbae862d08409a3658ced9e874e15ebac02c1f8705e2057326ac3359f1bf"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-short-cli-input-v3.manifest.json",
+      "sha256": "1d338a643677dc3f9199decb61bb7943f7f280395a5c17fd7ecaa91536eeefe4"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-short-cli-input-v3.jsonl",
+      "sha256": "07ae58cd5c215f0bc6de9a95861fb18daec020152a39513f18b77ae09acb4016"
+    },
+    {
+      "path": "build/validation/2026-11-04-0.9.11-43-codex-short-cli-input-v3-host.log",
+      "sha256": "ea08062913a527be0aabf076ae45646d9a26cce102d701e9306832e2d89b23c7"
+    },
+    {
+      "path": "build/validation/sequence-input-isolated-comparison-v3-monitor.log",
+      "sha256": "20718ba8e15d57ea61e8e13b40356c3052b38994a5accd4614b66bacd8671121"
+    },
+    {
+      "path": "build/validation/input-isolated-v3-resources.jsonl",
+      "sha256": "1074f7be9cfec486743ccf3412b40c741db2a4f6a7cc66a0b920ea68308e698c"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-result.json",
+      "sha256": "9a8b780d86471c396529346a5caedde2019db52a6d68e08b9c794d5579e7f2b1"
+    },
+    {
+      "path": "build/validation/native-lifecycle-73-loop1-host.log",
+      "sha256": "daaa45ebfe891fc9fc052dc19caf22ea7e092414b6b6c5e964b19a8a7e6ca108"
+    }
+  ]
+}

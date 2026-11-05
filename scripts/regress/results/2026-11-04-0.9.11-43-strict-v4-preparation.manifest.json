@@ -1,0 +1,55 @@
+{
+  "recordedAt": "2026-11-05T00:12:41.810361+00:00",
+  "appBuild": "43",
+  "passed": true,
+  "newFreshInstall": false,
+  "actual43Snapshot": {
+    "createdAt": "2026-11-05T00:06:44.246Z",
+    "hasThumbnail": true,
+    "id": "98C4A6B8-EFDE-41D9-8DFD-7842C32592AB",
+    "isProtected": false,
+    "kind": "manual",
+    "memoryBytes": 2751467520,
+    "name": "Regression base",
+    "overlayCount": 1,
+    "parentID": "19BA3BD8-E8DB-4C07-BFDE-F6F5E138D3F4"
+  },
+  "recoveredInterruptedBeforeRegressionBackup": true,
+  "oldUnverifiedV3BasePreserved": true,
+  "strictActualVersionBeforeCaptureAndAfterResume": true,
+  "threeMemoryRestoresWithoutWaitingForWrongVersionToUpdate": 3,
+  "sourceRAMUnchanged": true,
+  "sourceMemorySHA256": "90ec64b4acee6c087a5866c01137e1dfbb48d0d954cc569e26e3e62b25bd39b1",
+  "normalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    62000
+  ],
+  "comparisonCompleted": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/prepare-base-43-strict-v4-result.json",
+      "sha256": "ec3708b28305a3356554be4d3fe28570cc440ea190a60531cd2b3c92459d19fe"
+    },
+    {
+      "path": "build/validation/prepare-base-43-strict-v4.py",
+      "sha256": "8cd25d464ae58646f378fca7600fcf34d6c4c3dfc38ce1d79490e6c3e78882f0"
+    },
+    {
+      "path": "build/validation/prepare-base-43-strict-v4.jsonl",
+      "sha256": "b64e3d9d587477c97f6e6a6319b86d620bce34a1de917de0134566cbd11ba1d3"
+    },
+    {
+      "path": "build/validation/prepare-base-43-strict-v4-monitor.log",
+      "sha256": "e49ae9c2460d793cdafb5d043d9f087459126cb3c1d019c9ac6a379a24ddffa6"
+    },
+    {
+      "path": "build/validation/prepare-base-43-strict-v4-unverified-v3-original.json",
+      "sha256": "8ceb1c28ea77d690207a23717fa99199518ec6f5667b1478620ff4f9ffbd6ea1"
+    },
+    {
+      "path": "scripts/regress/guest_readiness.py",
+      "sha256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0"
+    }
+  ]
+}

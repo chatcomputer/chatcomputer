@@ -26,6 +26,7 @@ import uuid
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 from codex_agent import run as run_codex
+from guest_readiness import ready_guest_version
 
 def data_dir():
     """Chat Computer's data folder: CC_DATA_DIR, the one chosen in setup, or ~/.chatcomputer."""
@@ -65,16 +66,18 @@ def cli(args, binary, check=True):
 def wait_ready(binary, timeout=180):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if "desktop ready" in cli(["status"], binary, check=False):
-            return
+        version = ready_guest_version(cli(["status"], binary, check=False))
+        if version is not None:
+            return version
         time.sleep(2)
-    raise RuntimeError("the virtual Mac did not become ready")
+    raise RuntimeError("the virtual Mac did not become ready with the bundled guest agent")
 
 
 def restore_before_regression(binary):
     # Keep the safety snapshot if restoring it fails, and fail the run rather
     # than reporting success with the user's previous state still unrestored.
     cli(["snapshot", "restore", "Before regression", "--no-save"], binary)
+    wait_ready(binary)
     cli(["snapshot", "delete", "Before regression"], binary)
 
 
@@ -150,7 +153,7 @@ def check_inventory(root, expected):
 
 def run_task(task, run, binary, via="cli", agent_name="claude", model=None, trace_dir=None):
     restore = cli(["snapshot", "restore", "Regression base", "--no-save"], binary)
-    wait_ready(binary)
+    guest_version = wait_ready(binary)
     inbox, input_files = stage_attachments(task, binary)
     started = time.time()
     # A folder of its own, so files left in the outbox by earlier runs can't stand in for this run's results.
@@ -222,6 +225,7 @@ def run_task(task, run, binary, via="cli", agent_name="claude", model=None, trac
         "cachedInputTokens": usage.get("cache_read_input_tokens", 0), "outputTokens": usage.get("output_tokens", 0),
         "answer": answer[-600:],
         "inputDirectory": inbox, "inputFiles": input_files,
+        "guestAgentBeforeTask": guest_version,
         **({"externalConfiguration": report['externalConfiguration']} if 'externalConfiguration' in report else {}),
     }
 
