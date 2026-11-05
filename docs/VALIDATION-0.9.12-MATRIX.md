@@ -22,9 +22,9 @@
 | 26.x全新安装A/B、两帧、首任务/重开 | 待执行 | 固定26.6.2 /25G83镜像；文件功能与模型首任务分别记录 |
 | 第二台Mac、用户反馈的27.2组合 | 未验证：缺硬件及具体版本信息 | 用户已确认没有第二台Mac |
 | 26.x、27.x原生输入各3/3 | 待执行 | 必须实际73 guest和真实文件 |
-| 签名43升级到73、旧43内存快照 | 升级待执行；新严格43基准已验证 | [严格43准备](../scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json)；旧v3准备结论作废，基线准备不等于升级通过 |
-| 新闸门下的43基线三组 | CLI/MCP各19/20，审批/注入及各20项实际43版本核对通过；long运行中 | [43 CLI收尾](../scripts/regress/results/2026-11-04-0.9.11-43-codex-short-cli-input-v4-review.manifest.json)、[43 MCP收尾](../scripts/regress/results/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-review.manifest.json)；PDF正文待核对，完整成对比较未关闭 |
-| Codex CLI short20 | 旧工具单边程序19/20，审批/注入独立复核通过；新比较待执行 | [原收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)；唯一失败是下单前要求许可 |
+| 签名43升级到73、旧43内存快照 | 27 guest实际升级/旧43 RAM/两文件重开通过；26待执行 | [27升级证据](../scripts/regress/results/2026-11-04-0.9.12-73-upgrade43-native-v4.manifest.json)；旧43 RAM与严格43基准哈希一致，不是43新装 |
+| 新闸门下的43基线三组 | CLI/MCP各19/20、long6/6，全部实际版本43；73 CLI已开始 | [43 CLI](../scripts/regress/results/2026-11-04-0.9.11-43-codex-short-cli-input-v4-review.manifest.json)、[43 MCP](../scripts/regress/results/2026-11-04-0.9.11-43-codex-short-mcp-input-v4-review.manifest.json)、[43 long](../scripts/regress/results/2026-11-04-0.9.11-43-codex-long-cli-input-v4-review.manifest.json)；PDF正文待核对，成对比较未关闭 |
+| Codex CLI short20 | 新闸门73运行中；旧单边19/20不转记 | [原收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v3-acceptance.manifest.json)仅保留旧分数；新组结束后另行封存 |
 | Codex MCP short20 | 旧工具单边程序19/20，审批/注入独立复核通过；新比较待执行 | [原收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-short-mcp-input-v3-acceptance.manifest.json)；表单要求许可未生成验证码 |
 | 外部6项long与同环境43比较 | 旧工具73程序6/6，额外文件/UI检查通过；新成对比较待执行 | [原73收尾审计](../scripts/regress/results/2026-11-04-0.9.12-73-codex-long-cli-input-v3-acceptance.manifest.json)；完整前后比较未关闭 |
 | 73旧单边三份PDF正文 | 全部通过：各一页，正文与目标一致 | [补充正文验证](../scripts/regress/results/2026-11-04-0.9.12-73-pdf-body-addendum.manifest.json)；原历史清单不改写 |

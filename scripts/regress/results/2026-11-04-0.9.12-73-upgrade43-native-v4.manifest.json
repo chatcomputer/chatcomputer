@@ -1,0 +1,137 @@
+{
+  "recordedAt": "2026-11-05T01:32:01.383022+00:00",
+  "appBuild": "73",
+  "guestRelease": "27",
+  "hostGuestBuild": "27.0.1 /26A434",
+  "passed": true,
+  "modelInvoked": false,
+  "newFreshInstall": false,
+  "origin": "Originally71 installed isolated27VM; actual strict43 memory base used; not a fresh43 install",
+  "actual43ReadyAndScreenshotBeforeUpgrade": true,
+  "sameSignatureActual43To73": true,
+  "actualOld43RAMRestoredAndUpdatedTo73": true,
+  "old43RAMSHA256Unchanged": "90ec64b4acee6c087a5866c01137e1dfbb48d0d954cc569e26e3e62b25bd39b1",
+  "source43RAMStillMatchesStrictPreparation": true,
+  "realCLIAndMCPFilesAndNormalReopenPassed": true,
+  "nativePositiveGUIExits": [
+    {
+      "app": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/baseline-43/ChatComputer.app",
+      "pids": [
+        87205
+      ]
+    },
+    {
+      "app": "/Users/xnu/products/org/chatcomputer/chatcomputer/build/release/ChatComputer.app",
+      "pids": [
+        87359
+      ]
+    }
+  ],
+  "fileHelperNormalExitScope": "Functional helper verifies exit/reopen and files but does not record its two GUI PIDs",
+  "twoFiles": [
+    {
+      "name": "p1-upgrade-43-73-v4-cli.txt",
+      "expected": "Chat Computer upgrade-43-73-v4: cli file verified.",
+      "sha256": "131e445503d9d4042194e475b1c04d1633f261dae25a220d5c3d6780f0766051"
+    },
+    {
+      "name": "p1-upgrade-43-73-v4-mcp.txt",
+      "expected": "Chat Computer upgrade-43-73-v4: mcp file verified.",
+      "sha256": "44cc36e2e6b4f2e60620a6f6333016fe1a9968846dfd2b2b5ebb420c2c1e4b2e"
+    }
+  ],
+  "selected73SourceRAMMatchesNativeValidation": "2dc37a084e96ac38585d67f90a5ef522e1758726f5c62ef70b60e1cb0c2eb7a9",
+  "onlySnapshotMetadataNamesChangedForSelection": true,
+  "old43SnapshotPreserved": "98C4A6B8-EFDE-41D9-8DFD-7842C32592AB",
+  "new73RegressionBase": "D6811FB2-B563-4F23-9D55-5018AB2CFDEC",
+  "shipping73AppAndAgentMatchOriginalSignedBuild": true,
+  "coverageLimitation": "This is27guest only;26upgrade/old43RAM, fresh installs, native input and full fault matrix remain separate gates",
+  "beforeAfterModelComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/upgrade-43-73-v4-after-old-restore.png",
+      "sha256": "eec750fe196a475afc5329a485664739e3467e8f7b9d135a2197cf16e3224352"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-after-upgrade.png",
+      "sha256": "eec750fe196a475afc5329a485664739e3467e8f7b9d135a2197cf16e3224352"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-files-monitor.log",
+      "sha256": "83ec5f46d0412a99a392eeefeabdcbe1319590c53ebaaf0a362b04f9969019da"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-files-result.json",
+      "sha256": "86482f447f7c012ba7cc76b10caaa051572f9f64056e4912635b2b0b04c55c1c"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-files.jsonl",
+      "sha256": "e7cb8eb05b58a5fd708e6bea2782e046ee955a0ce75a8bf5ed5bad3004e7330a"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-first-desktop.png",
+      "sha256": "9b2b1fcec67c56b591ef2d8cadc36c67091171c6f3a65840907c3c904ceaf119"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-host.log",
+      "sha256": "c7db8bb05a8483e097b59220a04ae9a212328557fee37cb618ddf6c6fb048fcd"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-mcp-2-0.png",
+      "sha256": "9fab0a6f12c14f56f994b393bb680fc4a13669fb503433a19e9b3f4132877240"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-monitor.log",
+      "sha256": "410ab5cbdbee1a3471bcb7c16d005002cf143b20f91c36708f1a8786ea067398"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-old43.png",
+      "sha256": "3aa9cf8a1073aa49f0acdf177b8ea3095855de0a0d08e02f40f4635f2bad09bd"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4-result.json",
+      "sha256": "77779580fc39882281f27833caf5e10f371f6e5ddbae9439fb8e0d26d53758f7"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4.jsonl",
+      "sha256": "280f22a747327082da6dd76ae3918ef9b931f6e8ec14dd632a216497b84a11ec"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4.py",
+      "sha256": "fece3091f59935f4b26024042d8daf3afee31a9fa2093aeb61d3bc08ea4d96c9"
+    },
+    {
+      "path": "build/validation/select-base73-v4-98C4A6B8-EFDE-41D9-8DFD-7842C32592AB-original.json",
+      "sha256": "7e2fce71dd463202a90a295f78f87af7fa5ba18faa07816596383fd769575975"
+    },
+    {
+      "path": "build/validation/select-base73-v4-D6811FB2-B563-4F23-9D55-5018AB2CFDEC-original.json",
+      "sha256": "49f6c9d083060c8fb190ed7b3d304cdf08beda79c5a633ff1dae8b129a1e2e0a"
+    },
+    {
+      "path": "build/validation/select-base73-v4-monitor.log",
+      "sha256": "fa9927fe56b0bc5c70527de1120ef0b3519adc920e052a29a6be1f47bf550167"
+    },
+    {
+      "path": "build/validation/select-base73-v4-result.json",
+      "sha256": "ba6f87359041b38a2fe1b4e647865ecffbf2e7c440707270ff20083e2fce452b"
+    },
+    {
+      "path": "build/validation/select-base73-v4.py",
+      "sha256": "5a73e1b4138c183f34508bef62e9721d4709cbbcda82e34fbb740cc369b835fb"
+    },
+    {
+      "path": "build/validation/fresh-file-smoke-v2.py",
+      "sha256": "06b5d409ddb1d1bb3c395fba4eb5cfe347fb672828337255bb64f94f461fd534"
+    },
+    {
+      "path": "build/validation/record-native-upgrade-v4.py",
+      "sha256": "1960e369731d3e27eda7b3965f07792126cbc824cbed3a14f56584eecd5825dc"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json",
+      "sha256": "704c8567ccac4b6821aca20736b663a533cfb2694892cfb7cd0751e739fb815f"
+    }
+  ]
+}

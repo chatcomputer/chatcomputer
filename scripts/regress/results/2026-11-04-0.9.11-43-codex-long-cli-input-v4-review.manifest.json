@@ -1,0 +1,104 @@
+{
+  "recordedAt": "2026-11-05T01:26:26.469175+00:00",
+  "appBuild": "43",
+  "suite": "long",
+  "via": "cli",
+  "completedTasks": 6,
+  "passedTasks": 6,
+  "programmaticLongThresholdPassed": true,
+  "initialAndAllSixActualGuestVersionsVerified": "0.9.11 (43)",
+  "allListedTextFileAndUIReviewChecksPassed": true,
+  "salesRequestedCalculationAppMethodVerified": true,
+  "organizeExactlyFourByteCopiesAndIndexVerified": true,
+  "calendarAllThreeDatesAndSeparateLinesVerified": true,
+  "planetPDFIndependentBodyVerification": "pending; original PDF retained and header checked, not full PDF content audit",
+  "sourceAppAndBundledAgentByteFingerprintsVerified": true,
+  "frozenReadinessParserSHA256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0",
+  "taskSecondsTotal": 848,
+  "taskSecondsMedian": 143.0,
+  "costUSD": null,
+  "normalSIGTERMExit": true,
+  "GUIProcessIDsSentSIGTERM": [
+    82153
+  ],
+  "resourceSampleCount": 62,
+  "resourceScope": "Owned GUI RSS/free disk excerpt, not total VM memory or4.3h built-in model soak; whole comparison trace ongoing",
+  "virtualizationReportsPresentForGUIAtObservation": [],
+  "beforeAfterComparisonComplete": false,
+  "kernelGuardRootCauseProven": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-long-cli-input-v4.manifest.json",
+      "sha256": "337c6403ef179dcf19af4f25772dfaaddb9252e8c09c99b61a88be28d4ae23eb"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-long-cli-input-v4.jsonl",
+      "sha256": "2dc701ae4eeb3d5c632c97a5c3f4c8b5873c914ff95036c9d930436916782d84"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-codex-long-cli-input-v4-evidence-audit.manifest.json",
+      "sha256": "1d486ef235d5bdf2b8d2ca43f5720404b87b9d6ed5e5428baec668e616835b23"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-long-first3-review.json",
+      "sha256": "897d2c7bf1a7979fd2d2bfcb6d61206011261bfe0752ea4beb96697aaa396aed"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-long-last3-review.json",
+      "sha256": "4b484010304e9703ffb558bc5f2976b3dd41cbb3b535f0330456fffb75462b79"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-sales-method-review.json",
+      "sha256": "53b5fa7a8a32646552502510ea3856e902a4c364339018f0afdf51af6b8d8f9b"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-long-resources.jsonl",
+      "sha256": "c5810c66513123f8806e136735c5f2c11b2fdf9c0e2e41bbf00511074906e953"
+    },
+    {
+      "path": "build/validation/record-v4-long-review.py",
+      "sha256": "9bf3373737dc32a0fd73825c1c992d34b477573433acc1bd7f7ac4c70e96d801"
+    },
+    {
+      "path": "build/validation/review-long-first3-v4.py",
+      "sha256": "6cdd831f6360ff122e79310e8ff1ab0e6c861b9bf01c8c07d12dfcb575ed650e"
+    },
+    {
+      "path": "build/validation/review-long-last3-v4-visual.py",
+      "sha256": "b7ab5b5f51d82a3523384fd2c19c50dd738cf35e2be98e1e6292b52c92dca948"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-planets.pdf",
+      "sha256": "0c286d09fddd181dda4da4f9e260e56d9aa07e1437e9e74fcb7e3580a9f06096"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots.json",
+      "sha256": "ebff0f385592148ebe180b7d7fadb65aae4865a53416bf6ed700e26fec223810"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-1.png",
+      "sha256": "221dd17fcb5b013018b3e558b5c1eed0dd22ac6289cd7fedbcb63685dd7920f7"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-2.png",
+      "sha256": "949f3b556a0a1137dbaa3852d4493b4288f244a0150e9992a061dae113f2bdec"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-3.png",
+      "sha256": "365ecccc49fb70b34bc161b1a2a5f7176df78acfa698d37bfbcc696c33c57192"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-4.png",
+      "sha256": "00ea3a382995e041a8cff8d6e93b85708cfea00d764f6b943c3f0e0cf4ccf47c"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-5.png",
+      "sha256": "d4734fe67869e6b3b2e825a9d6d95f4442cfef5402eb7ec2ff2a3abbc8548f36"
+    },
+    {
+      "path": "build/validation/codex-43-cli-input-v4-compare-shop-screenshots/frame-6.png",
+      "sha256": "6156a001bad7600ce48b275907244686f5c0e8bb304a3c2ec7c5116ec89f4f4b"
+    }
+  ]
+}
