@@ -8,7 +8,7 @@
 
 ## 73当前矩阵
 
-当前成对比较已因版本闸门缺陷停止：43保存前实际guest73，但工具误匹配了“本App携带43”的提示。旧43的11项成绩不用于对比，原准备通过结论撤回；73原分数保留为旧工具单边结果。67项脚本检查和新严格43基准3次恢复通过，待用同一新工具重开两边。见 [闸门修正](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json)。73三份PDF正文已全部补核对通过。
+旧input-v3成对比较已因版本闸门缺陷停止：43保存前实际guest73，但工具误匹配了“本App携带43”的提示。旧43的11项成绩不用于对比，原准备通过结论撤回；73原分数保留为旧工具单边结果。67项脚本检查和新严格43基准3次恢复通过，input-v4已按同一冻结工具重开，先执行43再升级及执行73。见 [闸门修正](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json)、[新比较配置](../scripts/regress/results/2026-11-04-benchmark-comparison-v4-setup.manifest.json)。73旧单边三份PDF正文已全部补核对通过；新比较尚无完整结论。
 
 | 验收项 | 73结果 | 证据或下一步 |
 |---|---|---|

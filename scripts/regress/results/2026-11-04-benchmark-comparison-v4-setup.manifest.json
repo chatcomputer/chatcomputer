@@ -1,0 +1,67 @@
+{
+  "recordedAt": "2026-11-05T00:23:18.670658+00:00",
+  "stateAtObservation": "New paired comparison launched; not a completed comparison",
+  "label": "input-v4",
+  "benchmarkRevision": "isolated-inputs-v2-actual-agent-v1",
+  "order": [
+    "43 CLIshort20",
+    "43 MCPshort20",
+    "43 CLIlong6",
+    "native actual43to73 and old43memory restore plus CLI/MCPfiles",
+    "select unchanged proven73cleanmemory",
+    "73 CLIshort20",
+    "73 MCPshort20",
+    "73 CLIlong6"
+  ],
+  "firstActualGuestConfirmed": "0.9.11 (43)",
+  "firstCompletedTaskActualVersionVerified": true,
+  "allFutureResultVersionsMustMatchSUT": true,
+  "shipping73AppAndAgentUnchangedAndMatchSignedBuild": true,
+  "modelRequested": "gpt-6.1-sol",
+  "clientVersion": "codex-cli 0.166.0-alpha.6",
+  "clientSHA256": "508388df35319042107560d095b271a98a512f59a542848c908b23ed1bad4b44",
+  "parserSHA256": "f7ba43d119a5e60f03fe52de4937a1aa26b9d21aa9199665b03d8774dfabcaa0",
+  "sourceCopies": "Each suite rawdirectory includes supervisor, external runner, parser, adapter, tasks and proxy; unfinished suite traces/manifests not sealed here",
+  "sourceFingerprintScope": "Execution checkout has newer Python readiness gates than signed73build; App/guest byte fingerprints are the runtime identity, not assertion that checkout compiled the bundle",
+  "comparisonPreparationLimitation": "Same physicalhost/guestOS/VMhardware/commonAppPath andproxy. Baseline43 cold booted on clean73 disk, candidate73 clean RAM base; no assertion of identical initial RAM/UI state or absolute performance equivalence.",
+  "beforeAfterComparisonComplete": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "build/validation/comparison-v4-frozen.json",
+      "sha256": "f99032f2446abc88583c70ec3befe20202d2f2df1699a70600cb72832605def3"
+    },
+    {
+      "path": "build/validation/record-comparison-v4-setup.py",
+      "sha256": "430e6c6ea2bf65fd337ae4995106bf23e4023308d668638907eb14cb402b8190"
+    },
+    {
+      "path": "build/validation/sequence-input-isolated-comparison-v4.py",
+      "sha256": "14d81b0e453baec9ac7382d6635b800d6131beea7691ace3486202c9206d5fa0"
+    },
+    {
+      "path": "build/validation/run-isolated-comparison-v4.py",
+      "sha256": "4141bab3d8828a2ed88e50f22c8bdff23a1b761eb728faaf2adb860faab38587"
+    },
+    {
+      "path": "build/validation/upgrade-43-73-v4.py",
+      "sha256": "fece3091f59935f4b26024042d8daf3afee31a9fa2093aeb61d3bc08ea4d96c9"
+    },
+    {
+      "path": "build/validation/select-base73-v4.py",
+      "sha256": "5a73e1b4138c183f34508bef62e9721d4709cbbcda82e34fbb740cc369b835fb"
+    },
+    {
+      "path": "build/validation/monitor-input-isolated-v4-resources.py",
+      "sha256": "a9d6cd8f0a9347234cb6bcd1c7dc9295973098496df922b95e76b0462eaee97a"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json",
+      "sha256": "704c8567ccac4b6821aca20736b663a533cfb2694892cfb7cd0751e739fb815f"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json",
+      "sha256": "8bdf3777ec4910a113ff227f5f00f1c9088cafd1ad426e9a480041923e75776b"
+    }
+  ]
+}

@@ -465,3 +465,9 @@ GUI PID49700正常SIGTERM退出，末次生命周期环61条，无恢复失败�
 已先恢复中断前的Before regression，完整实际43状态连续确认后才删除备份；旧未验证v3快照仅改名保留。以实际43就绪状态连续确认后创建新基准 `98C4A6B8-EFDE-41D9-8DFD-7842C32592AB`，随后连续三次恢复：若观察到错误实际版本立即失败，不允许等待自动更新来“验证”该RAM。三次均明确实际43，源RAM哈希不变，正常SIGTERM退出。证据为 `2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json`；这不是新装或完整比较，更不是43升级到73的验证。
 
 模型序列停止后，用原生PDFKit提取73旧单边的三份原始PDF：两份report.pdf各为一页且正文恰为Quarterly report draft.；planets.pdf一页且正文与三行文本报告的行星、次序和数值一致。原清单“正文待验证”不改写，补充完成证据为 `2026-11-04-0.9.12-73-pdf-body-addendum.manifest.json`。下一组比较必须固定新的版本闸门、模型、任务与独立输入规则，两边重新执行；完整P0/P1和发布门槛仍未通过。
+
+## input-v4：严格实际版本的新成对比较启动
+
+新一组冻结external.py、guest_readiness.py、adapter、任务定义、proxy、监督器及原生升级/基准选择脚本，并固定Codex CLI0.166.0-alpha.6的二进制SHA256和gpt-6.1-sol请求配置。每组raw目录另存执行源码副本，监督器使用同一parser完整匹配实际版本，所有结果的guestAgentBeforeTask必须与SUT相同。首先执行严格43基准的CLI short20、MCP short20、CLI long6；然后在没有模型任务重叠时实际43→73升级、恢复原43内存、CLI/MCP文件与正常重开，保留43基准，再只改元数据选择原先30次验证且RAM指纹未变的干净73基准，执行73同样三组。任何不完整运行、身份不符、异常退出或源代码/客户端变化均停止，不自动重复。
+
+首个43任务已完成且结果明确记录0.9.11 (43)。App/guest73仍与原签名构建字节指纹一致，但执行checkout包含新的Python闸门，不声称整个源码指纹等于原编译checkout。原73/43初始RAM/UI的准备方式差异继续记录，不假定绝对性能等价。配置清单为 `2026-11-04-benchmark-comparison-v4-setup.manifest.json`；运行中各组结果和整组资源曲线不提前封存，尚不构成完整前后比较或P0/P1通过。
