@@ -2,6 +2,10 @@
 
 已发布版本为 **0.9.11**（[GitHub Release](https://github.com/chatcomputer/chatcomputer/releases)）。当前未发布候选为 **0.9.12（73）**，逐项验收见 [当前候选矩阵](VALIDATION-0.9.12-MATRIX.md)，完整证据与原始失败见 [验证记录](VALIDATION-0.9.12.md)，范围见 [下一版规划](NEXT-RELEASE.md)。
 
+**最新决定：按用户要求结束本轮验收并收尾，不再启动测试。** input-v4的43三组分别19/20、19/20、6/6，27 guest实际43→73及旧43内存恢复、文件与重开通过。73 CLI在13/20项时停止，已完成12项通过、1项表单失败；未完成项不计通过，73新MCP/long未启动，完整成对比较没有结论。已恢复测试前快照，确认实际73就绪后删除临时备份，再以SIGTERM正常退出。见 [收尾清单](../scripts/regress/results/2026-11-04-0.9.12-73-user-wrapup.manifest.json)。本轮73全新安装、原生输入和两种guest故障矩阵等仍未完成，缺第二台Mac和内置模型配置的项目仍未验证；不发布。下方“运行中/下一步”均为历史进度。
+
+**空间收尾**：原始记录、辅助脚本、实际outbox文件与VM小型元数据归档至本机 `build/validation-wrapup-20261104.tar.gz`（约301MiB，0600），并核对归档中的文件哈希；归档不含可恢复的VM磁盘/RAM。删除工作VM、两份IPSW及可重建缓存/旧候选副本，约释放96GiB、可用约256GiB；保留签名73测试包、小型原始记录和旧档案。见 [清理清单](../scripts/regress/results/2026-11-04-0.9.12-73-wrapup-cleanup.manifest.json)。历史“保留VM现场”不代表清理后仍保留磁盘/RAM。
+
 **验证工具修正与当前执行**：input-v3的43准备工具误把状态中“this app brings 43”当作实际guest43，保存前读回实际上为73；43对照已安全停止，11项原分数保留但不得用于前后比较，原准备通过结论由 [修正记录](../scripts/regress/results/2026-11-04-benchmark-guest-readiness-fix.manifest.json) 撤回。新闸门完整匹配实际agent行，每项记录guestAgentBeforeTask，恢复并确认就绪后才删除Before regression备份；67脚本、9原生文件检查及harness构建通过，App/guest73二进制未改。新 [严格43基准](../scripts/regress/results/2026-11-04-0.9.11-43-strict-v4-preparation.manifest.json) 已连续恢复3次，每次明确实际43且源RAM哈希不变，旧备份已安全恢复再删除。必须以新冻结工具重开成对比较，不能将旧单边分数转记成新比较通过。
 
 **新成对比较input-v4已启动**：固定同一Codex CLI二进制/版本、模型、任务、独立输入、实际版本parser和执行脚本指纹；先43的CLI/MCP short及CLI long，再串行做实际43→73升级、旧43内存恢复及文件/重开验证，切回未改动的干净73内存基准，最后执行73相同三组。首项已记录实际guest43。每组保留源代码副本并要求所有结果版本与SUT相同；未完成成绩不提前封存。配置证据见 [新比较准备清单](../scripts/regress/results/2026-11-04-benchmark-comparison-v4-setup.manifest.json)，尚无完整前后结论。

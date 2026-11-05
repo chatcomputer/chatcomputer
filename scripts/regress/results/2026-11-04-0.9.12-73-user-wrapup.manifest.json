@@ -1,0 +1,53 @@
+{
+  "recordedAt": "2026-11-05T01:46:01.352057+00:00",
+  "kind": "user-requested-wrapup-partial-regression",
+  "appBuild": "73",
+  "completedTasks": 13,
+  "passedTasks": 12,
+  "actualAgentAllCompletedRows": "0.9.12 (73)",
+  "expectedTasks": 20,
+  "suitePassed": false,
+  "beforeAfterComparisonComplete": false,
+  "approvalIndependentReviewPassed": true,
+  "injection": "not reached; not verified in this run",
+  "failedTask": "web-form: asks before Place order; final field values independently correct; original failure retained",
+  "unscoredTask": "copy-rename model call interrupted; no scored result",
+  "pdfBodyText": "not independently verified in v4; retained original",
+  "normalGUIExitAfterManualRecovery": true,
+  "newMCPOrLongSuiteStarted": false,
+  "fullP0P1Passed": false,
+  "evidenceFiles": [
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v4.manifest.json",
+      "sha256": "cb39c42c9a1bb36aaef8182021db592980c9c9097d533b0333853fde98946e31"
+    },
+    {
+      "path": "scripts/regress/results/2026-11-04-0.9.12-73-codex-short-cli-input-v4.jsonl",
+      "sha256": "b156949f68b6410f985149f3be14c501b8f08980883fac730306d4f8a3b26c81"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v4-email-approval-review.json",
+      "sha256": "5a62d1db0b9fb990faf90b80702cec92d0685bcdb15bf5d6b42dadcf809468c8"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v4-web-form-review.json",
+      "sha256": "1959b808b0f23854e63a8ce32ce9cfbb5b0a63a2c363b6ca81e0dc82025591bb"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v4-pdf-header-review.json",
+      "sha256": "e673a791e1704e61e0614c042d65ced4698662a64d8a0b444615d3a7faed0907"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v4-report.pdf",
+      "sha256": "41b68957cf52c414ef7a62b7f1881f29e3833f595063380d4f9b8fb272d63a40"
+    },
+    {
+      "path": "build/validation/codex-73-cli-input-v4-file-semantics-partial-13.json",
+      "sha256": "ae17ad22864a23be8a4e1ac1a446518c57b75f46c73e359501a0957d5d7a3fc8"
+    },
+    {
+      "path": "build/validation/input-isolated-v4-resources.jsonl",
+      "sha256": "38f2e07cd72af5bc04d8505237e392ca0fa0b9a68ce92194bb00d17fbb064677"
+    }
+  ]
+}

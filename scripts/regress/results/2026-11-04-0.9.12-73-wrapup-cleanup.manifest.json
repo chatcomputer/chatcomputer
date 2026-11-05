@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-11-05T01:47:47.887465+00:00",
+  "reason": "User requested wrap-up and removal of rebuildable temporary files",
+  "archive": {
+    "path": "build/validation-wrapup-20261104.tar.gz",
+    "bytes": 315940520,
+    "sha256": "270c7d6c8853b7416590575028d20d0c6a5d8c59adfb92b9ffd188df01a5db35",
+    "permissions": "0o600",
+    "entries": 2246,
+    "vmOutboxAndMetadataVerifiedBeforeDeletion": true,
+    "scope": "Raw traces/helpers/results plus small VM metadata and actual outbox; no VM disk or RAM backup"
+  },
+  "removed": [
+    "build/test-fresh-71-27-a",
+    "build/test-assets",
+    "build/DerivedData-release",
+    "build/lifecycle-callback-probe",
+    "build/vm-callback-probe",
+    "build/candidate-71",
+    "build/candidate-72",
+    "build/benchmark-app",
+    "build/test-baseline43-front",
+    "build/test-benchmark-v2-front",
+    "Packages/ChatComputerKit/.build"
+  ],
+  "freeBytesBefore": 171693916160,
+  "freeBytesAfter": 274909917184,
+  "bytesFreed": 103216001024,
+  "preserved": [
+    "build/release signed73 App and zip",
+    "build/baseline-43 authentic signed copy",
+    "build/validation raw small records",
+    "build/validation-records-20261104.tar.gz prior archive"
+  ],
+  "noDailyUserAppOrDataDeleted": true,
+  "noReleasePublished": true
+}
