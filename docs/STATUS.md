@@ -1,5 +1,7 @@
 # 现状与规划
 
+2026-11-12 已发布 **[0.9.13（74）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.13)**：更新 AtomSprout 网站、联系邮箱与版权署名，重新构建并通过 Developer ID 签名、公证、装订和 Gatekeeper 检查，Homebrew 已同步。本次没有重新启动历史 VM 验收；此前未完成项和以下历史证据保持原状。
+
 已发布预发布版本为 **[0.9.12（73）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)**。用户在停止扩大验证后明确要求发布；沿用原签名公证包，未重新构建，Homebrew已同步。发布不等于完整验收通过，未完成项保持原状态，见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)、[验收矩阵](VALIDATION-0.9.12-MATRIX.md)、[验证记录](VALIDATION-0.9.12.md)。下方“不发布/未发布”均为此次发布指令之前的历史。
 
 官网同步与最终清理：官网提交 `1eafd1c` 已部署，中英文下载按钮显示0.9.12、两个链接均直接指向该版zip，页脚链接指向该版说明；不再由运行时API覆盖。原始截图、日志和辅助代码先逐文件核对归档，再移除1455个展开副本与临时文件；三个0600本机档案共约761MiB，存于 `build/`，分别为 `validation-records-20261104.tar.gz`、`validation-wrapup-20261104.tar.gz`、`resources-20261104-final.tar.gz`。保留签名73包及真实43包；当前约265GiB可用。早先“保留小型原始记录”现指归档内副本，展开目录已删除。见 [官网与最终清理清单](../scripts/regress/results/2026-11-04-0.9.12-website-final-cleanup.manifest.json)。
