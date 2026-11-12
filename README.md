@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://chatcomputer.github.io">Website</a> ·
+  <a href="https://atomsprout.com/chatcomputer">Website</a> ·
   <a href="https://github.com/chatcomputer/chatcomputer/releases">Download</a> ·
   <a href="docs/STATUS.md">Status</a> ·
   <a href="PRIVACY.md">Privacy</a>
@@ -53,7 +53,7 @@ with permission verification and recovery fixes. Validation is incomplete; see t
 20 fixed tasks (web forms, PDF export, spreadsheets, file organisation, Calendar, a planted prompt injection, an
 email that must be confirmed first) run from the same snapshot every time, and a program checks each result.
 Historical baseline from 2026-10-04, not a verification of the next release
-(every run, task by task, on [the website](https://chatcomputer.github.io/#results)):
+(every run, task by task, on [the website](https://atomsprout.com/chatcomputer/#results)):
 
 | Agent | Passed | Median turns per task |
 |---|---|---|

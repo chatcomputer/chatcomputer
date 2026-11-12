@@ -61,7 +61,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 | Claude Code · 命令行 | 20/20 | 991 秒 · $5.22（整组） |
 | Claude Code · MCP | 20/20 | 722 秒 · $4.91（整组） |
 
-0.2.0 时内置 agent 在前 10 个任务上三轮 25/30。App 已签名、公证，源码公开（Apache 2.0），网站 https://chatcomputer.github.io 。
+0.2.0 时内置 agent 在前 10 个任务上三轮 25/30。App 已签名、公证，源码公开（Apache 2.0），网站 https://atomsprout.com/chatcomputer 。
 
 ---
 
@@ -269,7 +269,7 @@ Claude Code、Codex 等外部 coding agent 也能通过 `chatcomputer` 命令行
 11. 界面逐页截图核对，含 Coding agents 设置页和错误状态。
 12. 许可说明（macOS 虚拟机的使用限制）。
 13. ✅ 0.9.0 候选版已发布（[v0.9.0](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.0)）；日常使用一周无严重问题再发 1.0。
-14. ✅ 项目网站：https://chatcomputer.github.io
+14. ✅ 项目网站：https://atomsprout.com/chatcomputer
 
 **1.0 发布标准**：同一候选版 DeepSeek 回归三轮每轮 ≥ 19/20，Claude 两轮全部通过；新环境安装、升级与快照恢复按 [NEXT-RELEASE.md](NEXT-RELEASE.md) 的矩阵验证；长时间运行沿用此前接受 4.3 小时的决定，本次候选至少重跑 4.3 小时并保留结果，不将历史测试表述为通过 24 小时；没有未解决的丢数据、卡死或首次授权阻塞问题。
 

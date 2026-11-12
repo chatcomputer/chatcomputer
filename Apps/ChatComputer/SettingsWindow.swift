@@ -234,7 +234,7 @@ struct AboutSettings: View {
                 .padding(.vertical, 6)
             }
             Section("Links") {
-                link("Website", "chatcomputer.github.io", "https://chatcomputer.github.io")
+                link("Website", "chatcomputer.github.io", "https://atomsprout.com/chatcomputer")
                 link("Release notes", "Releases on GitHub", "https://github.com/chatcomputer/chatcomputer/releases")
                 link("Source code", "chatcomputer/chatcomputer", "https://github.com/chatcomputer/chatcomputer")
                 link("Report a problem", "Open an issue", "https://github.com/chatcomputer/chatcomputer/issues/new/choose")

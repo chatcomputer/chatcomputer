@@ -57,7 +57,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
-        NSHumanReadableCopyright: ""
+        NSHumanReadableCopyright: "Copyright © 2026 AtomSprout. All rights reserved."
     entitlements:
       path: Apps/ChatComputer/ChatComputer.entitlements
       # XcodeGen rewrites the .entitlements file from these properties on every generate.
