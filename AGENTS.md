@@ -3,7 +3,7 @@
 Guidance for coding agents (Claude Code, Codex, and others) working in this repository. Read
 [README.md](README.md) for the layout and [docs/STATUS.md](docs/STATUS.md) for what works and what is next.
 
-The repository is public. The current pre-release is 0.9.13 (74), a 1.0 candidate: features are frozen until 1.0, so
+The repository is public. Version 0.9.13 (74) was published as a stable release. Features are frozen until 1.0, so
 prefer fixing, testing and documenting over adding capabilities.
 
 ## Workflow
@@ -17,8 +17,9 @@ prefer fixing, testing and documenting over adding capabilities.
   - the current state and the plan go in `docs/STATUS.md`
   - task checkboxes go in `TODO.md`
   - regression results go in `scripts/regress/results/` (JSONL, one file per run set)
-- Related repositories: the website is `chatcomputer/chatcomputer.github.io` (static; regenerate its
-  `results.json` with `scripts/regress/site-results.py`), the Homebrew cask is `chatcomputer/homebrew-tap`
+- Related repositories: the website is maintained in `atomsprout/atomsprout.github.io`, under
+  `software-sites/chatcomputer/` (static; regenerate `results.json` with
+  `scripts/regress/site-results.py`), the Homebrew cask is `chatcomputer/homebrew-tap`
   (`scripts/update-cask.sh`), and organisation-wide issue templates and policies live in `chatcomputer/.github`.
 
 ## Build and test

@@ -133,7 +133,7 @@ input-v4现已重开：固定客户端二进制、parser、任务和脚本，先
 - [x] 隐私与许可说明（PRIVACY.md）
 - [x] 新环境安装测试脚本（`scripts/fresh-install.sh`）与长时间运行测试脚本（`scripts/soak.py`）
 - [x] Claude Code 回归支持 MCP（`external.py --via mcp`）
-- [x] 项目网站 chatcomputer.github.io
+- [x] 项目网站 https://atomsprout.com/chatcomputer/（源码在 AtomSprout 公司网站仓库）
 - [x] 新环境完整安装两次
 - [x] 长时间运行（按决定以 4.3 小时为准，0 崩溃）
 - [x] Claude Code 跑全部 20 个任务（命令行 20/20，MCP 20/20）

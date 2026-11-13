@@ -3,7 +3,7 @@
 
     scripts/regress/site-results.py OUT.json "Label=results.jsonl[,more.jsonl]" ["Label=…" …]
 
-Each label becomes one row group on chatcomputer.github.io: every task, every run, passed or not, plus the pass
+Each label becomes one row group on atomsprout.com/chatcomputer/: every task, every run, passed or not, plus the pass
 count and the median turns and seconds.
 """
 import json

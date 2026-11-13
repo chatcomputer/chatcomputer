@@ -1,5 +1,7 @@
 # 现状与规划
 
+2026-11-12：0.9.14（75）完成 AtomSprout 官网迁移更新。设置 → 关于显示 `atomsprout.com/chatcomputer`；官网源码、资源和历史 `results.json` 维护于 `atomsprout/atomsprout.github.io/software-sites/chatcomputer/`。本机发布包通过 Developer ID 签名、公证、装订、Gatekeeper 和独立数据目录启动检查，已核对关于页的版本与地址。本次仅修改链接文字、版本和维护说明，未重跑历史 VM/模型验收，以下历史证据与未完成项保持原状。
+
 2026-11-12 已发布 **[0.9.13（74）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.13)**：更新 AtomSprout 网站、联系邮箱与版权署名，重新构建并通过 Developer ID 签名、公证、装订和 Gatekeeper 检查，Homebrew 已同步。本次没有重新启动历史 VM 验收；此前未完成项和以下历史证据保持原状。
 
 已发布预发布版本为 **[0.9.12（73）](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.12)**。用户在停止扩大验证后明确要求发布；沿用原签名公证包，未重新构建，Homebrew已同步。发布不等于完整验收通过，未完成项保持原状态，见 [发布清单](../scripts/regress/results/2026-11-04-0.9.12-73-publication.manifest.json)、[验收矩阵](VALIDATION-0.9.12-MATRIX.md)、[验证记录](VALIDATION-0.9.12.md)。下方“不发布/未发布”均为此次发布指令之前的历史。

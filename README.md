@@ -31,8 +31,8 @@ them. You can pause, cancel, or click the virtual Mac to take over at any moment
 Coding agents get the same Mac: the app is also a command line tool and an MCP server, so Claude Code, Codex and
 others can test GUI apps, installers and websites in a disposable macOS.
 
-The latest published pre-release is **[0.9.13 (74)](https://github.com/chatcomputer/chatcomputer/releases/tag/v0.9.13)**,
-with permission verification and recovery fixes. Validation is incomplete; see the
+The latest stable release is available from **[GitHub Releases](https://github.com/chatcomputer/chatcomputer/releases/latest)**.
+The product website and support are maintained at [AtomSprout](https://atomsprout.com/chatcomputer/). Validation is incomplete; see the
 [validation matrix](docs/VALIDATION-0.9.12-MATRIX.md) for passed checks, unfinished scenarios and unavailable test environments.
 
 ## Highlights
